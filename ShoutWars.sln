@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35201.85
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ShoutWars", "ShoutWars.vcxproj", "{3695F027-154C-4951-9596-B7ED18C7C60C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3695F027-154C-4951-9596-B7ED18C7C60C}.Debug|x64.ActiveCfg = Debug|x64
+		{3695F027-154C-4951-9596-B7ED18C7C60C}.Debug|x64.Build.0 = Debug|x64
+		{3695F027-154C-4951-9596-B7ED18C7C60C}.Release|x64.ActiveCfg = Release|x64
+		{3695F027-154C-4951-9596-B7ED18C7C60C}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {527C040D-4128-4CF4-AB78-F29CE00B3613}
+	EndGlobalSection
+EndGlobal
