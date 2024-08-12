@@ -7,7 +7,7 @@ void Main() {
 	//windowsサイズ
 	Window::Resize(1920, 1080);
 	//フルスクリーン
-	Window::SetFullscreen(true);
+	//Window::SetFullscreen(true);
 	//タイトル
 	Window::SetTitle(U"ShoutWars");
 

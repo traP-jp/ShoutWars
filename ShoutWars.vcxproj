@@ -231,6 +231,9 @@
   <ItemGroup>
     <ClInclude Include="Source\common.hpp" />
     <ClInclude Include="Source\Game.hpp" />
+    <ClInclude Include="Source\Matching.hpp" />
+    <ClInclude Include="Source\Result.hpp" />
+    <ClInclude Include="Source\Title.hpp" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
