@@ -5,6 +5,7 @@
 // シーンの名前
 enum class State
 {
+	logo,
 	Title,
 	Game,
 	Matching,
