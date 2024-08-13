@@ -117,6 +117,7 @@
   <ItemGroup>
     <ClCompile Include="Source\Config.cpp" />
     <ClCompile Include="Source\Game.cpp" />
+    <ClCompile Include="Source\logo.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matching.cpp" />
     <ClCompile Include="Source\Result.cpp" />
@@ -231,6 +232,7 @@
   <ItemGroup>
     <ClInclude Include="Source\common.hpp" />
     <ClInclude Include="Source\Game.hpp" />
+    <ClInclude Include="Source\logo.hpp" />
     <ClInclude Include="Source\Matching.hpp" />
     <ClInclude Include="Source\Result.hpp" />
     <ClInclude Include="Source\Title.hpp" />

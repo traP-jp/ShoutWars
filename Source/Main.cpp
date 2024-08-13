@@ -1,4 +1,6 @@
 ﻿#include "common.hpp"
+#include "logo.hpp"
+#include "Title.hpp"
 #include "Game.hpp"
 
 void Main() {
@@ -12,10 +14,14 @@ void Main() {
 	Window::SetTitle(U"ShoutWars");
 
 	App manager;
-	//manager.add<Title>(State::Title);
+	manager.add<logo>(State::logo);
+	manager.add<Title>(State::Title);
 	//manager.add<Matching>(State::Matching);
 	manager.add<Game>(State::Game);
 	//manager.add<Result>(State::Result);
+
+	//XXX:debug用
+	manager.init(State::Game);
 
 	while (System::Update() && manager.update()) {};
 }
