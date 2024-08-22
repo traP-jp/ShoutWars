@@ -7,7 +7,7 @@ logo::logo(const InitData& init) : IScene(init)
 void logo::update()
 {
 	if (first_time) {
-		logo_timer = Time::GetMillisec();
+		logo_timer = (int)Time::GetMillisec();
 		first_time = false;
 	}
 	if (Time::GetMillisec()- logo_timer > 1500)changeScene(State::Title);
