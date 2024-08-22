@@ -3,6 +3,13 @@
 
 class Title : public App::Scene
 {
+private:
+	//画像////////////////////////////////////////////////////////////
+	const Texture background_img{ U"../images/background.png" };
+	const Texture button1_img{ U"../images/button1.png" };
+	const Texture button2_img{ U"../images/button2.png" };
+
+
 public:
 	Title(const InitData& init);
 
