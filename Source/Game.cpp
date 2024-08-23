@@ -11,31 +11,31 @@ player_flag(player_sum, true)
 {
 	//玲の画像
 	if ((getData().player[0] == 0) || (getData().player[1] == 0)) {
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/player1.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/player1.png") });
 	}
 	//ユウカの画像
 	if ((getData().player[0] == 1) || (getData().player[1] == 1)) {
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/1/00.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/1/01.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/1/0.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/1/1.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/1/2.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/00.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/01.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/0.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/1.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/2.png") });
 	}
 	//アイリの画像
 	if ((getData().player[0] == 2) || (getData().player[1] == 2)) {
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/2/00.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/2/01.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/2/0.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/2/1.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/2/2.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/00.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/01.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/0.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/1.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/2.png") });
 	}
 	//No.0の画像
 	if ((getData().player[0] == 3) || (getData().player[1] == 3)) {
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/3/00.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/3/01.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/3/0.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/3/1.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/3/2.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/00.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/01.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/0.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/1.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/2.png") });
 	}
 
 	player[0].pos[0] = {100.0,player_min_y};

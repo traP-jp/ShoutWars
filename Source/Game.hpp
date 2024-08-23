@@ -37,11 +37,11 @@ private:
 	const static int player_status_sum = 10;
 	const static int player_max_hp = 1000;
 	//画像////////////////////////////////////////////////////////////
-	const Texture background_img{ U"../images/background.png"};
-	const Texture HP_bar_flame_img{ U"../images/HP_bar_flame.png" };
-	const Texture HP_bar_gray_img{ U"../images/HP_bar_gray.png" };
-	const Texture HP_bar_red_img{ U"../images/HP_bar_red.png" };
-	const Texture HP_bar_blue_img{ U"../images/HP_bar_blue.png" };
+	const Texture background_img{ U"../images/game/background.png"};
+	const Texture HP_bar_flame_img{ U"../images/game/HP_bar_flame.png" };
+	const Texture HP_bar_gray_img{ U"../images/game/HP_bar_gray.png" };
+	const Texture HP_bar_red_img{ U"../images/game/HP_bar_red.png" };
+	const Texture HP_bar_blue_img{ U"../images/game/HP_bar_blue.png" };
 	std::vector<std::vector<Texture>> player_img;
 	//音楽////////////////////////////////////////////////////////////
 	const Audio bgm{ U"../audioes/Es-Boss3_loop.ogg" , Arg::loopBegin = 28.848843537415s};
