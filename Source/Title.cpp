@@ -14,10 +14,14 @@ void Title::update()
 		Cursor::RequestStyle(CursorStyle::Hand);
 	}
 	if (button1_shape.leftClicked()) {
+		getData().room_mode = 0;
 		//TODO:効果音を流してルームメイク！
+		changeScene(State::Matching);
 	}
 	if (button2_shape.leftClicked()) {
+		getData().room_mode = 1;
 		//TODO:効果音を流してルームイン！
+		changeScene(State::Matching);
 	}
 
 }

@@ -1,6 +1,7 @@
 ﻿#include "common.hpp"
 #include "logo.hpp"
 #include "Title.hpp"
+#include "Matching.hpp"
 #include "Game.hpp"
 
 void Main() {
@@ -16,7 +17,7 @@ void Main() {
 	App manager;
 	manager.add<logo>(State::logo);
 	manager.add<Title>(State::Title);
-	//manager.add<Matching>(State::Matching);
+	manager.add<Matching>(State::Matching);
 	manager.add<Game>(State::Game);
 	//manager.add<Result>(State::Result);
 
