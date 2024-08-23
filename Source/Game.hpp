@@ -8,6 +8,8 @@
 class Game : public App::Scene
 {
 private:
+	//構造体////////////////////////////////////////////////////////////
+	struct Player player[2];
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
 	const static int player_min_y = 700;
@@ -26,24 +28,6 @@ private:
 	//変数////////////////////////////////////////////////////////////
 	//プレイヤーが存在するか
 	std::vector<bool> player_flag;
-	//ステータス(0:待機中,1:左移動,2:右移動,4ジャンプ,8:スタン,16:弱,32:狂,64:特殊,128～:予備)
-	int player_status[player_sum] = {0};
-	//プレイヤーの画像のアニメーション用
-	int player_img_number[player_sum] = { 0 };
-	int player_img_status[player_sum] = { 0 };
-	int player_img_timer[player_sum] = { 0 };
-
-	//HP(0:実質HP,1:表示HP)
-	std::vector<std::vector<int>> player_hp;
-	//AP
-	int player_ap[player_sum] = { 10 };
-	Vec2 player_pos[player_sum][2];
-	//移動速度
-	double player_speed[player_sum] = {50.0};
-	//Playerに関する時間(0:左右移動,1:予備,2:ジャンプ)
-	int player_timer[player_sum][player_status_sum] = {0};
-	//Playerの向き(true:右,false:左)
-	bool player_direction[player_sum] = {false};
 	//時間
 	int internal_timer = 0;
 	//bgmが流れているか
@@ -68,4 +52,23 @@ public:
 
 	void drawFadeIn(double t) const override;
 	void draw() const override;
+};
+
+struct Player{
+	//各種変数
+	Vec2 pos[2];
+	//ステータス(0:待機中,1:左移動,2:右移動,4ジャンプ,8:スタン,16:弱,32:狂,64:特殊,128～:予備)
+	int status = 0;
+	//HP(0:実質HP,1:表示HP)
+	int hp[2] = { 810 };
+	int ap = 0;
+	double speed = 50.0;
+	//Playerに関する時間(0:左右移動,1:予備,2:ジャンプ)
+	int timer[10];
+	//Playerの向き(true:右,false:左)
+	bool direction = false;
+
+	int img_number;
+	int img_status;
+	int img_timer;
 };
