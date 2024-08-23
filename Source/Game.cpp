@@ -7,8 +7,7 @@ using namespace std;
 
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
-player_flag(player_sum, true),
-player_hp(player_sum,vector<int>(2, player_max_hp))
+player_flag(player_sum, true)
 {
 	//玲の画像
 	if ((getData().player[0] == 0) || (getData().player[1] == 0)) {
@@ -39,8 +38,9 @@ player_hp(player_sum,vector<int>(2, player_max_hp))
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/3/2.png") });
 	}
 
-	player_pos[0][0] = { 100.0,player_min_y };
-	player_pos[1][0] = { 1200,player_min_y };
+	player[0].pos[0] = {100.0,player_min_y};
+	player[1].pos[0] = {1200,player_min_y};
+
 	internal_timer = Time::GetMillisec();
 }
 
@@ -60,7 +60,7 @@ int Game::getkey() {
 
 //TODO:音声認識が届いたら実装
 int Game::voice_command() {
-	return 0;
+	return KeyF.pressed();
 }
 
 void Game::update() {
@@ -77,41 +77,41 @@ void Game::update() {
 
 void Game::update_player() {
 	int now_time = (int)Time::GetMillisec();
-	Vec2 player_reserved_pos = player_pos[player_number][0];
+	Vec2 player_reserved_pos = player[player_number].pos[0];
 	//プレイヤー(ユーザー操作)の移動処理////////////////////////////////////////////////////////////
 	//左右移動処理
-	if (player_status[player_number] & 3) {
-		int t = now_time - player_timer[player_number][0];
+	if (player[player_number].status & 3) {
+		int t = now_time - player[player_number].timer[0];
 		if (t < 50) {
-			player_reserved_pos.x = player_pos[player_number][1].x + ((player_status[player_number] & 1) ? -1.0 : 1.0) * player_speed[player_number] * t / 50;
+			player_reserved_pos.x = player[player_number].pos[1].x + ((player[player_number].status & 1) ? -1.0 : 1.0) * player[player_number].speed * t / 50;
 		}else {
-			player_status[player_number] ^= (player_status[player_number]&1)?1:2;
+			player[player_number].status ^= (player[player_number].status&1)?1:2;
 		}
 	}
 	//ジャンプ処理
-	if (player_status[player_number] & 4) {
-		int t = now_time - player_timer[player_number][2];
+	if (player[player_number].status & 4) {
+		int t = now_time - player[player_number].timer[2];
 		if (t < 500) {
 			player_reserved_pos.y = player_min_y - 2.0 * t + 0.004 * t * t;
 		}
 		else {
-			player_status[player_number] ^= 4;
+			player[player_number].status ^= 4;
 			player_reserved_pos.y = player_min_y;
 		}
 	}
 	//キー入力処理
 	if (int gotkey = getkey()) {
-		if ((player_status[player_number] & 3) == 0){
+		if ((player[player_number].status & 3) == 0){
 			if (gotkey & 10) {
-				player_status[player_number] |= (gotkey & 2)?1:2;
-				player_timer[player_number][0] = now_time;
-				player_pos[player_number][1].x = player_pos[player_number][0].x;
+				player[player_number].status |= (gotkey & 2)?1:2;
+				player[player_number].timer[0] = now_time;
+				player[player_number].pos[1].x = player[player_number].pos[0].x;
 			}
 		}
-		if ((gotkey & 1) && ((player_status[player_number] & 4) == 0)) {
-			player_status[player_number] |= 4;
-			player_timer[player_number][2] = now_time;
-			player_pos[player_number][1].y = player_pos[player_number][0].y;
+		if ((gotkey & 1) && ((player[player_number].status & 4) == 0)) {
+			player[player_number].status |= 4;
+			player[player_number].timer[2] = now_time;
+			player[player_number].pos[1].y = player[player_number].pos[0].y;
 		}
 	}
 	//プレイヤー(相手)の移動処理////////////////////////////////////////////////////////////////////
@@ -121,23 +121,23 @@ void Game::update_player() {
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
 		if (i == player_number) continue;
-		if ((abs(player_reserved_pos.x - player_pos[i][0].x) < 50.0)&&(abs(player_reserved_pos.y - player_pos[i][0].y) < 242.0)) {
+		if ((abs(player_reserved_pos.x - player[i].pos[0].x) < 50.0)&&(abs(player_reserved_pos.y - player[i].pos[0].y) < 242.0)) {
 			//相手が動いている場合
-			if (player_status[i]&3) {
+			if (player[i].status&3) {
 				//TODO:通信関連が届いたら実装
 			}else {
-				player_pos[i][0].x += (player_reserved_pos.x < player_pos[i][0].x) ? 16.0 : -16.0;
+				player[i].pos[0].x += (player_reserved_pos.x < player[i].pos[0].x) ? 16.0 : -16.0;
 			}
 		}
 	}
 
 	//プレイヤーの向き
-	if (player_reserved_pos.x < player_pos[another_player_number][0].x) {
-		player_direction[player_number] = false;
-		player_direction[another_player_number] = true;
+	if (player_reserved_pos.x < player[another_player_number].pos[0].x) {
+		player[player_number].direction = false;
+		player[another_player_number].direction = true;
 	}else {
-		player_direction[player_number] = true;
-		player_direction[another_player_number] = false;
+		player[player_number].direction = true;
+		player[another_player_number].direction = false;
 	}
 
 	//技とかの処理/////////////////////////////////////////////////////////////////////////////////
@@ -146,15 +146,15 @@ void Game::update_player() {
 
 	//HP管理///////////////////////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
-		if (player_hp[i][1] > player_hp[i][0])player_hp[i][1]--;
-		if (player_hp[i][0] <= 0);//TODO:GAMEOVER処理
+		if (player[i].hp[1] > player[i].hp[0])player[i].hp[1]--;
+		if (player[i].hp[0] <= 0);//TODO:GAMEOVER処理
 	}
 
 	//移動範囲制限
 	player_reserved_pos.x = Clamp(player_reserved_pos.x, 50.0, 1850.0);
 
 	//プレイヤーの位置を更新を確定
-	player_pos[player_number][0] = player_reserved_pos;
+	player[player_number].pos[0] = player_reserved_pos;
 }
 
 
@@ -163,36 +163,36 @@ void Game::update_player_animation() {
 	for (int i = 0; i < player_sum; i++) {
 		if (!player_flag[i]) continue;
 		//待機中
-		if (player_status[i] == 0) {
-			player_img_number[i] = 0;
+		if (player[i].status == 0) {
+			player[i].img_number = 0;
 			continue;
 		//ジャンプアニメーション
-		}elif(player_status[i] & 4) {
-			player_img_number[i] = 0;
+		}elif(player[i].status & 4) {
+			player[i].img_number = 0;
 			continue;
 		//移動アニメーション
-		}elif(player_status[i] & 3) {
-			if (tmp_time - player_img_timer[i] > 150) {
-				player_img_timer[i] = tmp_time;
-				player_img_status[i] = (player_img_status[i] + 1) % 2;
+		}elif(player[i].status & 3) {
+			if (tmp_time - player[i].img_timer > 150) {
+				player[i].img_timer = tmp_time;
+				player[i].img_status = (player[i].img_status + 1) % 2;
 			}
-			player_img_number[i] = player_img_status[i];
+			player[i].img_number = player[i].img_status;
 			continue;
 		//スタン
-		}elif(player_status[i] & 8) {
-			player_img_number[i] = 0;
+		}elif(player[i].status & 8) {
+			player[i].img_number = 0;
 			continue;
 		//弱攻撃のアニメーション
-		}elif(player_status[i] & 16) {
-			player_img_number[i] = 0;
+		}elif(player[i].status & 16) {
+			player[i].img_number = 0;
 			continue;
 		//狂攻撃のアニメーション
-		}elif(player_status[i] & 32) {
+		}elif(player[i].status & 32) {
 			//NEXT_TODO:ここから！！
-			player_img_number[i] = 0;
+			player[i].img_number = 0;
 			continue;
 		}
-		player_img_number[i] = 0;
+		player[i].img_number = 0;
 	}
 }
 
@@ -213,7 +213,7 @@ void Game::draw() const {
 void Game::draw_player() const {
 	for (int i = 0; i < player_sum;i++) {
 		if (!player_flag[i]) continue;
-		player_img.at(getData().player[i]).at(player_img_number[i]).mirrored(player_direction[i]).drawAt(player_pos[i][0]);
+		player_img.at(getData().player[i]).at(player[i].img_number).mirrored(player[i].direction).drawAt(player[i].pos[0]);
 	}
 }
 
@@ -221,12 +221,12 @@ void Game::draw_HP_bar() const {
 	//1PのHP
 	HP_bar_flame_img.draw(120, 70);
 	HP_bar_gray_img.draw(130, 78);
-	HP_bar_red_img(0, 0, 680 * (player_hp[player_number][1] / player_max_hp), 25).draw(130, 78);
-	HP_bar_blue_img(0, 0, 680 * (player_hp[player_number][0] / player_max_hp), 25).draw(130, 78);
+	HP_bar_red_img(0, 0, 680 * (player[player_number].hp[1] / player_max_hp), 25).draw(130, 78);
+	HP_bar_blue_img(0, 0, 680 * (player[player_number].hp[0] / player_max_hp), 25).draw(130, 78);
 
 	//2PのHP
 	HP_bar_flame_img.draw(1090, 70);
 	HP_bar_gray_img.draw(1100, 78);
-	HP_bar_red_img (680 * (1.0 - (player_hp[another_player_number][1] / player_max_hp)), 0, 680 * (player_hp[another_player_number][1] / player_max_hp), 25).mirrored().draw(1100, 78);
-	HP_bar_blue_img(680 * (1.0 - (player_hp[another_player_number][0] / player_max_hp)), 0, 680 * (player_hp[another_player_number][0] / player_max_hp), 25).mirrored().draw(1100, 78);
+	HP_bar_red_img (680 * (1.0 - (player[another_player_number].hp[1] / player_max_hp)), 0, 680 * (player[another_player_number].hp[1] / player_max_hp), 25).mirrored().draw(1100, 78);
+	HP_bar_blue_img(680 * (1.0 - (player[another_player_number].hp[0] / player_max_hp)), 0, 680 * (player[another_player_number].hp[0] / player_max_hp), 25).mirrored().draw(1100, 78);
 }
