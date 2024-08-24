@@ -9,11 +9,42 @@ Matching::Matching(const InitData& init) : IScene(init)
 
 void Matching::update()
 {
+	//ホバーしたらカーソルを変える
+	if (select_char_shape1.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	if (select_char_shape2.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	if (select_char_shape3.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	if (select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	if (random_select_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
+
+	if (return_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
+
+	//戻る
+	if (return_shape.leftClicked()) {
+		changeScene(State::Title);
+	}
+
+	//キャラ選択
+	if (select_char_shape1.leftClicked()) {
+		character_number = 0;
+	}
+	if (select_char_shape2.leftClicked()) {
+		character_number = 1;
+	}
+	if (select_char_shape3.leftClicked()) {
+		character_number = 2;
+	}
+	if (select_char_shape4.leftClicked()) {
+		character_number = 3;
+	}
+	if (random_select_shape.leftClicked()) {
+		character_number = Random(0, 3);
+	}
 }
 
 void Matching::draw() const
 {
-	//background_img.draw(0, 0);
+	background_img.draw(0, 0);
+	return_img.draw(20, 20);
 	select_char_img1.draw(230, 720);
 	select_char_img2.draw(540, 720);
 	random_select_img.draw(850, 720);

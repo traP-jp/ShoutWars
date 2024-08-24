@@ -57,11 +57,11 @@ void Title::update()
 
 		//数字の入力
 		for (int i = 0; i < 10; i++) {
-			if ((shape_of_number[i].mouseOver()) && (room_ID_digit < 4)) {
+			if ((shape_of_number[i].mouseOver()) && (room_ID_digit < 6)) {
 				Cursor::RequestStyle(CursorStyle::Hand);
 			}
 			if (shape_of_number[i].leftClicked()) {
-				if (room_ID_digit < 4) {
+				if (room_ID_digit < 6) {
 					room_ID += to_string(i);
 					room_ID_digit++;
 				}
@@ -71,7 +71,7 @@ void Title::update()
 		if ((cancel_shape.mouseOver()) && (room_ID_digit > 0)) {
 			Cursor::RequestStyle(CursorStyle::Hand);
 		}
-		if ((decide_shape.mouseOver())&&(room_ID_digit == 4)) {
+		if ((decide_shape.mouseOver())&&(room_ID_digit == 6)) {
 			Cursor::RequestStyle(CursorStyle::Hand);
 		}
 		//消去
@@ -82,7 +82,7 @@ void Title::update()
 			}
 		}
 		//確認
-		if (decide_shape.leftClicked()) {
+		if ((decide_shape.leftClicked()) && (room_ID_digit == 6)) {
 			getData().room_mode = 1;
 			getData().room_ID = stoi(room_ID.c_str());
 			//TODO:効果音を流してルームイン！
