@@ -22,7 +22,7 @@ void Main() {
 	//manager.add<Result>(State::Result);
 
 	//XXX:debug用
-	manager.init(State::Title);
+	manager.init(State::Game);
 
 	while (System::Update() && manager.update()) {};
 }

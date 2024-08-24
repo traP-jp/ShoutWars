@@ -5,7 +5,6 @@
 Matching::Matching(const InitData& init) : IScene(init)
 {
 	//TODO:ネット関連のものが完成したら実装しろ
-	//TODO:ネット関連のものが完成したら実装しろ
 }
 
 void Matching::update()
@@ -24,4 +23,6 @@ void Matching::draw() const
 
 void Matching::drawFadeIn(double t) const
 {
+	draw();
+	Rect(0, 0, 1920, 1080).draw(ColorF(0, 0, 0, 1.0 - t));
 }
