@@ -38,6 +38,8 @@ void Matching::update()
 	}
 	if (random_select_shape.leftClicked()) {
 		character_number = Random(0, 3);
+		//TODO:後で消す
+		changeScene(State::Game);
 	}
 }
 
