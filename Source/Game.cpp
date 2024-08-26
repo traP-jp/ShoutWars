@@ -138,18 +138,14 @@ void Game::update_player() {
 	}
 
 	//プレイヤーの向き
-	if (player[player_number].status & 3) {
-		player[player_number].direction = (player[player_number].status & 1);
+	if (player_reserved_pos.x < player[another_player_number].pos[0].x) {
+		player[player_number].direction = false;
+		player[another_player_number].direction = true;
 	}else {
-		if (player_reserved_pos.x < player[another_player_number].pos[0].x) {
-			player[player_number].direction = false;
-			player[another_player_number].direction = true;
-		}
-		else {
-			player[player_number].direction = true;
-			player[another_player_number].direction = false;
-		}
+		player[player_number].direction = true;
+		player[another_player_number].direction = false;
 	}
+	if (player[player_number].status & 3)player[player_number].direction = (player[player_number].status & 1);
 
 	//技とかの起爆/////////////////////////////////////////////////////////////////////////////////
 	if (int got_voice = voice_command()) {
