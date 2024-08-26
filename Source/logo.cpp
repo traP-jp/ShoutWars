@@ -10,7 +10,7 @@ void logo::update()
 		logo_timer = (int)Time::GetMillisec();
 		first_time = false;
 	}
-	if (Time::GetMillisec()- logo_timer > 1500)changeScene(State::Title);
+	if (Time::GetMillisec()- logo_timer > 1500)changeScene(State::Title,0.8s);
 }
 
 void logo::draw() const
@@ -25,5 +25,5 @@ void logo::drawFadeIn(double t) const
 
 void logo::drawFadeOut(double t) const
 {
-	fade_img.draw(0, 0, ColorF{ 1.0, 1.0 - t });
+	fade_img.draw(0, 0, ColorF{ 1.0, 1.0 - t/0.8 });
 }

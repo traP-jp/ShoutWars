@@ -28,7 +28,7 @@ void Title::update()
 		if (button1_shape.leftClicked()) {
 			getData().room_mode = 0;
 			//TODO:効果音を流してルームメイク！
-			changeScene(State::Matching);
+			changeScene(State::Matching,0.8s);
 		}
 		if (button2_shape.leftClicked()) {
 			calc_mode = 1;
@@ -86,7 +86,7 @@ void Title::update()
 			getData().room_mode = 1;
 			getData().room_ID = stoi(room_ID.c_str());
 			//TODO:効果音を流してルームイン！
-			changeScene(State::Matching);
+			changeScene(State::Matching,0.8s);
 		}
 	}elif(calc_mode == 3) {
 		int now_time = (int)Time::GetMillisec();
@@ -121,11 +121,11 @@ void Title::draw() const
 void Title::drawFadeIn(double t) const
 {
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0-t });
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0-t/0.8 });
 }
 
 void Title::drawFadeOut(double t) const
 {
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,t });
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,t/0.8 });
 }

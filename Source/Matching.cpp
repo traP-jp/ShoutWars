@@ -20,7 +20,7 @@ void Matching::update()
 
 	//戻る
 	if (return_shape.leftClicked()) {
-		changeScene(State::Title);
+		changeScene(State::Title,0.8s);
 	}
 
 	//キャラ選択
@@ -39,7 +39,7 @@ void Matching::update()
 	if (random_select_shape.leftClicked()) {
 		character_number = Random(0, 3);
 		//TODO:後で消す
-		changeScene(State::Game);
+		changeScene(State::Game,0.8s);
 	}
 }
 
@@ -57,5 +57,5 @@ void Matching::draw() const
 void Matching::drawFadeIn(double t) const
 {
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF(0, 0, 0, 1.0 - t));
+	Rect(0, 0, 1920, 1080).draw(ColorF(0, 0, 0, 1.0 - t/0.8));
 }
