@@ -11,29 +11,33 @@ player_flag(player_sum, true)
 {
 	//玲の画像
 	if ((getData().player[0] == 0) || (getData().player[1] == 0)) {
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/player1.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/waiting.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/run1.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/run2.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/1.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/2.png") });
 	}
 	//ユウカの画像
 	if ((getData().player[0] == 1) || (getData().player[1] == 1)) {
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/00.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/01.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/0.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/1.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/waiting.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/run1.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/run2.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/kick.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/2.png") });
 	}
 	//アイリの画像
 	if ((getData().player[0] == 2) || (getData().player[1] == 2)) {
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/00.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/01.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/0.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/waiting.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/run1.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/run2.png") });
 		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/1.png") });
 		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/2.png") });
 	}
 	//No.0の画像
 	if ((getData().player[0] == 3) || (getData().player[1] == 3)) {
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/00.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/01.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/0.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/waiting.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/run1.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/run2.png") });
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/1.png") });
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/2.png") });
 	}
@@ -134,12 +138,17 @@ void Game::update_player() {
 	}
 
 	//プレイヤーの向き
-	if (player_reserved_pos.x < player[another_player_number].pos[0].x) {
-		player[player_number].direction = false;
-		player[another_player_number].direction = true;
+	if (player[player_number].status & 3) {
+		player[player_number].direction = (player[player_number].status & 1);
 	}else {
-		player[player_number].direction = true;
-		player[another_player_number].direction = false;
+		if (player_reserved_pos.x < player[another_player_number].pos[0].x) {
+			player[player_number].direction = false;
+			player[another_player_number].direction = true;
+		}
+		else {
+			player[player_number].direction = true;
+			player[another_player_number].direction = false;
+		}
 	}
 
 	//技とかの起爆/////////////////////////////////////////////////////////////////////////////////
@@ -238,16 +247,12 @@ void Game::update_player_animation() {
 			continue;
 		//狂攻撃のアニメーション
 		}elif(player[i].status & 32) {
-			if (now_time - player[i].timer[5] < 50) {
-				player[i].img_number = 2;
-			}elif(now_time - player[i].timer[5] < 150) {
+			if(now_time - player[i].timer[5] < 130) {
+				player[i].img_number = 0;
+			}elif(now_time - player[i].timer[5] < 320) {
 				player[i].img_number = 3;
-			}elif(now_time - player[i].timer[5] < 300) {
-				player[i].img_number = 4;
 			}elif(now_time - player[i].timer[5] < 450) {
-				player[i].img_number = 3;
-			}elif(now_time - player[i].timer[5] < 550) {
-				player[i].img_number = 2;
+				player[i].img_number = 0;
 			}
 			else {
 				player[i].status ^= 32;
@@ -260,9 +265,9 @@ void Game::update_player_animation() {
 			continue;
 		//移動アニメーション
 		}elif(player[i].status & 3) {
-			if (now_time - player[i].img_timer > 150) {
+			if (now_time - player[i].img_timer > 160) {
 				player[i].img_timer = now_time;
-				player[i].img_status = (player[i].img_status + 1) % 2;
+				player[i].img_status = 1+player[i].img_status % 2;
 			}
 			player[i].img_number = player[i].img_status;
 			continue;

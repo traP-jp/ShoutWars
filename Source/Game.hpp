@@ -21,9 +21,9 @@ struct Player {
 	//通信が必要なイベント,[0]:イベント(0:なし,1:弱,2:狂,4:),[1]:時間
 	int event[2];
 
-	int img_number;
-	int img_status;
-	int img_timer;
+	int img_number = 0;
+	int img_status = 0;
+	int img_timer = 0;
 };
 
 class Game : public App::Scene
