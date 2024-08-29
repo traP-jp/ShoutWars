@@ -16,6 +16,8 @@ struct Player {
 	double speed = 50.0;
 	//Playerに関する時間(0:左右移動,1:予備,2:ジャンプ,3:スタン,4:弱,5:狂,6:必殺)
 	int timer[10];
+	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺)
+	bool se[5] = { false };
 	//Playerの向き(true:右,false:左)
 	bool direction = false;
 	//通信が必要なイベント,[0]:イベント(0:なし,1:弱,2:狂,4:必殺),[1]:時間
@@ -56,14 +58,18 @@ private:
 	std::vector<Texture> fire_img;
 	//音楽////////////////////////////////////////////////////////////
 	const Audio bgm{ U"../audioes/Es-Boss3_loop.ogg" , Arg::loopBegin = 28.848843537415s};
+	const Audio dos_se{ U"../audioes/dos.wav" };
+	const Audio dododos_se{ U"../audioes/dododos.wav" };
+	const Audio jump_se{ U"../audioes/jump.wav" };
+	const Audio shot_se{ U"../audioes/shot.wav" };
+	const Audio kiran_se{ U"../audioes/kiran.wav" };
+	const Audio bom_se{ U"../audioes/bom.wav" };
 
 	//変数////////////////////////////////////////////////////////////
 	//プレイヤーが存在するか
 	std::vector<bool> player_flag;
 	//時間
 	int internal_timer = 0;
-	//bgmが流れているか
-	bool bgm_sw = false;
 
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;

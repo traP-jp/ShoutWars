@@ -78,11 +78,6 @@ int Game::voice_command() {
 }
 
 void Game::update() {
-	//BGMを流す
-	if (!bgm_sw) {
-		bgm_sw = true;
-		bgm.play();
-	}
 	//プレイヤー情報を更新
 	update_player();
 	//APバーの描画情報を更新
@@ -117,6 +112,7 @@ void Game::update_player() {
 	}
 	//キー入力処理
 	if (int gotkey = getkey()) {
+		//左右移動
 		if ((player[player_number].status & 3) == 0){
 			if (gotkey & 10) {
 				player[player_number].status |= (gotkey & 2)?1:2;
@@ -124,7 +120,9 @@ void Game::update_player() {
 				player[player_number].pos[1].x = player[player_number].pos[0].x;
 			}
 		}
+		//ジャンプ
 		if ((gotkey & 1) && ((player[player_number].status & 52) == 0)) {
+			jump_se.playOneShot();
 			player[player_number].status |= 4;
 			player[player_number].timer[2] = now_time;
 			player[player_number].pos[1].y = player[player_number].pos[0].y;
@@ -166,14 +164,16 @@ void Game::update_player() {
 		//狂攻撃
 		}elif(got_voice == 2) {
 			if ((player[player_number].status & 116) == 0) {
-				//TODO:ここで効果音を流す
+				shot_se.playOneShot();
+				player[player_number].se[3] = true;
 				player[player_number].status |= 32;
 				player[player_number].timer[5] = now_time;
 			}
 		//必殺技
 		}elif ((got_voice == 3)&&(player[player_number].special_attack)) {
 			if ((player[player_number].status & 116) == 0) {
-				//TODO:ここで効果音を流す
+				bom_se.playOneShot();
+				player[player_number].se[4] = true;
 				player[player_number].status |= 64;
 				player[player_number].timer[6] = now_time;
 				player[player_number].ap = 0;
@@ -195,11 +195,14 @@ void Game::update_player() {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == player_number) continue;
 				int tmp_pos_x = sign(player[player_number].direction)*(player_reserved_pos.x - player[i].pos[0].x);
-				if ((1.0 < tmp_pos_x) &&(tmp_pos_x < 280.0) && (abs(player_reserved_pos.y - player[i].pos[0].y) < 242.0)) {
+				if ((5.0 < tmp_pos_x) &&(tmp_pos_x < 250.0) && (abs(player_reserved_pos.y - player[i].pos[0].y) < 242.0)) {
 					if ((player[i].event[0] & 2) == 0) {
 						//狂攻撃
 						if (player[player_number].status & 32) {
-							//TODO:ここで効果音を流す
+							if (player[player_number].se[3]) {
+								player[player_number].se[3] = false;
+								dos_se.playOneShot();
+							}
 							player[i].event[0] |= 2;
 							//TODO:あとで通信専用の時間に変更する
 							player[i].event[1] = now_time;
@@ -207,12 +210,14 @@ void Game::update_player() {
 							player[player_number].ap += 3;
 						//必殺技
 						}else {
-							//TODO:ここで効果音を流す
+							if (player[player_number].se[4]) {
+								player[player_number].se[4] = false;
+								dododos_se.playOneShot();
+							}
 							player[i].event[0] |= 4;
 							//TODO:あとで通信専用の時間に変更する
 							player[i].event[1] = now_time;
 							player[i].hp[1] -= 15;
-							player[player_number].ap += 10;
 						}
 					}
 				}
@@ -225,7 +230,7 @@ void Game::update_player() {
 		if (player[i].ap >= player_max_ap) {
 			player[i].ap = player_max_ap;
 			if (!player[i].special_attack) {
-				//TODO:ここで効果音を流す
+				kiran_se.playOneShot();
 				player[i].special_attack = true;
 			}
 		}
@@ -246,7 +251,7 @@ void Game::update_player() {
 //APバーのアニメーションを更新
 void Game::update_AP_bar_animation() {
 	int now_time = (int)Time::GetMillisec();
-	//APバーが満タンの時炎のアニメーションを描く
+	//APバーが満タンの時、炎のアニメーションを描く
 	for (int i = 0; i < player_sum; i++) {
 		if (!player_flag[i]) continue;
 		if (player[i].special_attack) {
@@ -344,6 +349,8 @@ void Game::update_player_animation() {
 
 
 void Game::drawFadeIn(double t) const {
+	//BGMを流す
+	if (!bgm.isPlaying())bgm.play();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0 - t / 0.8 });
 }
