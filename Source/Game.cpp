@@ -48,8 +48,9 @@ player_flag(player_sum, true)
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/2.png") });
 	}
 
-	player[0].pos[0] = {100.0,player_min_y};
+	player[0].pos[0] = {600.0,player_min_y};
 	player[1].pos[0] = {1200,player_min_y};
+	player[1].direction = true;
 
 	internal_timer = (int)Time::GetMillisec();
 	init_connection();
@@ -85,7 +86,7 @@ void Game::update() {
 	//プレイヤー情報を更新
 	update_player();
 	//APバーの描画情報を更新
-	update_AP_bar();
+	update_AP_bar_animation();
 	//プレイヤーのアニメーションを更新
 	update_player_animation();
 }
@@ -175,6 +176,8 @@ void Game::update_player() {
 				//TODO:ここで効果音を流す
 				player[player_number].status |= 64;
 				player[player_number].timer[6] = now_time;
+				player[player_number].ap = 0;
+				player[player_number].special_attack = false;
 			}
 		}
 
@@ -201,6 +204,7 @@ void Game::update_player() {
 							//TODO:あとで通信専用の時間に変更する
 							player[i].event[1] = now_time;
 							player[i].hp[1] -= 5;
+							player[player_number].ap += 3;
 						//必殺技
 						}else {
 							//TODO:ここで効果音を流す
@@ -208,6 +212,7 @@ void Game::update_player() {
 							//TODO:あとで通信専用の時間に変更する
 							player[i].event[1] = now_time;
 							player[i].hp[1] -= 15;
+							player[player_number].ap += 10;
 						}
 					}
 				}
@@ -215,6 +220,16 @@ void Game::update_player() {
 		}
 	}
 
+	//AP管理///////////////////////////////////////////////////////////////////////////////////////
+	for (int i = 0; i < player_sum; i++) {
+		if (player[i].ap >= player_max_ap) {
+			player[i].ap = player_max_ap;
+			if (!player[i].special_attack) {
+				//TODO:ここで効果音を流す
+				player[i].special_attack = true;
+			}
+		}
+	}
 	//HP管理///////////////////////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
 		if (player[i].hp[2] > player[i].hp[0])player[i].hp[2]--;
@@ -228,8 +243,19 @@ void Game::update_player() {
 	player[player_number].pos[0] = player_reserved_pos;
 }
 
-void Game::update_AP_bar() {
-	//TODO:次はここから！
+//APバーのアニメーションを更新
+void Game::update_AP_bar_animation() {
+	int now_time = (int)Time::GetMillisec();
+	//APバーが満タンの時炎のアニメーションを描く
+	for (int i = 0; i < player_sum; i++) {
+		if (!player_flag[i]) continue;
+		if (player[i].special_attack) {
+			if (now_time - player[i].fire_animation_timer > 150) {
+				player[i].fire_animation_timer = now_time;
+				player[i].fire_animation = (1 + player[i].fire_animation) % 5;
+			}
+		}
+	}
 }
 
 //TODO:通信関連が届いたら実装
@@ -344,25 +370,40 @@ void Game::draw_HP_bar() const {
 	//1PのHP
 	HP_bar_flame_img.draw(120, 70);
 	HP_bar_gray_img.draw(130, 78);
-	HP_bar_red_img(0, 0, 680.0 * ((double)player[player_number].hp[2] / player_max_hp), 25).draw(130, 78);
-	HP_bar_blue_img(0, 0, 680.0 * ((double)player[player_number].hp[1] / player_max_hp), 25).draw(130, 78);
+	HP_bar_red_img(0, 0, 680.0 * ((double)player[0].hp[2] / player_max_hp), 25).draw(130, 78);
+	HP_bar_blue_img(0, 0, 680.0 * ((double)player[0].hp[1] / player_max_hp), 25).draw(130, 78);
 
 	//2PのHP
 	HP_bar_flame_img.draw(1090, 70);
 	HP_bar_gray_img.draw(1100, 78);
-	HP_bar_red_img (680.0 * (1.0 - ((double)player[another_player_number].hp[2] / player_max_hp)), 0, 680.0 * ((double)player[another_player_number].hp[2] / player_max_hp), 25).mirrored().draw(1100, 78);
-	HP_bar_blue_img(680.0 * (1.0 - ((double)player[another_player_number].hp[1] / player_max_hp)), 0, 680.0 * ((double)player[another_player_number].hp[1] / player_max_hp), 25).mirrored().draw(1100, 78);
+	HP_bar_red_img (680.0 * (1.0 - ((double)player[1].hp[2] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[2] / player_max_hp), 25).mirrored().draw(1100, 78);
+	HP_bar_blue_img(680.0 * (1.0 - ((double)player[1].hp[1] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[1] / player_max_hp), 25).mirrored().draw(1100, 78);
 }
 
 //APバーの描画
 void Game::draw_AP_bar() const {
 	//1PのAP
-	AP_bar_empty_img.draw(120, 70);
-	AP_bar_max_img.draw(120, 70);
-	AP_bar_img(0, 0, 680.0 * ((double)player[player_number].ap / 100), 25).draw(120, 70);
+	AP_bar_empty_img.mirrored().draw(120, 880);
+	if (player[0].special_attack) {
+		AP_bar_max_img.mirrored().draw(120, 880);
+		{
+			const ScopedRenderStates2D blend{ BlendState::Additive };
+			fire_img.at(player[0].fire_animation).draw(90, 800);
+		}
+	}else {
+		AP_bar_img(0, 0, 360.0 * ((double)player[0].ap / player_max_ap), 42).mirrored().draw(612.0- 360.0 * ((double)player[0].ap / player_max_ap), 992);
+	}
+
 
 	//2PのAP
-	AP_bar_empty_img.draw(1090, 70);
-	AP_bar_max_img.draw(1090, 70);
-	AP_bar_img(0, 0, 680.0 * ((double)player[another_player_number].ap / 100), 25).mirrored().draw(1090, 70);
+	AP_bar_empty_img.draw(1300, 880);
+	if (player[1].special_attack) {
+		AP_bar_max_img.draw(1300, 880);
+		{
+			const ScopedRenderStates2D blend{ BlendState::Additive };
+			fire_img.at(player[1].fire_animation).draw(1610, 800);
+		}
+	}else {
+		AP_bar_img(0, 0, 360.0 * ((double)player[1].ap / 100), 42).mirrored().draw(1305, 992);
+	}
 }

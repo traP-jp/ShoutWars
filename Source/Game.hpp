@@ -22,11 +22,14 @@ struct Player {
 	int event[2];
 	//必殺技が使えるか
 	//XXX:debug用
-	bool special_attack = true;
+	bool special_attack = false;
 
 	int img_number = 0;
 	int img_status = 0;
 	int img_timer = 0;
+
+	int fire_animation = 0;
+	int fire_animation_timer = 0;
 };
 
 class Game : public App::Scene
@@ -36,9 +39,10 @@ private:
 	struct Player player[2];
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
-	const static int player_min_y = 700;
+	const static int player_min_y = 650;
 	const static int player_status_sum = 10;
 	const static int player_max_hp = 1000;
+	const static int player_max_ap = 100;
 	//画像////////////////////////////////////////////////////////////
 	const Texture background_img{ U"../images/game/system/background.png"};
 	const Texture HP_bar_flame_img{ U"../images/game/system/HP_bar_flame.png" };
@@ -73,7 +77,7 @@ private:
 	void draw_AP_bar() const;
 	void update_player();
 	void update_player_animation();
-	void update_AP_bar();
+	void update_AP_bar_animation();
 	void init_connection();
 	void synchronizate_data();
 	int voice_command();
