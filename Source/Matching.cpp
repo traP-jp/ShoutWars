@@ -20,6 +20,7 @@ void Matching::update()
 
 	//戻る
 	if (return_shape.leftClicked()) {
+		cancel_sound.playOneShot();
 		changeScene(State::Title,0.8s);
 	}
 
@@ -56,6 +57,14 @@ void Matching::draw() const
 
 void Matching::drawFadeIn(double t) const
 {
+	if (!bgm.isPlaying()) bgm.play();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF(0, 0, 0, 1.0 - t/0.8));
+}
+
+void Matching::drawFadeOut(double t) const
+{
+	if (bgm.isPlaying()) bgm.stop();
+	draw();
+	Rect(0, 0, 1920, 1080).draw(ColorF(0, 0, 0, t / 0.8));
 }

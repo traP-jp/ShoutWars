@@ -27,10 +27,12 @@ void Title::update()
 		}
 		if (button1_shape.leftClicked()) {
 			getData().room_mode = 0;
-			//TODO:効果音を流してルームメイク！
+			decision_sound.playOneShot();
 			changeScene(State::Matching,0.8s);
 		}
+		//電卓出現
 		if (button2_shape.leftClicked()) {
+			click_sound.playOneShot();
 			calc_mode = 1;
 			animation_timer = (int)Time::GetMillisec();
 			animation_y = 1480;
@@ -62,6 +64,7 @@ void Title::update()
 			}
 			if (shape_of_number[i].leftClicked()) {
 				if (room_ID_digit < 6) {
+					click_number_sound.playOneShot();
 					room_ID += to_string(i);
 					room_ID_digit++;
 				}
@@ -77,6 +80,7 @@ void Title::update()
 		//消去
 		if (cancel_shape.leftClicked()) {
 			if (room_ID_digit > 0) {
+				choice_sound.playOneShot();
 				room_ID.pop_back();
 				room_ID_digit--;
 			}
@@ -85,7 +89,7 @@ void Title::update()
 		if ((decide_shape.leftClicked()) && (room_ID_digit == 6)) {
 			getData().room_mode = 1;
 			getData().room_ID = stoi(room_ID.c_str());
-			//TODO:効果音を流してルームイン！
+			decision_sound.playOneShot();
 			changeScene(State::Matching,0.8s);
 		}
 	}elif(calc_mode == 3) {
@@ -93,8 +97,7 @@ void Title::update()
 		if (now_time - animation_timer <= 200) {
 			animation_y = 540 + 940 * (now_time - animation_timer) / 200;
 			back_alpha = 0.8 - 0.8 * (now_time - animation_timer) / 200;
-		}
-		else {
+		}else {
 			animation_y = 1480;
 			back_alpha = 0.0;
 			calc_mode = 0;
@@ -120,12 +123,14 @@ void Title::draw() const
 
 void Title::drawFadeIn(double t) const
 {
+	if (!bgm.isPlaying())bgm.play();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0-t/0.8 });
 }
 
 void Title::drawFadeOut(double t) const
 {
+	if (bgm.isPlaying()) bgm.stop();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,t/0.8 });
 }
