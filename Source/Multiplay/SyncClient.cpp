@@ -36,7 +36,7 @@ AsyncTask<shared_ptr<SyncClient>> SyncClient::joinRoom(shared_ptr<APIClient> api
 			*UUIDValue::Parse(response[U"session_id"].getString()),
 			*UUIDValue::Parse(response[U"id"].getString()),
 			*UUIDValue::Parse(response[U"user_id"].getString()),
-			userName,
+			roomName,
 			roomInfoJSON.isObject() ? RoomInfo{ roomInfoJSON } : RoomInfo{}
 		);
 		System::Sleep(Interval);
@@ -66,15 +66,27 @@ bool SyncClient::isSyncing() const {
 	return syncTask.isValid();
 }
 
-Optional<Error> SyncClient::update() {
-	try {
-		if (!syncTask.isValid() && timer.reachedZero()) startSync();
-		else if (syncTask.isReady()) finishSync();
-		return none;
-	}
-	catch (const Error& error) {
-		return error;
-	}
+void SyncClient::update() {
+	if (!isSyncing() && timer.reachedZero()) startSync();
+	else if (syncTask.isReady()) finishSync();
+}
+
+void SyncClient::sendStart() {
+	if (!isOwner()) throw Error(U"Owner only");
+	if (isStarting()) throw Error(U"Already sending start");
+	startTask = api->send(APIClient::HTTPMethod::POST, U"/room/start", {
+		{ U"session_id", sessionId.str() },
+	});
+}
+
+bool SyncClient::isStarting() const {
+	return startTask.isValid();
+}
+
+Optional<SyncClient::StartInfo> SyncClient::receiveStart() {
+	if (!startTask.isReady()) return none;
+	const JSON response = startTask.get();
+	return StartInfo{};
 }
 
 void SyncClient::startSync() {
