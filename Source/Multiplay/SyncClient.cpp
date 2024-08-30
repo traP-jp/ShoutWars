@@ -110,6 +110,7 @@ UUIDValue SyncClient::finishSync() {
 	for (const auto& [i, actionJSON] : response[U"actions"]) {
 		// TODO
 	}
+	users.clear();
 	for (const auto& [i, userJSON] : response[U"room_users"]) {
 		const User user{
 			.id = *UUIDValue::Parse(userJSON[U"id"].getString()),
