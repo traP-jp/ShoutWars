@@ -10,6 +10,7 @@ private:
 	const Texture button1_img{ U"../images/title/button1.png" };
 	const Texture button2_img{ U"../images/title/button2.png" };
 	const Texture calc_img{ U"../images/title/calc.png" };
+	const Texture connecting_img{ U"../images/common/connecting.png" };
 
 	//音声素材////////////////////////////////////////////////////////
 	const Audio bgm{U"../audioes/zun_mgcr.mp3" , Loop::Yes };
