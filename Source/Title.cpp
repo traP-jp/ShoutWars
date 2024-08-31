@@ -1,9 +1,9 @@
-﻿//XXX:最後にやれ！！
-#include "Title.hpp"
+﻿#include "Title.hpp"
 using namespace std;
 
 Title::Title(const InitData& init) : IScene(init)
 {
+	//電卓のボタンの当たり判定を作成
 	shape_of_number[1] = Rect{ 660+55 ,140+347,150,80 };
 	shape_of_number[2] = Rect{ 660+225,140+347,150,80 };
 	shape_of_number[3] = Rect{ 660+395,140+347,150,80 };
@@ -116,6 +116,7 @@ void Title::draw() const
 		Rect(0,0,1920,1080).draw(ColorF{0,back_alpha});
 		calc_img.drawAt(960, animation_y);
 		if (calc_mode == 2) {
+			//数字の表示
 			font(Unicode::FromUTF8(room_ID)).drawAt(660+300, 140+250, Palette::Black);
 		}
 	}
@@ -133,4 +134,5 @@ void Title::drawFadeOut(double t) const
 	if (bgm.isPlaying()) bgm.stop();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,t/0.8 });
+	connecting_img.drawAt(1500, 950,ColorF{1,t/0.8});
 }

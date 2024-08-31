@@ -1,5 +1,6 @@
 ﻿# pragma once
 # include <Siv3D.hpp>
+# include "Multiplay/SyncClient.hpp"
 #define elif else if
 
 // シーンの名前
@@ -24,6 +25,8 @@ struct GameData
 	//INFO:playerが増えたらここを変更する
 	//0:玲（レイ）,1:ユウカ,2:アイリ,3:No.0 (レイ）
 	int player[2] = { 1,0 };
+	//通信用
+	std::unique_ptr<SyncClient> client;
 };
 
 using App = SceneManager<State, GameData>;
