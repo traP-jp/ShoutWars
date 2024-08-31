@@ -38,9 +38,12 @@ private:
 	int animation_y = 1480;
 	int animation_timer = 0;
 	double back_alpha = 0.0;
+	bool clip_flag = true;
 
 	std::string room_ID;
 	int room_ID_digit = 0;
+
+	int key_num();
 public:
 	Title(const InitData& init);
 
