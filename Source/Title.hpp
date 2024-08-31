@@ -11,6 +11,14 @@ private:
 	const Texture button2_img{ U"../images/title/button2.png" };
 	const Texture calc_img{ U"../images/title/calc.png" };
 
+	//音声素材////////////////////////////////////////////////////////
+	const Audio bgm{U"../audioes/zun_mgcr.mp3" , Loop::Yes };
+
+	const Audio click_sound{ U"../audioes/click.wav" };
+	const Audio click_number_sound{ U"../audioes/click_number.wav" };
+	const Audio decision_sound{ U"../audioes/decision.wav" };
+	const Audio choice_sound{ U"../audioes/choice.wav" };
+
 	//font////////////////////////////////////////////////////////////
 	Font font{ FontMethod::MSDF, 72 };
 
@@ -20,16 +28,6 @@ private:
 
 	Rect shape_of_number[10];
 
-	
-	/*const RectF shape_of_1{ 55,247,150,80 };
-	const RectF shape_of_2{ 225,247,150,80 };
-	const RectF shape_of_3{ 395,247,150,80 };
-	const RectF shape_of_4{ 55,445,150,80 };
-	const RectF shape_of_5{ 225,445,150,80 };
-	const RectF shape_of_6{ 395,445,150,80 };
-	const RectF shape_of_7{ 55,643,150,80 };
-	const RectF shape_of_8{ 225,643,150,80 };
-	const RectF shape_of_9{ 395,643,150,80 };*/
 	const Rect cancel_shape{ 660+55,140+641,150,80 };
 	//const RectF shape_of_0{ 225,841,150,80 };
 	const Rect decide_shape{ 660+395,140+641,150,80 };
