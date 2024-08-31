@@ -162,6 +162,15 @@
     <ClCompile Include="Source\logo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Multiplay\APIClient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Multiplay\SyncClient.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Multiplay\RoomInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="App\icon.ico">
@@ -467,6 +476,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\logo.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Multiplay\APIClient.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Multiplay\SyncClient.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Multiplay\RoomInfo.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
