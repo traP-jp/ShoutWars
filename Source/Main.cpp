@@ -3,6 +3,7 @@
 #include "Title.hpp"
 #include "Matching.hpp"
 #include "Game.hpp"
+#include "Config.hpp"
 
 void Main() {
 	// 背景の色を設定する | Set the background color
@@ -19,6 +20,7 @@ void Main() {
 	manager.add<Title>(State::Title);
 	manager.add<Matching>(State::Matching);
 	manager.add<Game>(State::Game);
+	manager.add<Config>(State::Config);
 	//manager.add<Result>(State::Result);
 
 	//XXX:debug用

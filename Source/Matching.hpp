@@ -12,7 +12,8 @@ class Matching : public App::Scene
 	const Texture select_char_img3{ U"../images/matching/select_char3.png" };
 	const Texture select_char_img4{ U"../images/matching/select_char4.png" };
 	const Texture random_select_img{ U"../images/matching/random_select.png" };
-	const Texture return_img{ U"../images/matching/return.png" };
+	const Texture return_img{ U"../images/common/return.png" };
+	const Texture setting_img{ U"../images/common/setting.png" };
 	const Texture copied_img{ U"../images/matching/copied.png" };
 	const Texture connecting_img{ U"../images/common/connecting.png" };
 	const Texture not_found_img{ U"../images/matching/404.png" };
@@ -24,6 +25,7 @@ class Matching : public App::Scene
 	const Quad select_char_shape4 { Vec2{1345,720},Vec2{1642,720},Vec2{1692,957},Vec2{1395,957} };
 	const Quad random_select_shape{ Vec2{905,720},Vec2{1021,720},Vec2{1076,957},Vec2{850,957} };
 	const Rect return_shape{ 20,20,80,80 };
+	const Circle setting_shape{ 1852,68,48 };
 	const RectF RoomID_shape = font(U"888888").region(Vec2{800,30});
 	const Rect OK_shape {  680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };

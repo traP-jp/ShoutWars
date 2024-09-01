@@ -1,7 +1,7 @@
 ﻿#include "Matching.hpp"
 using namespace std;
 
-//#define dont_connect
+#define dont_connect
 
 Matching::Matching(const InitData& init) : IScene(init)
 {
@@ -43,7 +43,7 @@ void Matching::update()
 {
 	//エラーダイアログ
 	if (error_mode == 1) {
-		error_timer = Time::GetMillisec();
+		error_timer = (int)Time::GetMillisec();
 		error_mode = 2;
 		return;
 	}elif (error_mode == 2) {
@@ -75,13 +75,19 @@ void Matching::update()
 	if (select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 	if (random_select_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
 	if (RoomID_shape.mouseOver())       Cursor::RequestStyle(CursorStyle::Hand);
-
-	if (return_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
+	if (return_shape.mouseOver())       Cursor::RequestStyle(CursorStyle::Hand);
+	if (setting_shape.mouseOver())      Cursor::RequestStyle(CursorStyle::Hand);
 
 	//戻る
 	if (return_shape.leftClicked()) {
 		cancel_sound.playOneShot();
 		changeScene(State::Title,0.8s);
+	}
+
+	//設定
+	if (setting_shape.leftClicked()) {
+		getData().before_scene = State::Matching;
+		changeScene(State::Config, 0.5s);
 	}
 
 	//キャラ選択
@@ -103,7 +109,7 @@ void Matching::update()
 		copied_se.playOneShot();
 		copy_mode = 1;
 		copy_pos_y = -30;
-		copy_timer = Time::GetMillisec();
+		copy_timer = (int)Time::GetMillisec();
 	}
 	if (random_select_shape.leftClicked()) {
 		character_number = Random(0, 3);
@@ -140,6 +146,7 @@ void Matching::draw() const
 {
 	background_img.draw(0, 0);
 	return_img.draw(20, 20);
+	setting_img.drawAt(1852, 68);
 	select_char_img1.draw(230, 720);
 	select_char_img2.draw(540, 720);
 	random_select_img.draw(850, 720);
@@ -173,13 +180,13 @@ void Matching::drawFadeIn(double t) const
 {
 	if (!bgm.isPlaying()) bgm.play();
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, 1.0 - t / 0.8 });
-	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t / 0.8 });
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, 1.0 - t});
+	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t});
 }
 
 void Matching::drawFadeOut(double t) const
 {
 	if (bgm.isPlaying()) bgm.stop();
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, t / 0.8 });
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, t});
 }
