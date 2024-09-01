@@ -94,6 +94,12 @@ void Matching::syncRoomInfo()
 				getData().timer = (int)Time::GetSec() - (event->data.get<int>());
 				recieved_time = true;
 			}
+			//相手のキャラが確定！
+			if (event->type == U"decided") {
+				decision_sound.playOneShot();
+				opponent_character_number = event->data.get<int>();
+				opponent_decided = true;
+			}
 		}
 	}
 	catch (const APIClient::HTTPError& error) {
@@ -153,53 +159,70 @@ void Matching::update()
 		return;
 	}
 
+	//確定したら変更不可
+	if (!getData().decided_character) {
+		//ホバーしたらカーソルを変える
+		if (select_char_shape1.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (select_char_shape2.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (select_char_shape3.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (random_select_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
+		if (decide_button_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
+		if (setting_shape.mouseOver())      Cursor::RequestStyle(CursorStyle::Hand);
+
+		//設定
+		if (setting_shape.leftClicked()) {
+			getData().before_scene = State::Matching;
+			changeScene(State::Config, 0.5s);
+		}
+
+		//キャラ選択
+		if (select_char_shape1.leftClicked()) {
+			if (character_number != 0) {
+				click_sound.playOneShot();
+				character_number = 0;
+				character_changed = true;
+			}
+		}
+		if (select_char_shape2.leftClicked()) {
+			if (character_number != 1) {
+				click_sound.playOneShot();
+				character_number = 1;
+				character_changed = true;
+			}
+		}
+		if (select_char_shape3.leftClicked()) {
+			if (character_number != 2) {
+				click_sound.playOneShot();
+				character_number = 2;
+				character_changed = true;
+			}
+		}
+		if (select_char_shape4.leftClicked()) {
+			if (character_number != 3) {
+				click_sound.playOneShot();
+				character_number = 3;
+				character_changed = true;
+			}
+		}
+		//キャラ確定
+		if (decide_button_shape.leftClicked()) {
+			decision_sound.playOneShot();
+			getData().decided_character = true;
+			getData().client->sendReport(U"decided", character_number);
+		}
+	}
+
 	//ホバーしたらカーソルを変える
-	if (select_char_shape1.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-	if (select_char_shape2.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-	if (select_char_shape3.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-	if (select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-	if (random_select_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
-	if (RoomID_shape.mouseOver())       Cursor::RequestStyle(CursorStyle::Hand);
-	if (return_shape.mouseOver())       Cursor::RequestStyle(CursorStyle::Hand);
-	if (setting_shape.mouseOver())      Cursor::RequestStyle(CursorStyle::Hand);
+	if (RoomID_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	if (return_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 
 	//戻る
 	if (return_shape.leftClicked()) {
 		cancel_sound.playOneShot();
+		if (getData().decided_character)getData().decided_character = false;
 		getData().before_scene = State::Matching;
-		changeScene(State::Title,0.8s);
-	}
-
-	//設定
-	if (setting_shape.leftClicked()) {
-		getData().before_scene = State::Matching;
-		changeScene(State::Config, 0.5s);
-	}
-
-	//キャラ選択
-	if (select_char_shape1.leftClicked()) {
-		if (character_number != 0) {
-			character_number = 0;
-			character_changed = true;
-		}
-	}
-	if (select_char_shape2.leftClicked()) {
-		if (character_number != 1) {
-			character_number = 1;
-			character_changed = true;
-		}
-	}
-	if (select_char_shape3.leftClicked()) {
-		if (character_number != 2) {
-			character_number = 2;
-			character_changed = true;
-		}
-	}
-	if (select_char_shape4.leftClicked()) {
-		if (character_number != 3) {
-			character_number = 3;
-			character_changed = true;
-		}
+		changeScene(State::Title, 0.8s);
 	}
 	//部屋IDをコピー
 	if (RoomID_shape.leftClicked()) {
@@ -212,12 +235,13 @@ void Matching::update()
 	if (random_select_shape.leftClicked()) {
 		int tmp_character_number = Random(0, 3);
 		if (character_number != tmp_character_number) {
+			click_sound.playOneShot();
 			character_number = tmp_character_number;
 			character_changed = true;
 		}
 		//TODO:後で消す
-		getData().before_scene = State::Matching;
-		changeScene(State::Game,0.8s);
+		//getData().before_scene = State::Matching;
+		//changeScene(State::Game,0.8s);
 	}
 
 	//copiedアニメーション
@@ -261,16 +285,29 @@ void Matching::draw() const
 		stand_char_img[character_number].mirrored().drawAt(1560, 540);
 		stand_char_img[opponent_character_number].drawAt(360, 540);
 	}
-
+	//キミに決めた！
+	if (getData().decided_character) {
+		fixed_img.drawAt(960, 540);
+	}else {
+		decide_img.drawAt(960, 540);
+	}
+	//相手が確定したら表示
+	if (opponent_decided) {
+		decided_img.drawAt(is_owner?1560:360, 60);
+	}
 
 	//各種ボタンの表示
 	return_img.draw(20, 20);
-	setting_img.drawAt(1852, 68);
 	select_char_img1.draw(230, 720);
 	select_char_img2.draw(540, 720);
 	random_select_img.draw(850, 720);
 	select_char_img3.draw(1035, 720);
 	select_char_img4.draw(1345, 720);
+	if (getData().decided_character) {
+		disabled_setting_img.drawAt(1852, 68);
+	}else {
+		setting_img.drawAt(1852, 68);
+	}
 
 	//ルームIDを表示
 	RoomID_shape.draw(Palette::Black);
