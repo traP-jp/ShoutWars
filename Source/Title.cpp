@@ -3,6 +3,11 @@
 
 Title::Title(const InitData& init) : IScene(init)
 {
+	//タイトル画面でほぼすべてを初期化
+	getData().decided_character = false;
+	getData().timer = 0;
+	getData().room_mode = 0;
+
 	//電卓のボタンの当たり判定を作成
 	shape_of_number[1] = Rect{ 660+55 ,140+347,150,80 };
 	shape_of_number[2] = Rect{ 660+225,140+347,150,80 };

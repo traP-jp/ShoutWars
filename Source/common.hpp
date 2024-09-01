@@ -17,7 +17,8 @@ enum class State
 // 共有するデータ
 struct GameData
 {
-	int clear = 0;
+	//キャラが確定したかどうか
+	bool decided_character = false;
 	//接続開始時間
 	int timer = 0;
 	//Config画面に遷移する前のシーン

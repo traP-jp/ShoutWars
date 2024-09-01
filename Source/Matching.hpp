@@ -19,6 +19,7 @@ class Matching : public App::Scene
 	const Texture random_select_img{ U"../images/matching/random_select.png" };
 	const Texture return_img{ U"../images/common/return.png" };
 	const Texture setting_img{ U"../images/common/setting.png" };
+	const Texture disabled_setting_img{ U"../images/common/disabled_setting.png" };
 	const Texture copied_img{ U"../images/matching/copied.png" };
 	const Texture connecting_img{ U"../images/common/connecting.png" };
 	const Texture not_found_img{ U"../images/matching/404.png" };
@@ -29,6 +30,9 @@ class Matching : public App::Scene
 	const Texture suneo_img{ U"../images/matching/suneo.png" };
 	const Texture timeout_img{ U"../images/matching/timeout.png" };
 	const Texture you_img{ U"../images/matching/you.png" };
+	const Texture decide_img{ U"../images/matching/decide.png" };
+	const Texture decided_img{ U"../images/matching/decided.png" };
+	const Texture fixed_img{ U"../images/matching/fixed.png" };
 	Texture stand_char_img[4] = { stand_char_img1,stand_char_img2,stand_char_img3,stand_char_img4 };
 	//shape////////////////////////////////////////////////////////////
 	const Quad select_char_shape1 { Vec2{280,720},Vec2{577,720},Vec2{527,957},Vec2{230,957} };
@@ -42,15 +46,20 @@ class Matching : public App::Scene
 	const RectF timer_shape = font2(U"10:00").regionAt(Vec2{ 960,1000 });
 	const Rect OK_shape {  680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
+	const Rect decide_button_shape{ 960-300, 540-75, 600, 150};
 	//音声素材////////////////////////////////////////////////////////
 	const Audio bgm{ U"../audioes/th3_05.mp3" , Loop::Yes };
 	const Audio cancel_sound{ U"../audioes/cancel.wav" };
 	const Audio copied_se{ U"../audioes/copied.mp3" };
+	const Audio click_sound{ U"../audioes/click.wav" };
+	const Audio decision_sound{ U"../audioes/decided_char.mp3" };
 
 	//キャラ選択関連
 	int character_number = 0;
 	int opponent_character_number = 0;
 	bool character_changed = false;
+	double decide_button_size = 1.0;
+	bool opponent_decided = false;
 	//部屋に関して
 	std::string room_ID;
 	bool is_owner = false;
