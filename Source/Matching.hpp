@@ -5,6 +5,7 @@ class Matching : public App::Scene
 {
 	//font////////////////////////////////////////////////////////////
 	Font font{ 80,Typeface::Heavy };
+	Font font2{ 50,Typeface::Heavy };
 	//画像////////////////////////////////////////////////////////////
 	const Texture background_img{ U"../images/matching/background.png" };
 	const Texture select_char_img1{ U"../images/matching/select_char1.png" };
@@ -18,6 +19,11 @@ class Matching : public App::Scene
 	const Texture connecting_img{ U"../images/common/connecting.png" };
 	const Texture not_found_img{ U"../images/matching/404.png" };
 	const Texture not_found_img2{ U"../images/matching/810.png" };
+	const Texture error400_img{ U"../images/matching/400.png" };
+	const Texture error500_img{ U"../images/matching/500.png" };
+	const Texture error_img{ U"../images/matching/error.png" };
+	const Texture suneo_img{ U"../images/matching/suneo.png" };
+	const Texture timeout_img{ U"../images/matching/timeout.png" };
 	//shape////////////////////////////////////////////////////////////
 	const Quad select_char_shape1 { Vec2{280,720},Vec2{577,720},Vec2{527,957},Vec2{230,957} };
 	const Quad select_char_shape2 { Vec2{590,720},Vec2{887,720},Vec2{837,957},Vec2{540,957} };
@@ -26,7 +32,8 @@ class Matching : public App::Scene
 	const Quad random_select_shape{ Vec2{905,720},Vec2{1021,720},Vec2{1076,957},Vec2{850,957} };
 	const Rect return_shape{ 20,20,80,80 };
 	const Circle setting_shape{ 1852,68,48 };
-	const RectF RoomID_shape = font(U"888888").region(Vec2{800,30});
+	const RectF RoomID_shape = font(U"888888").regionAt(Vec2{960,70});
+	const RectF timer_shape = font2(U"10:00").regionAt(Vec2{ 960,1000 });
 	const Rect OK_shape {  680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
 	//音声素材////////////////////////////////////////////////////////
@@ -34,11 +41,22 @@ class Matching : public App::Scene
 	const Audio cancel_sound{ U"../audioes/cancel.wav" };
 	const Audio copied_se{ U"../audioes/copied.mp3" };
 
+	//キャラ選択関連
 	int character_number = 0;
+	int opponent_character_number = 0;
+	bool character_changed = false;
+	//部屋に関して
 	std::string room_ID;
+	bool is_owner = false;
+
+	//制限時間
+	String remaining_time = U"10:00";
+	String old_remaining_time = U"10:00";
 
 	//エラーダイアログ関連
 	int error_mode = 0;
+	//0:バグ,1:404,2:810,3:400,4:500,5:スネ夫,6:時間切れ
+	int error_ID = 0;
 	int error_pos_y = 1400;
 	int error_timer = 0;
 	double back_alpha = 0.0;
@@ -47,7 +65,11 @@ class Matching : public App::Scene
 	int copy_pos_y = -30;
 	int copy_timer = 0;
 
+	//内部関数/////////////////////////////////////////////////////////
 	void drawErrorDialog() const;
+	void syncRoomInfo();
+	void setErrorMessage(int error_code, String message);
+	String CalcRemainingTime();
 public:
 	Matching(const InitData& init);
 	void update() override;
