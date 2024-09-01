@@ -6,6 +6,11 @@
 struct RoomInfo {
 	// TODO: 部屋の設定やプレイヤーが選択しているキャラクターなど
 
+	//character:"{ \"プレイヤーのID\": キャラクターのID }"
+	String character;
+	bool is_ready = false;
+	int room_timer = 0;
+
 	[[nodiscard]] explicit RoomInfo();
 
 	[[nodiscard]] explicit RoomInfo(const JSON& json);

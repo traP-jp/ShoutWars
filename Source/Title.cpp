@@ -25,6 +25,7 @@ void Title::update()
 		if (button1_shape.leftClicked()) {
 			getData().room_mode = 0;
 			decision_sound.playOneShot();
+			getData().before_scene = State::Title;
 			changeScene(State::Matching,0.8s);
 		}
 		if (setting_shape.leftClicked()) {
@@ -112,8 +113,9 @@ void Title::update()
 		//確認
 		if ((decide_shape.leftClicked()||KeyEnter.down()) && (room_ID_digit == 6)) {
 			getData().room_mode = 1;
-			getData().room_ID = std::stoi(room_ID.c_str());
+			getData().room_ID = room_ID;
 			decision_sound.playOneShot();
+			getData().before_scene = State::Title;
 			changeScene(State::Matching,0.8s);
 		}
 	}elif(calc_mode == 3) {
