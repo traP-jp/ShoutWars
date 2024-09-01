@@ -2,11 +2,11 @@
 # include "common_function.hpp"
 using namespace std;
 
-//#define dont_connect
-
 Matching::Matching(const InitData& init) : IScene(init)
 {
-#ifndef dont_connect
+	//画像の読み込み
+	
+	//通信関連の処理
 	if (getData().before_scene != State::Config) {
 		//鯖との接続を確立する
 		//todo:urlとかはテキストに書く
@@ -24,12 +24,8 @@ Matching::Matching(const InitData& init) : IScene(init)
 			}else {
                 getData().client = SyncClient::joinRoom(api, Unicode::Widen(getData().room_ID), U"Guest").get();
 				//INFO:現時点では2人プレイのみを想定
-				map user_map = getData().client->getUsers();
-				//定員オーバー
-				if (user_map.size() > 2) {
-					error_ID = 5;
-					error_mode = 1;
-				}
+				//map user_map = getData().client->getUsers();
+				//Print << user_map.size();
 			}
 		}
 		catch (const APIClient::HTTPError& error) {
@@ -42,9 +38,6 @@ Matching::Matching(const InitData& init) : IScene(init)
 		}
 	}
 	room_ID = getData().room_ID;
-#else
-	room_ID = "123456";
-#endif
 }
 
 //TODO:エラーダイアログに変える
@@ -58,6 +51,9 @@ void Matching::setErrorMessage(int error_code,String message)
 		else {
 			error_ID = (getData().room_ID == "114514") ? 2 : 1;
 		}
+		error_mode = 1;
+	}elif(error_code == 403) {
+		error_ID = 5;
 		error_mode = 1;
 	}elif(error_code == 400) {
 		error_ID = 3;
@@ -77,12 +73,13 @@ void Matching::syncRoomInfo()
 	try {
 		//自分のキャラ変更を伝える
 		if (character_changed) {
-			getData().client->sendAction(U"character", character_number);
+			getData().client->sendReport(U"character", character_number);
+			character_changed = false;
 		}
-		//残り時間を伝える
-		if (is_owner&&(old_remaining_time != remaining_time)) {
-			getData().client->sendAction(U"RemaingTime", remaining_time);
-			old_remaining_time = remaining_time;
+		//(鯖主の場合)残り時間を伝える
+		if (is_owner&&(old_remaining_time != remaining_time)&&(member_sum != (getData().client->getUsers()).size())) {
+			getData().client->sendReport(U"ElapsedTime", ((int)Time::GetSec() - getData().timer));
+			member_sum = (getData().client->getUsers()).size();
 		}
 		//同期
 		getData().client->update();
@@ -92,9 +89,10 @@ void Matching::syncRoomInfo()
 			if (event->type == U"character") {
 				opponent_character_number = event->data.get<int>();
 			}
-			//(鯖主じゃない場合)残り時間を取得
-			if ((!is_owner) && (event->type == U"RemainTime")) {
-				remaining_time = event->data.get<String>();
+			//(鯖主じゃない場合)鯖主の待機時間を取得
+			if ((!is_owner) &&(!recieved_time)&& (event->type == U"ElapsedTime")) {
+				getData().timer = (int)Time::GetSec() - (event->data.get<int>());
+				recieved_time = true;
 			}
 		}
 	}
@@ -231,7 +229,7 @@ void Matching::update()
 			copy_mode = 2;
 			copy_timer = now_time;
 		}
-		copy_pos_y = -30+EaseOutExpo(now_rate)*80;
+		copy_pos_y = (int)(- 30.0 + EaseOutExpo(now_rate) * 80.0);
 	}elif(copy_mode == 2) {
 		if (now_time - copy_timer > 1500) {
 			copy_mode = 3;
@@ -243,16 +241,29 @@ void Matching::update()
 			copy_pos_y = -30;
 			copy_mode = 0;
 		}
-		copy_pos_y = 50 - EaseInExpo(now_rate) * 80;
+		copy_pos_y = (int)(50.0 - EaseInExpo(now_rate) * 80.0);
 	}
+	if (recieved_time || is_owner)remaining_time = CalcRemainingTime();
 	//通信
 	syncRoomInfo();
-	remaining_time = CalcRemainingTime();
 }
 
 void Matching::draw() const
 {
 	background_img.draw(0, 0);
+	//キャラの立ち絵の表示
+	if (is_owner) {
+		you_img.drawAt(360, 60);
+		stand_char_img[character_number].drawAt(360, 540);
+		stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
+	}else {
+		you_img.drawAt(1560, 60);
+		stand_char_img[character_number].mirrored().drawAt(1560, 540);
+		stand_char_img[opponent_character_number].drawAt(360, 540);
+	}
+
+
+	//各種ボタンの表示
 	return_img.draw(20, 20);
 	setting_img.drawAt(1852, 68);
 	select_char_img1.draw(230, 720);

@@ -12,6 +12,10 @@ class Matching : public App::Scene
 	const Texture select_char_img2{ U"../images/matching/select_char2.png" };
 	const Texture select_char_img3{ U"../images/matching/select_char3.png" };
 	const Texture select_char_img4{ U"../images/matching/select_char4.png" };
+	const Texture stand_char_img1{ U"../images/matching/character1.png" };
+	const Texture stand_char_img2{ U"../images/matching/character2.png" };
+	const Texture stand_char_img3{ U"../images/matching/character3.png" };
+	const Texture stand_char_img4{ U"../images/matching/character4.png" };
 	const Texture random_select_img{ U"../images/matching/random_select.png" };
 	const Texture return_img{ U"../images/common/return.png" };
 	const Texture setting_img{ U"../images/common/setting.png" };
@@ -24,6 +28,8 @@ class Matching : public App::Scene
 	const Texture error_img{ U"../images/matching/error.png" };
 	const Texture suneo_img{ U"../images/matching/suneo.png" };
 	const Texture timeout_img{ U"../images/matching/timeout.png" };
+	const Texture you_img{ U"../images/matching/you.png" };
+	Texture stand_char_img[4] = { stand_char_img1,stand_char_img2,stand_char_img3,stand_char_img4 };
 	//shape////////////////////////////////////////////////////////////
 	const Quad select_char_shape1 { Vec2{280,720},Vec2{577,720},Vec2{527,957},Vec2{230,957} };
 	const Quad select_char_shape2 { Vec2{590,720},Vec2{887,720},Vec2{837,957},Vec2{540,957} };
@@ -48,6 +54,8 @@ class Matching : public App::Scene
 	//部屋に関して
 	std::string room_ID;
 	bool is_owner = false;
+	int member_sum = 1;
+	bool recieved_time = false;
 
 	//制限時間
 	String remaining_time = U"10:00";
