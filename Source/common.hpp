@@ -10,13 +10,16 @@ enum class State
 	Title,
 	Game,
 	Matching,
-	Result
+	Result,
+	Config
 };
 
 // 共有するデータ
 struct GameData
 {
 	int clear = 0;
+	//Config画面に遷移する前のシーン
+	State before_scene = State::Title;
 	//0:ルーム作成,1:ルーム参加
 	int room_mode = 0;
 	//ID

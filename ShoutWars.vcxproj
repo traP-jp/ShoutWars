@@ -235,6 +235,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\common.hpp" />
+    <ClInclude Include="Source\Config.hpp" />
     <ClInclude Include="Source\Game.hpp" />
     <ClInclude Include="Source\logo.hpp" />
     <ClInclude Include="Source\Matching.hpp" />

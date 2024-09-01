@@ -352,7 +352,7 @@ void Game::drawFadeIn(double t) const {
 	//BGMを流す
 	if (!bgm.isPlaying())bgm.play();
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0 - t / 0.8 });
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0 - t });
 }
 
 void Game::draw() const {

@@ -1,4 +1,5 @@
-﻿#include "Title.hpp"
+﻿//INFO:このファイルではusing namespace std;禁止
+#include "Title.hpp"
 
 Title::Title(const InitData& init) : IScene(init)
 {
@@ -18,16 +19,19 @@ Title::Title(const InitData& init) : IScene(init)
 void Title::update()
 {
 	if (calc_mode == 0) {
-		if (button1_shape.mouseOver()) {
-			Cursor::RequestStyle(CursorStyle::Hand);
-		}
-		if (button2_shape.mouseOver()) {
-			Cursor::RequestStyle(CursorStyle::Hand);
-		}
+		if (button1_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
+		if (button2_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
+		if (setting_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
 		if (button1_shape.leftClicked()) {
 			getData().room_mode = 0;
 			decision_sound.playOneShot();
 			changeScene(State::Matching,0.8s);
+		}
+		if (setting_shape.leftClicked()) {
+			click_sound.playOneShot();
+			setting_flag = true;
+			getData().before_scene = State::Title;
+			changeScene(State::Config, 0.5s);
 		}
 		//電卓出現
 		if (button2_shape.leftClicked()) {
@@ -157,6 +161,7 @@ void Title::draw() const
 	background_img.draw(0, 0);
 	button1_img.draw(390, 500);
 	button2_img.draw(1190, 500);
+	setting_img.drawAt(1852, 68);
 	if (calc_mode) {
 		Rect(0,0,1920,1080).draw(ColorF{0,back_alpha});
 		calc_img.drawAt(960, animation_y);
@@ -171,13 +176,13 @@ void Title::drawFadeIn(double t) const
 {
 	if (!bgm.isPlaying())bgm.play();
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0-t/0.8 });
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0-t});
 }
 
 void Title::drawFadeOut(double t) const
 {
 	if (bgm.isPlaying()) bgm.stop();
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,t/0.8 });
-	connecting_img.drawAt(1500, 950,ColorF{1,t/0.8});
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,t });
+	if (!setting_flag)connecting_img.drawAt(1500, 950,ColorF{1,t });
 }
