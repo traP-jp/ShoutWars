@@ -9,7 +9,8 @@ enum class State
 	Title,
 	Game,
 	Matching,
-	Result
+	Result,
+	Calibration
 };
 
 // 共有するデータ
