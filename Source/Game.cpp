@@ -265,12 +265,16 @@ void Game::update_AP_bar_animation() {
 
 //TODO:通信関連が届いたら実装
 void Game::init_connection() {
+	//同期
+	getData().client->update();
 	connection_timer = (int)Time::GetMillisec();
 	return;
 }
 
 //TODO:通信関連が届いたら実装
 void Game::synchronizate_data() {
+	//同期
+	getData().client->update();
 	if ((int)Time::GetMillisec() - connection_timer > 50) {
 		//TODO:通信処理
 

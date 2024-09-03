@@ -1,4 +1,5 @@
-﻿#include "Matching.hpp"
+﻿//FIXME:ユーザが途中退室すると確実にバグる
+#include "Matching.hpp"
 # include "common_function.hpp"
 using namespace std;
 
@@ -23,9 +24,12 @@ Matching::Matching(const InitData& init) : IScene(init)
 				//部屋に入る
 			}else {
                 getData().client = SyncClient::joinRoom(api, Unicode::Widen(getData().room_ID), U"Guest").get();
-				//INFO:現時点では2人プレイのみを想定
-				//map user_map = getData().client->getUsers();
-				//Print << user_map.size();
+				//既に決定している場合、反映する
+				//ただし、現時点では２人プレイのみを想定
+				if ((getData().client)->roomInfo.player.size()) {
+					opponent_decided = (getData().client)->roomInfo.is_ready.at(0);
+					opponent_character_number = (getData().client)->roomInfo.character.at(0);
+				}
 			}
 		}
 		catch (const APIClient::HTTPError& error) {
@@ -40,7 +44,6 @@ Matching::Matching(const InitData& init) : IScene(init)
 	room_ID = getData().room_ID;
 }
 
-//TODO:エラーダイアログに変える
 void Matching::setErrorMessage(int error_code,String message)
 {
 	if (error_code == 404) {
@@ -61,6 +64,7 @@ void Matching::setErrorMessage(int error_code,String message)
 	}elif(error_code == 500) {
 		error_ID = 4;
 		error_mode = 1;
+	//TODO:エラーダイアログに変える
 	}else {
 		Print << U"[SERVER ERROR:" << error_code << U"] " << message;
 		OutputLogFile("(SERVER ERROR:CODE [" +to_string(error_code) + "])\n" + message.narrow());
@@ -81,6 +85,13 @@ void Matching::syncRoomInfo()
 			getData().client->sendReport(U"ElapsedTime", ((int)Time::GetSec() - getData().timer));
 			member_sum = (getData().client->getUsers()).size();
 		}
+		//鯖主以外は整合性の確認を問い合わせる
+		if ((!is_owner) && (opponent_decided && getData().decided_character) && (!confirm_accuracy)) {
+			//整合性確認用の数値を送信
+			confirm_num = character_number*(is_owner?10:1)+ opponent_character_number * (is_owner ? 1 : 10);
+			getData().client->sendReport(U"ConfirmAccuracy", confirm_num);
+			confirm_accuracy = true;
+		}
 		//同期
 		getData().client->update();
 		//相手の変更を取得
@@ -99,6 +110,29 @@ void Matching::syncRoomInfo()
 				decision_sound.playOneShot();
 				opponent_character_number = event->data.get<int>();
 				opponent_decided = true;
+			}
+			//整合性の確認(鯖主)
+			if (is_owner && (event->type == U"ConfirmAccuracy")) {
+				confirm_num = character_number * (is_owner ? 10 : 1) + opponent_character_number * (is_owner ? 1 : 10);
+				//整合性の確認が取れたらそのことを伝える
+				if (event->data.get<int>() == confirm_num) {
+					//問題なければゲーム画面への移行許可を発報
+					getData().client->sendReport(U"IsOK",true);
+					getData().before_scene = State::Matching;
+					changeScene(State::Game,0.8s);
+				}else {
+					getData().client->sendReport(U"IsOK", false);
+				}
+			}
+			//整合性の確認(鯖主以外)
+			if (confirm_accuracy && (event->type == U"IsOK")) {
+				if (event->data.get<bool>()) {
+					//問題なければゲーム画面へ
+					getData().before_scene = State::Matching;
+					changeScene(State::Game, 0.8s);
+				}else {
+					//TODO:例外処理
+				}
 			}
 		}
 	}
@@ -210,6 +244,10 @@ void Matching::update()
 			decision_sound.playOneShot();
 			getData().decided_character = true;
 			getData().client->sendReport(U"decided", character_number);
+			//RoomInfoに自分の情報を追加
+			(getData().client->roomInfo.player).push_back(getData().client->userId.str());
+			(getData().client->roomInfo.character).push_back(character_number);
+			(getData().client->roomInfo.is_ready).push_back(true);
 		}
 	}
 
@@ -224,6 +262,7 @@ void Matching::update()
 		getData().before_scene = State::Matching;
 		changeScene(State::Title, 0.8s);
 	}
+
 	//部屋IDをコピー
 	if (RoomID_shape.leftClicked()) {
 		Clipboard::SetText(Unicode::FromUTF8(room_ID));
@@ -239,9 +278,6 @@ void Matching::update()
 			character_number = tmp_character_number;
 			character_changed = true;
 		}
-		//TODO:後で消す
-		//getData().before_scene = State::Matching;
-		//changeScene(State::Game,0.8s);
 	}
 
 	//copiedアニメーション
@@ -316,9 +352,9 @@ void Matching::draw() const
 	timer_shape.draw(Palette::White);
 	font2(remaining_time).drawAt(960, 1000, Palette::Red);
 	//コピー通知
-	if (copy_mode) {
-		copied_img.drawAt(960, copy_pos_y);
-	}
+	if (copy_mode)copied_img.drawAt(960, copy_pos_y);
+	//通信中
+	if (confirm_accuracy)connecting_img.drawAt(1500, 950);
 
 	//エラーダイアログ
 	if (error_mode)drawErrorDialog();

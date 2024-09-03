@@ -10,6 +10,8 @@ void Main() {
 	Scene::SetBackground(ColorF{ 0.0, 0.0, 0.0 });
 	//windowsサイズ
 	Window::Resize(1920, 1080);
+	Scene::SetResizeMode(ResizeMode::Keep);
+	Window::Resize(1280, 720);
 	//フルスクリーン
 	//Window::SetFullscreen(true);
 	//タイトル

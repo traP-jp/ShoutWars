@@ -60,11 +60,13 @@ class Matching : public App::Scene
 	bool character_changed = false;
 	double decide_button_size = 1.0;
 	bool opponent_decided = false;
+	int confirm_num;
 	//部屋に関して
 	std::string room_ID;
 	bool is_owner = false;
 	int member_sum = 1;
 	bool recieved_time = false;
+	bool confirm_accuracy = false;
 
 	//制限時間
 	String remaining_time = U"10:00";
