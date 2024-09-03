@@ -357,6 +357,7 @@ void Game::drawFadeIn(double t) const {
 	if (!bgm.isPlaying())bgm.play();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0 - t });
+	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t });
 }
 
 void Game::draw() const {
