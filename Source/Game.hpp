@@ -54,6 +54,7 @@ private:
 	const Texture AP_bar_empty_img{ U"../images/game/system/AP_bar_empty.png" };
 	const Texture AP_bar_max_img{ U"../images/game/system/AP_bar_max.png" };
 	const Texture AP_bar_img{ U"../images/game/system/AP_bar.png" };
+	const Texture connecting_img{ U"../images/common/connecting.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	//音楽////////////////////////////////////////////////////////////

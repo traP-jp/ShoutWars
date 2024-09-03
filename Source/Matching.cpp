@@ -88,7 +88,7 @@ void Matching::syncRoomInfo()
 		//鯖主以外は整合性の確認を問い合わせる
 		if ((!is_owner) && (opponent_decided && getData().decided_character) && (!confirm_accuracy)) {
 			//整合性確認用の数値を送信
-			confirm_num = character_number*(is_owner?10:1)+ opponent_character_number * (is_owner ? 1 : 10);
+			confirm_num = character_number + opponent_character_number * 10;
 			getData().client->sendReport(U"ConfirmAccuracy", confirm_num);
 			confirm_accuracy = true;
 		}
@@ -113,26 +113,43 @@ void Matching::syncRoomInfo()
 			}
 			//整合性の確認(鯖主)
 			if (is_owner && (event->type == U"ConfirmAccuracy")) {
-				confirm_num = character_number * (is_owner ? 10 : 1) + opponent_character_number * (is_owner ? 1 : 10);
+				confirm_num = character_number * 10 + opponent_character_number;
 				//整合性の確認が取れたらそのことを伝える
 				if (event->data.get<int>() == confirm_num) {
-					//問題なければゲーム画面への移行許可を発報
+					//問題なければゲーム画面への移行許可を発報してゲーム画面へ
 					getData().client->sendReport(U"IsOK",true);
-					getData().before_scene = State::Matching;
-					changeScene(State::Game,0.8s);
 				}else {
+					//整合性に問題があれば鯖側で勝手に予測して押し付けてゲーム画面へ
 					getData().client->sendReport(U"IsOK", false);
+					opponent_character_number = event->data.get<int>() % 10;
+					getData().client->sendReport(U"AcuurateData", character_number);
+					OutputLogFile("整合性の確認が取れませんでした。\n鯖:" + to_string(confirm_num) + ",ユーザー:"+to_string(event->data.get<int>()));
 				}
+				gotoGame = true;
+				getData().player[0] = character_number;
+				getData().player[1] = opponent_character_number;
+				getData().before_scene = State::Matching;
+				changeScene(State::Game, 0.8s);
 			}
 			//整合性の確認(鯖主以外)
 			if (confirm_accuracy && (event->type == U"IsOK")) {
 				if (event->data.get<bool>()) {
 					//問題なければゲーム画面へ
+					gotoGame = true;
+					getData().player[0] = opponent_character_number;
+					getData().player[1] = character_number;
 					getData().before_scene = State::Matching;
 					changeScene(State::Game, 0.8s);
-				}else {
-					//TODO:例外処理
 				}
+			}
+			//整合性の確認が取れなかったら押し付けられたやつを渋々使う(鯖主以外)
+			if (confirm_accuracy && (event->type == U"AcuurateData")) {
+				opponent_character_number = event->data.get<int>();
+				gotoGame = true;
+				getData().player[0] = opponent_character_number;
+				getData().player[1] = character_number;
+				getData().before_scene = State::Matching;
+				changeScene(State::Game, 0.8s);
 			}
 		}
 	}
@@ -394,4 +411,5 @@ void Matching::drawFadeOut(double t) const
 	if (bgm.isPlaying()) bgm.stop();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, t});
+	if (gotoGame)connecting_img.drawAt(1500, 950, ColorF{ 1, t });
 }

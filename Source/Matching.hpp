@@ -84,6 +84,7 @@ class Matching : public App::Scene
 	int copy_pos_y = -30;
 	int copy_timer = 0;
 
+	bool gotoGame = false;
 	//内部関数/////////////////////////////////////////////////////////
 	void drawErrorDialog() const;
 	void syncRoomInfo();
