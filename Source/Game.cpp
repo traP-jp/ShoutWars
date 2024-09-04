@@ -1,4 +1,5 @@
 ﻿#include "Game.hpp"
+# include "common_function.hpp"
 
 #define player_number 0
 #define another_player_number 1
@@ -77,13 +78,72 @@ int Game::voice_command() {
 	return 0;
 }
 
+void Game::update_error_screen() {
+	//エラーダイアログ
+	if (error_mode == 1) {
+		error_timer = (int)Time::GetMillisec();
+		error_mode = 2;
+		return;
+	}elif(error_mode == 2) {
+		int now_time = (int)Time::GetMillisec();
+		if (now_time - error_timer <= 200) {
+			error_pos_y = 1400 - 1040 * (now_time - error_timer) / 200;
+			back_alpha = 0.8 * (now_time - error_timer) / 200;
+		}
+		else {
+			error_pos_y = 360;
+			back_alpha = 0.8;
+			error_mode = 3;
+		}
+		return;
+	}elif(error_mode == 3) {
+		if (OK_shape.mouseOver())  Cursor::RequestStyle(CursorStyle::Hand);
+		if (Yes_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		//タイトルに戻る
+		if (OK_shape.leftClicked() || Yes_shape.leftClicked()) {
+			cancel_sound.playOneShot();
+			getData().before_scene = State::Game;
+			changeScene(State::Title, 0.8s);
+		}
+		return;
+	}
+}
+
 void Game::update() {
-	//プレイヤー情報を更新
-	update_player();
-	//APバーの描画情報を更新
-	update_AP_bar_animation();
-	//プレイヤーのアニメーションを更新
-	update_player_animation();
+	//BGMを流す
+	if (!bgm.isPlaying())bgm.play();
+	if (error_mode) {
+		update_error_screen();
+		return;
+	}
+	if (!is_connected) {
+		try {
+			//TODO:ここから！
+			getData().client->update();
+			if (getData().client->isOwner())is_connected = true;
+			if (getData().client->receiveStart())is_connected = true;
+		}catch (const APIClient::HTTPError& error) {
+			if (FromEnum(error.statusCode) == 404) {
+				error_mode = 1;
+				error_ID = 1;
+			}
+			else {
+				Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
+				OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
+			}
+		}
+		catch (const Error& error) {
+			Print << error.what();
+			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
+		}
+	}else {
+		//プレイヤー情報を更新
+		update_player();
+		//APバーの描画情報を更新
+		update_AP_bar_animation();
+		//プレイヤーのアニメーションを更新
+		update_player_animation();
+	}
 }
 
 void Game::update_player() {
@@ -351,22 +411,25 @@ void Game::update_player_animation() {
 	}
 }
 
-
-void Game::drawFadeIn(double t) const {
-	//BGMを流す
-	if (!bgm.isPlaying())bgm.play();
-	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0 - t });
-	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t });
-}
-
 void Game::draw() const {
-	Scene::SetBackground(ColorF(0.2, 0.8, 0.6));
-	background_img.draw(0,0);
-	draw_HP_bar();
-	draw_AP_bar();
+	if (!is_connected) {
+		Rect(0, 0, 1920, 1080).draw(ColorF{ 0,fade_back_alpha });
+		connecting_img.drawAt(1500, 950, ColorF{ 1, fade_back_alpha });
+	}else {
+		background_img.draw(0, 0);
+		draw_HP_bar();
+		draw_AP_bar();
 
-	draw_player();
+		draw_player();
+	}
+
+	//エラーダイアログ
+	if (error_mode) {
+		Rect(0, 0, 1920, 1080).draw(ColorF{ 0, back_alpha });
+		if (error_ID == 1) {
+			destroyed_img.drawAt(960, error_pos_y);
+		}
+	}
 }
 
 //キャラの描画

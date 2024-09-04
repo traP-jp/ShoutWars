@@ -116,6 +116,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\common_function.cpp" />
     <ClCompile Include="Source\Config.cpp" />
     <ClCompile Include="Source\Game.cpp" />
     <ClCompile Include="Source\logo.cpp" />
