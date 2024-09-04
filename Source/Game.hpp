@@ -54,6 +54,7 @@ private:
 	const Texture AP_bar_empty_img{ U"../images/game/system/AP_bar_empty.png" };
 	const Texture AP_bar_max_img{ U"../images/game/system/AP_bar_max.png" };
 	const Texture AP_bar_img{ U"../images/game/system/AP_bar.png" };
+	const Texture destroyed_img{ U"../images/game/system/destroyed.png" };
 	const Texture connecting_img{ U"../images/common/connecting.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
@@ -65,15 +66,29 @@ private:
 	const Audio shot_se{ U"../audioes/shot.wav" };
 	const Audio kiran_se{ U"../audioes/kiran.wav" };
 	const Audio bom_se{ U"../audioes/bom.wav" };
+	const Audio cancel_sound{ U"../audioes/cancel.wav" };
+	//shape////////////////////////////////////////////////////////////
+	const Rect OK_shape{ 680,464,240,105 };
+	const Rect Yes_shape{ 1010,464,240,105 };
 
 	//変数////////////////////////////////////////////////////////////
 	//プレイヤーが存在するか
 	std::vector<bool> player_flag;
 	//時間
 	int internal_timer = 0;
+	//描画用変数
+	double fade_back_alpha = 1.0;
+	//エラー関連
+	int error_mode = 0;
+	//1:404
+	int error_ID = 0;
+	int error_timer = 0;
+	int error_pos_y = 1400;
+	double back_alpha = 0.0;
 
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;
+	bool is_connected = false;
 
 	//内部関数////////////////////////////////////////////////////////
 
@@ -87,6 +102,7 @@ private:
 	void update_AP_bar_animation();
 	void init_connection();
 	void synchronizate_data();
+	void update_error_screen();
 	int voice_command();
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
 public:
@@ -95,6 +111,5 @@ public:
 
 	void update() override;
 
-	void drawFadeIn(double t) const override;
 	void draw() const override;
 };

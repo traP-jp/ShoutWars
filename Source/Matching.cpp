@@ -125,6 +125,8 @@ void Matching::syncRoomInfo()
 					getData().client->sendReport(U"AcuurateData", character_number);
 					OutputLogFile("整合性の確認が取れませんでした。\n鯖:" + to_string(confirm_num) + ",ユーザー:"+to_string(event->data.get<int>()));
 				}
+				//ガラガラ閉店
+				getData().client->sendStart();
 				gotoGame = true;
 				getData().player[0] = character_number;
 				getData().player[1] = opponent_character_number;
