@@ -78,6 +78,7 @@ private:
 	int internal_timer = 0;
 	//描画用変数
 	double fade_back_alpha = 1.0;
+	int fade_back_timer = 0;
 	//エラー関連
 	int error_mode = 0;
 	//1:404

@@ -118,10 +118,21 @@ void Game::update() {
 	}
 	if (!is_connected) {
 		try {
-			//TODO:ここから！
 			getData().client->update();
-			if (getData().client->isOwner())is_connected = true;
-			if (getData().client->receiveStart())is_connected = true;
+			if (getData().client->isOwner()) {
+				while (const auto event = getData().client->receiveReport()) {
+					if (event->type == U"Start") {
+						is_connected = true;
+						fade_back_timer = (int)Time::GetMillisec();
+						fade_back_alpha = 1.0;
+					}
+				}
+			}else {
+				getData().client->sendReport(U"Start", true);
+				is_connected = true;
+				fade_back_timer = (int)Time::GetMillisec();
+				fade_back_alpha = 1.0;
+			}
 		}catch (const APIClient::HTTPError& error) {
 			if (FromEnum(error.statusCode) == 404) {
 				error_mode = 1;
@@ -137,6 +148,14 @@ void Game::update() {
 			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
 		}
 	}else {
+		//同期処理
+		synchronizate_data();
+		//フェードイン
+		if (fade_back_alpha > 0.0) {
+			fade_back_alpha = 1.0 - ((double)((int)Time::GetMillisec() - fade_back_timer))/ ((getData().client->isOwner()) ? 700 : 800);
+			if (fade_back_alpha < 0.0)fade_back_alpha = 0.0;
+			return;
+		}
 		//プレイヤー情報を更新
 		update_player();
 		//APバーの描画情報を更新
@@ -191,7 +210,7 @@ void Game::update_player() {
 	//プレイヤー(相手)の移動処理////////////////////////////////////////////////////////////////////
 
 	//TODO：通信関連が届いたら実装
-	synchronizate_data();
+	
 
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
@@ -413,14 +432,19 @@ void Game::update_player_animation() {
 
 void Game::draw() const {
 	if (!is_connected) {
-		Rect(0, 0, 1920, 1080).draw(ColorF{ 0,fade_back_alpha });
-		connecting_img.drawAt(1500, 950, ColorF{ 1, fade_back_alpha });
+		Rect(0, 0, 1920, 1080).draw(ColorF{ Palette::Black });
+		connecting_img.drawAt(1500, 950);
 	}else {
 		background_img.draw(0, 0);
 		draw_HP_bar();
 		draw_AP_bar();
 
 		draw_player();
+
+		if (fade_back_alpha > 0) {
+			Rect(0, 0, 1920, 1080).draw(ColorF{ 0,fade_back_alpha });
+			connecting_img.drawAt(1500, 950, ColorF{ 1, fade_back_alpha });
+		}
 	}
 
 	//エラーダイアログ
