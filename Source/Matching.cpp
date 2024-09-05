@@ -268,6 +268,7 @@ void Matching::update()
 			(getData().client->roomInfo.character).push_back(character_number);
 			(getData().client->roomInfo.is_ready).push_back(true);
 		}
+		decide_button_size = 1.0 + 0.02 * sin(0.0005 * M_PI * (double)Time::GetMillisec());
 	}
 
 	//ホバーしたらカーソルを変える
@@ -344,7 +345,7 @@ void Matching::draw() const
 	if (getData().decided_character) {
 		fixed_img.drawAt(960, 540);
 	}else {
-		decide_img.drawAt(960, 540);
+		decide_img.scaled(decide_button_size).drawAt(960, 540);
 	}
 	//相手が確定したら表示
 	if (opponent_decided) {
