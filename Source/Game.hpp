@@ -15,8 +15,8 @@ struct Player {
 	int hp[3] = { 1000,1000,1000 };
 	int ap = 0;
 	double speed = 80.0;
-	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:スタン,4:弱,5:狂,6:必殺,7:進捗(1))
-	int timer[10];
+	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:スタン,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6))
+	int timer[12];
 	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺)
 	bool se[5] = { false };
 	//Playerの向き(true:右,false:左)
@@ -112,7 +112,7 @@ private:
 	int voice_command();
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
 	void Json2ArrayPos(String str,Vec2 (& pos)[2]);
-	void Json2ArrayTimer(String str, int(&timer)[10]);
+	void Json2ArrayTimer(String str, int(&timer)[12]);
 	inline int GameTimer();
 public:
 
