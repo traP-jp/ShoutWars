@@ -29,8 +29,10 @@ player_flag(player_sum, true)
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/run1.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/run2.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/kick.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/weak_kick.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/weak_attack.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/powerful_kick.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/destroy_gard.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/special_kick.png") });
 	}
 	//アイリの画像
 	if ((getData().player[0] == 2) || (getData().player[1] == 2)) {
@@ -72,7 +74,8 @@ int Game::getkey() {
 
 //TODO:音声認識が届いたら実装
 int Game::voice_command() {
-	if (KeyF.pressed()) return 2;
+	if (KeyB.pressed()) return 1;
+	if (KeyV.pressed()) return 2;
 	if (KeyG.pressed()) return 3;
 	return 0;
 }
@@ -280,7 +283,12 @@ void Game::update_player() {
 	if (int got_voice = voice_command()) {
 		//弱攻撃
 		if (got_voice == 1) {
-
+			if ((player[player_number].status & 116) == 0) {
+				shot_se.playOneShot();
+				player[player_number].se[3] = true;
+				player[player_number].status |= 16;
+				player[player_number].timer[4] = now_time;
+			}
 		//狂攻撃
 		}elif(got_voice == 2) {
 			if ((player[player_number].status & 116) == 0) {
@@ -304,40 +312,67 @@ void Game::update_player() {
 	}
 
 	//技とかの処理/////////////////////////////////////////////////////////////////////////////////
-	//弱攻撃
-	if (player[player_number].status & 16) {
-
-	}
-	//狂攻撃+必殺技
-	if (player[player_number].status & 96) {
-		int tmp = now_time - player[player_number].timer[(player[player_number].status & 32)?5:6];
-		if ((200 < tmp) && (tmp < 400)) {
-			for (int i = 0; i < player_sum; i++) {
-				if (i == player_number) continue;
-				int tmp_pos_x = sign(player[player_number].direction)*(player_reserved_pos[player_number].x - player_reserved_pos[i].x);
-				if ((5.0 < tmp_pos_x) &&(tmp_pos_x < 250.0) && (abs(player_reserved_pos[player_number].y - player_reserved_pos[i].y) < 242.0)) {
-					if ((player[i].event[0] & 2) == 0) {
-						//狂攻撃
-						if (player[player_number].status & 32) {
-							if (player[player_number].se[3]) {
-								player[player_number].se[3] = false;
+	for (int cnt = 0; cnt < player_sum; cnt++) {
+		//弱攻撃
+		if (player[cnt].status & 16) {
+			int t = now_time - player[cnt].timer[4];
+			if ((100 < t) && (t < 250)) {
+				for (int i = 0; i < player_sum; i++) {
+					if (i == cnt) continue;
+					int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+					if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+						if ((player[i].event[0] & 1) == 0) {
+							if (player[cnt].se[3]) {
+								player[cnt].se[3] = false;
 								dos_se.playOneShot();
 							}
-							player[i].event[0] |= 2;
+							getData().client->sendAction(U"WeakAttack", Vec2{ cnt,i });
+							//player[i].event[0] |= 1;
 							//TODO:あとで通信専用の時間に変更する
-							player[i].event[1] = now_time;
-							player[i].hp[1] -= 5;
-							player[player_number].ap += 3;
-						//必殺技
-						}else {
-							if (player[player_number].se[4]) {
-								player[player_number].se[4] = false;
-								dododos_se.playOneShot();
+							//player[i].event[1] = now_time;
+							player[i].hp[1] -= 3;
+							player[cnt].ap += 1;
+						}
+					}
+				}
+			}
+		}
+		//狂攻撃+必殺技
+		if (player[cnt].status & 96) {
+			int tmp = now_time - player[cnt].timer[(player[cnt].status & 32) ? 5 : 6];
+			if ((200 < tmp) && (tmp < 400)) {
+				for (int i = 0; i < player_sum; i++) {
+					if (i == cnt) continue;
+					int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+					if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+						if ((player[i].event[0] & 2) == 0) {
+							//狂攻撃
+							if (player[cnt].status & 32) {
+								if (player[cnt].se[3]) {
+									player[cnt].se[3] = false;
+									dos_se.playOneShot();
+								}
+								if (cnt == player_number)
+									getData().client->sendAction(U"StrongAttack", i);
+								//player[i].event[0] |= 2;
+								//TODO:あとで通信専用の時間に変更する
+								//player[i].event[1] = now_time;
+								player[i].hp[1] -= 5;
+								player[cnt].ap += 3;
+								//必殺技
 							}
-							player[i].event[0] |= 4;
-							//TODO:あとで通信専用の時間に変更する
-							player[i].event[1] = now_time;
-							player[i].hp[1] -= 15;
+							else {
+								if (player[cnt].se[4]) {
+									player[cnt].se[4] = false;
+									dododos_se.playOneShot();
+								}
+								if (cnt == player_number)
+									getData().client->sendAction(U"SpecialAttack", i);
+								//player[i].event[0] |= 4;
+								//TODO:あとで通信専用の時間に変更する
+								//player[i].event[1] = now_time;
+								player[i].hp[1] -= 15;
+							}
 						}
 					}
 				}
@@ -385,7 +420,6 @@ void Game::update_AP_bar_animation() {
 	}
 }
 
-//TODO:通信関連が届いたら実装
 void Game::synchronizate_data() {
 	//同期
 	try {
@@ -396,6 +430,7 @@ void Game::synchronizate_data() {
 		}
 		getData().client->sendReport(U"PlayerInfoTimer", player[player_number].timer);
 		getData().client->update();
+		//一方的な報告の処理
 		while (const auto event = getData().client->receiveReport()) {
 			if (event->type == U"PlayerInfoPos") {
 				Json2ArrayPos((event->data).getString(), player[another_player_number].pos);
@@ -407,6 +442,17 @@ void Game::synchronizate_data() {
 				Json2ArrayTimer((event->data).getString(), player[another_player_number].timer);
 			}
 		}
+		//相互確認が必要な処理
+		while (const auto event = getData().client->receiveAction()) {
+			if (event->type == U"WeakAttack") {
+				//TODO:確認開始！
+			}elif(event->type == U"StrongAttack") {
+
+			}elif(event->type == U"SpecialAttack") {
+
+			}
+		}
+
 	}catch (const APIClient::HTTPError& error) {
 		Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
 		OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
@@ -431,16 +477,20 @@ void Game::synchronizate_data() {
 	}
 }
 
-void Game::Json2ArrayTimer(String str, int(&timer)[10]) {
+void Game::Json2ArrayTimer(String str, int(&timer)[12]) {
 	str.replace(U"}", U"");
 	str.replace(U"{", U"");
 	str.replace(U")", U"");
 	str.replace(U"(", U"");
 	// 文字列から数値を抽出
 	Array<int32> parts = str.split(U',').map(Parse<int32>);
-	for (int i = 0; i < 10; i++)timer[i] = parts[i];
+	for (int i = 0; i < 12; i++)timer[i] = parts[i];
 	timer[0] = GameTimer() - timer[1];
 	timer[2] = GameTimer() - timer[7];
+	timer[3] = GameTimer() - timer[8];
+	timer[4] = GameTimer() - timer[9];
+	timer[5] = GameTimer() - timer[10];
+	timer[6] = GameTimer() - timer[11];
 }
 
 void Game::Json2ArrayPos(String str,Vec2 (& pos)[2]) {
@@ -473,7 +523,16 @@ void Game::update_player_animation() {
 			continue;
 		//弱攻撃のアニメーション
 		}elif(player[i].status & 16) {
-			player[i].img_number = 0;
+			if (now_time - player[i].timer[5] < 60) {
+				player[i].img_number = 0;
+			}elif(now_time - player[i].timer[5] < 190) {
+				player[i].img_number = 4;
+			}elif(now_time - player[i].timer[5] < 250) {
+				player[i].img_number = 0;
+			}else {
+				player[i].status ^= 16;
+				player[i].img_number = 0;
+			}
 			continue;
 		//狂攻撃のアニメーション
 		}elif(player[i].status & 32) {
