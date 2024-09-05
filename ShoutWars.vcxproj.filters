@@ -174,7 +174,7 @@
     <ClCompile Include="Source\Calibration.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Voice\FormantAnalyzer.cpp">
+    <ClCompile Include="Source\Voice\MFCCAnalyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -496,7 +496,7 @@
     <ClInclude Include="Source\Calibration.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Voice\FormantAnalyzer.hpp">
+    <ClInclude Include="Source\Voice\MFCCAnalyzer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -125,7 +125,7 @@
     <ClCompile Include="Source\Multiplay\RoomInfo.cpp" />
     <ClCompile Include="Source\Result.cpp" />
     <ClCompile Include="Source\Title.cpp" />
-    <ClCompile Include="Source\Voice\FormantAnalyzer.cpp" />
+    <ClCompile Include="Source\Voice\MFCCAnalyzer.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -244,7 +244,7 @@
     <ClInclude Include="Source\Multiplay\RoomInfo.hpp" />
     <ClInclude Include="Source\Result.hpp" />
     <ClInclude Include="Source\Title.hpp" />
-    <ClInclude Include="Source\Voice\FormantAnalyzer.hpp" />
+    <ClInclude Include="Source\Voice\MFCCAnalyzer.hpp" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Source\Multiplay\APIClient.hpp" />
     <ClInclude Include="Source\Multiplay\SyncClient.hpp" />

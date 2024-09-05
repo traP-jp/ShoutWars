@@ -1,11 +1,13 @@
 ﻿# pragma once
 
 # include "common.hpp"
-# include "Voice/FormantAnalyzer.hpp"
+# include "Voice/MFCCAnalyzer.hpp"
 
 class Calibration : public App::Scene {
 	Microphone mic;
-	std::unique_ptr<FormantAnalyzer> formantAnalyzer;
+	FFTResult fftResult;
+	std::unique_ptr<MFCCAnalyzer> mfccAnalyzer;
+	Array<float> mfcc;
 
 public:
 	Calibration(const InitData& init);
