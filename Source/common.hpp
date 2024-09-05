@@ -2,6 +2,7 @@
 # include <Siv3D.hpp>
 # include "Multiplay/SyncClient.hpp"
 #define elif else if
+#define M_PI 3.14159265358979323846
 
 // シーンの名前
 enum class State

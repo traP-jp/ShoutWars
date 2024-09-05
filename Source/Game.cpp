@@ -1,8 +1,8 @@
 ﻿#include "Game.hpp"
 # include "common_function.hpp"
 
-#define player_number 0
-#define another_player_number 1
+//#define player_number 0
+//#define another_player_number 1
 
 using namespace std;
 
@@ -54,7 +54,6 @@ player_flag(player_sum, true)
 	player[1].direction = true;
 
 	internal_timer = (int)Time::GetMillisec();
-	init_connection();
 }
 
 int Game::getkey() {
@@ -109,29 +108,49 @@ void Game::update_error_screen() {
 	}
 }
 
+inline int Game::GameTimer() {
+	return (int)Time::GetMillisec() - connection_timer;
+}
+
 void Game::update() {
-	//BGMを流す
-	if (!bgm.isPlaying())bgm.play();
 	if (error_mode) {
 		update_error_screen();
 		return;
 	}
+	//ゲーム開始時間の調整
 	if (!is_connected) {
 		try {
-			getData().client->update();
 			if (getData().client->isOwner()) {
+				getData().client->update();
 				while (const auto event = getData().client->receiveReport()) {
 					if (event->type == U"Start") {
 						is_connected = true;
-						fade_back_timer = (int)Time::GetMillisec();
+						//Player
+						player_number = 0;
+						another_player_number = 1;
+						//ゲーム開始時刻
+						connection_timer = (int)Time::GetMillisec()+700;
+						ping_time = (getData().client->api->fetchServerStatus().get().ping).count();
+						connection_timer += ping_time;
+						fade_back_timer = GameTimer();
 						fade_back_alpha = 1.0;
+						//BGMを流す
+						bgm.play();
 					}
 				}
 			}else {
 				getData().client->sendReport(U"Start", true);
+				getData().client->update();
+				//Player
+				player_number = 1;
+				another_player_number = 0;
+				//ゲーム開始時刻
+				connection_timer = (int)Time::GetMillisec() + 700 ;
 				is_connected = true;
-				fade_back_timer = (int)Time::GetMillisec();
+				fade_back_timer = GameTimer();
 				fade_back_alpha = 1.0;
+				//BGMを流す
+				bgm.play();
 			}
 		}catch (const APIClient::HTTPError& error) {
 			if (FromEnum(error.statusCode) == 404) {
@@ -144,15 +163,20 @@ void Game::update() {
 			}
 		}
 		catch (const Error& error) {
-			Print << error.what();
-			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
+			if (error.what() == U"Session not found.") {
+				error_mode = 1;
+				error_ID = 2;
+			}else {
+				Print << error.what();
+				OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
+			}
 		}
 	}else {
 		//同期処理
 		synchronizate_data();
 		//フェードイン
 		if (fade_back_alpha > 0.0) {
-			fade_back_alpha = 1.0 - ((double)((int)Time::GetMillisec() - fade_back_timer))/ ((getData().client->isOwner()) ? 700 : 800);
+			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer))/ (700-(getData().client->isOwner()) ? ping_time : 0);
 			if (fade_back_alpha < 0.0)fade_back_alpha = 0.0;
 			return;
 		}
@@ -166,36 +190,47 @@ void Game::update() {
 }
 
 void Game::update_player() {
-	int now_time = (int)Time::GetMillisec();
-	Vec2 player_reserved_pos = player[player_number].pos[0];
-	//プレイヤー(ユーザー操作)の移動処理////////////////////////////////////////////////////////////
-	//左右移動処理
-	if (player[player_number].status & 3) {
-		int t = now_time - player[player_number].timer[0];
-		if (t < 50) {
-			player_reserved_pos.x = player[player_number].pos[1].x + ((player[player_number].status & 1) ? -1.0 : 1.0) * player[player_number].speed * t / 50;
-		}else {
-			player[player_number].status ^= (player[player_number].status&1)?1:2;
+	int now_time = GameTimer();
+	Vec2 player_reserved_pos[player_sum];
+	for (int i = 0; i < player_sum; i++)player_reserved_pos[i] = player[i].pos[0];
+	//プレイヤーの移動処理////////////////////////////////////////////////////////////
+	for (int i = 0; i < player_sum; i++) {
+		//左右移動処理
+		if (player[i].status & 3) {
+			player[i].timer[1] = now_time - player[i].timer[0];
+			if (player[i].timer[1]  < 100) {
+				player_reserved_pos[i].x = player[i].pos[1].x + ((player[i].status & 1) ? -1.0 : 1.0) * player[i].speed * player[i].timer[1] / 100;
+			}
+			else {
+				if (i == player_number) {
+					player[i].status ^= (player[i].status & 1) ? 1 : 2;
+				}else {
+					player[i].timer[0] = now_time;
+					player[i].timer[1] = 0;
+					player[i].pos[1].x = player[i].pos[0].x;
+				}
+			}
+		}
+		//ジャンプ処理
+		if (player[i].status & 4) {
+			player[i].timer[7] = now_time - player[i].timer[2];
+			if (player[i].timer[7] < 500) {
+				player_reserved_pos[i].y = player_min_y - 2.0 * player[i].timer[7] + 0.004 * player[i].timer[7] * player[i].timer[7];
+			}
+			else {
+				player[i].status ^= 4;
+				player_reserved_pos[i].y = player_min_y;
+			}
 		}
 	}
-	//ジャンプ処理
-	if (player[player_number].status & 4) {
-		int t = now_time - player[player_number].timer[2];
-		if (t < 500) {
-			player_reserved_pos.y = player_min_y - 2.0 * t + 0.004 * t * t;
-		}
-		else {
-			player[player_number].status ^= 4;
-			player_reserved_pos.y = player_min_y;
-		}
-	}
-	//キー入力処理
+	//プレイヤー(ユーザー操作)のキー入力処理////////////////////////////////////////////////////////////
 	if (int gotkey = getkey()) {
 		//左右移動
 		if ((player[player_number].status & 3) == 0){
 			if (gotkey & 10) {
 				player[player_number].status |= (gotkey & 2)?1:2;
 				player[player_number].timer[0] = now_time;
+				player[player_number].timer[1] = 0;
 				player[player_number].pos[1].x = player[player_number].pos[0].x;
 			}
 		}
@@ -204,37 +239,43 @@ void Game::update_player() {
 			jump_se.playOneShot();
 			player[player_number].status |= 4;
 			player[player_number].timer[2] = now_time;
+			player[player_number].timer[7] = 0;
 			player[player_number].pos[1].y = player[player_number].pos[0].y;
 		}
 	}
-	//プレイヤー(相手)の移動処理////////////////////////////////////////////////////////////////////
-
-	//TODO：通信関連が届いたら実装
-	
-
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
 		if (i == player_number) continue;
-		if ((abs(player_reserved_pos.x - player[i].pos[0].x) < 50.0)&&(abs(player_reserved_pos.y - player[i].pos[0].y) < 242.0)) {
+		if ((abs(player_reserved_pos[player_number].x - player_reserved_pos[i].x) < 70.0) && (abs(player_reserved_pos[player_number].y - player_reserved_pos[i].y) < 242.0)) {
 			//相手が動いている場合
 			if (player[i].status&3) {
-				//TODO:通信関連が届いたら実装
+				if (player[i].status == player[player_number].status) {
+					player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
+				}elif(player[player_number].status == 0) {
+					player_reserved_pos[player_number].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? -16.0 : 16.0;
+				}
+				else {
+					player_reserved_pos[player_number].x = player[player_number].pos[0].x;
+					player_reserved_pos[i].x = player[i].pos[0].x;
+				}
+			//自分だけが動いている場合
 			}else {
-				player[i].pos[0].x += (player_reserved_pos.x < player[i].pos[0].x) ? 16.0 : -16.0;
+				player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
 			}
 		}
 	}
 
 	//プレイヤーの向き
-	if (player_reserved_pos.x < player[another_player_number].pos[0].x) {
+	if (player_reserved_pos[player_number].x < player[another_player_number].pos[0].x) {
 		player[player_number].direction = false;
 		player[another_player_number].direction = true;
 	}else {
 		player[player_number].direction = true;
 		player[another_player_number].direction = false;
 	}
-	if (player[player_number].status & 3)player[player_number].direction = (player[player_number].status & 1);
-
+	for (int i = 0; i < player_sum; i++) {
+		if (player[i].status & 3)player[i].direction = (player[i].status & 1);
+	}
 	//技とかの起爆/////////////////////////////////////////////////////////////////////////////////
 	if (int got_voice = voice_command()) {
 		//弱攻撃
@@ -273,8 +314,8 @@ void Game::update_player() {
 		if ((200 < tmp) && (tmp < 400)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == player_number) continue;
-				int tmp_pos_x = sign(player[player_number].direction)*(player_reserved_pos.x - player[i].pos[0].x);
-				if ((5.0 < tmp_pos_x) &&(tmp_pos_x < 250.0) && (abs(player_reserved_pos.y - player[i].pos[0].y) < 242.0)) {
+				int tmp_pos_x = sign(player[player_number].direction)*(player_reserved_pos[player_number].x - player_reserved_pos[i].x);
+				if ((5.0 < tmp_pos_x) &&(tmp_pos_x < 250.0) && (abs(player_reserved_pos[player_number].y - player_reserved_pos[i].y) < 242.0)) {
 					if ((player[i].event[0] & 2) == 0) {
 						//狂攻撃
 						if (player[player_number].status & 32) {
@@ -320,16 +361,18 @@ void Game::update_player() {
 		if (player[i].hp[0] <= 0);//TODO:GAMEOVER処理
 	}
 
-	//移動範囲制限
-	player_reserved_pos.x = Clamp(player_reserved_pos.x, 50.0, 1850.0);
-
-	//プレイヤーの位置を更新を確定
-	player[player_number].pos[0] = player_reserved_pos;
+	
+	for (int i = 0; i < player_sum; i++) {
+		//移動範囲制限
+		player_reserved_pos[i].x = Clamp(player_reserved_pos[i].x, 50.0, 1850.0);
+		//プレイヤーの位置を更新を確定
+		player[i].pos[0] = player_reserved_pos[i];
+	}
 }
 
 //APバーのアニメーションを更新
 void Game::update_AP_bar_animation() {
-	int now_time = (int)Time::GetMillisec();
+	int now_time = GameTimer();
 	//APバーが満タンの時、炎のアニメーションを描く
 	for (int i = 0; i < player_sum; i++) {
 		if (!player_flag[i]) continue;
@@ -343,37 +386,83 @@ void Game::update_AP_bar_animation() {
 }
 
 //TODO:通信関連が届いたら実装
-void Game::init_connection() {
-	//同期
-	getData().client->update();
-	connection_timer = (int)Time::GetMillisec();
-	return;
-}
-
-//TODO:通信関連が届いたら実装
 void Game::synchronizate_data() {
 	//同期
-	getData().client->update();
-	if ((int)Time::GetMillisec() - connection_timer > 50) {
-		//TODO:通信処理
-
-		//いろいろ初期化
-		connection_timer = (int)Time::GetMillisec();
-		for (int i = 0; i < player_sum; i++) {
-			if (i == player_number) continue;
-			player[i].event[0] = 0;
-			player[i].event[1] = 0;
-			//TODO:同期後のHPを処理する
-			player[i].hp[0] = player[i].hp[1];
+	try {
+		getData().client->sendReport(U"PlayerInfoPos", player[player_number].pos);
+		if (player[player_number].status != player[player_number].old_status) {
+			getData().client->sendReport(U"PlayerStatus", player[player_number].status);
+			player[player_number].old_status = player[player_number].status;
 		}
+		getData().client->sendReport(U"PlayerInfoTimer", player[player_number].timer);
+		getData().client->update();
+		while (const auto event = getData().client->receiveReport()) {
+			if (event->type == U"PlayerInfoPos") {
+				Json2ArrayPos((event->data).getString(), player[another_player_number].pos);
+			}
+			if (event->type == U"PlayerStatus") {
+				player[another_player_number].status = (event->data).get<int32>();
+			}
+			if (event->type == U"PlayerInfoTimer") {
+				Json2ArrayTimer((event->data).getString(), player[another_player_number].timer);
+			}
+		}
+	}catch (const APIClient::HTTPError& error) {
+		Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
+		OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
+	}
+	catch (const Error& error) {
+		if (error.what() == U"Session not found.") {
+			error_mode = 1;
+			error_ID = 2;
+		}else {
+			Print << error.what();
+			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
+		}
+	}
+
+	//TODO
+	for (int i = 0; i < player_sum; i++) {
+		if (i == player_number) continue;
+		player[i].event[0] = 0;
+		player[i].event[1] = 0;
+		//TODO:同期後のHPを処理する
+		player[i].hp[0] = player[i].hp[1];
 	}
 }
 
+void Game::Json2ArrayTimer(String str, int(&timer)[10]) {
+	str.replace(U"}", U"");
+	str.replace(U"{", U"");
+	str.replace(U")", U"");
+	str.replace(U"(", U"");
+	// 文字列から数値を抽出
+	Array<int32> parts = str.split(U',').map(Parse<int32>);
+	for (int i = 0; i < 10; i++)timer[i] = parts[i];
+	timer[0] = GameTimer() - timer[1];
+	timer[2] = GameTimer() - timer[7];
+}
+
+void Game::Json2ArrayPos(String str,Vec2 (& pos)[2]) {
+	str.replace(U"}", U"");
+	str.replace(U"{", U"");
+	str.replace(U")", U"");
+	str.replace(U"(", U"");
+	// 文字列から数値を抽出
+	Array<double> parts = str.split(U',').map(Parse<double>);
+
+	if (parts.size() >= 4) {
+		pos[0].x = parts[0];
+		pos[0].y = parts[1];
+		pos[1].x = parts[2];
+		pos[1].y = parts[3];
+	}
+}
 
 void Game::update_player_animation() {
-	int now_time = (int)Time::GetMillisec();
+	int now_time = GameTimer();
 	for (int i = 0; i < player_sum; i++) {
-		if (!player_flag[i]) continue;
+		//if (!player_flag[i]) continue;
 		//待機中
 		if (player[i].status == 0) {
 			player[i].img_number = 0;
@@ -419,7 +508,8 @@ void Game::update_player_animation() {
 			continue;
 		//移動アニメーション
 		}elif(player[i].status & 3) {
-			if (now_time - player[i].img_timer > 160) {
+			int t = now_time - player[i].img_timer;
+			if (t > 160) {
 				player[i].img_timer = now_time;
 				player[i].img_status = 1+player[i].img_status % 2;
 			}
@@ -452,6 +542,8 @@ void Game::draw() const {
 		Rect(0, 0, 1920, 1080).draw(ColorF{ 0, back_alpha });
 		if (error_ID == 1) {
 			destroyed_img.drawAt(960, error_pos_y);
+		}elif(error_ID == 2) {
+			timeout_img.drawAt(960, error_pos_y);
 		}
 	}
 }
