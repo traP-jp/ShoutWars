@@ -2,9 +2,24 @@
 
 using namespace std;
 
-Phoneme::Phoneme(double defaultVolumeThreshold, size_t n, uint64 mfccHistoryLife)
-	: volumeThreshold(defaultVolumeThreshold), mfccList(n), mfccHistoryLife(mfccHistoryLife) {
-	for (auto&& mfcc : mfccList) mfcc.fill(0);
+Phoneme::Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t n, uint64 mfccHistoryLife)
+	: configPath(configPath), volumeThreshold(defaultVolumeThreshold), mfccList(n), mfccHistoryLife(mfccHistoryLife) {
+	for (auto&& mfcc : mfccList) mfcc.fill(0.0f);
+	JSON config = JSON::Load(configPath);
+	if (config && config.isObject()) {
+		if (config[U"volumeThreshold"].isNumber()) {
+			volumeThreshold = config[U"volumeThreshold"].get<double>();
+		}
+		if (config[U"mfcc"].isArray()) {
+			for (size_t id : step(n)) {
+				const auto mfcc = config[U"mfcc"][id];
+				if (!mfcc.isArray()) continue;
+				for (size_t i : step(mfccOrder)) {
+					if (mfcc[i].isNumber()) mfccList[id][i] = mfcc[i].get<float>();
+				}
+			}
+		}
+	}
 }
 
 bool Phoneme::start() {
@@ -41,10 +56,27 @@ size_t Phoneme::estimate(FFTSampleLength frames) {
 	}) - mfccList.begin();
 }
 
+bool Phoneme::isMFCCUnset() const {
+	for (const auto& mfcc : mfccList) {
+		if (ranges::all_of(mfcc, [](float x) { return x == 0.0f; })) return true;
+	}
+	return false;
+}
+
 void Phoneme::setMFCC(uint64 id) {
 	if (getMFCCHistory()->empty()) throw Error{ U"MFCC history is empty" };
-	const auto &mfcc = (*mfccAnalyzer->getMFCCHistory()->rbegin()).second;
+	const auto& mfcc = (*mfccAnalyzer->getMFCCHistory()->rbegin()).second;
 	copy(mfcc.begin(), mfcc.end(), mfccList[id].begin());
+}
+
+bool Phoneme::save() const {
+	JSON config = JSON::Load(configPath);
+	if (!config || !config.isObject()) config = {};
+	config[U"volumeThreshold"] = volumeThreshold;
+	for (size_t id : step(mfccList.size())) {
+		config[U"mfcc"][id] = Array(mfccList[id].begin(), mfccList[id].end());
+	}
+	return config.save(configPath);
 }
 
 shared_ptr<map<uint64, Array<float>>> Phoneme::getMFCCHistory() const {
