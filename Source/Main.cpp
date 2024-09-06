@@ -3,6 +3,7 @@
 //#include "Title.hpp"
 //#include "Matching.hpp"
 //#include "Game.hpp"
+//#include "Config.hpp"
 #include "Calibration.hpp"
 
 void Main() {
@@ -23,6 +24,7 @@ void Main() {
 	//manager.add<Title>(State::Title);
 	//manager.add<Matching>(State::Matching);
 	//manager.add<Game>(State::Game);
+	//manager.add<Config>(State::Config);
 	//manager.add<Result>(State::Result);
 	manager.add<Calibration>(State::Calibration);
 

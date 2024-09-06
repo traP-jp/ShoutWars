@@ -4,8 +4,8 @@ using namespace std;
 
 Calibration::Calibration(const InitData& init) : IScene(init) {
 	for (uint32 i : step(6)) {
-		phonemeRects << RectF{ 140.0 + i * 240.0, 620.0 , 60.0, 360.0 };
-		phonemeRects << RectF{ 260.0 + i * 240.0, 620.0 , 60.0, 360.0 };
+		phonemeRects << RectF{ 140.0 + i * 240.0, 620.0, 60.0, 360.0 };
+		phonemeRects << RectF{ 260.0 + i * 240.0, 620.0, 60.0, 360.0 };
 	}
 	getData().phoneme.start();
 }

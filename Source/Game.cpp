@@ -1,7 +1,8 @@
 ﻿#include "Game.hpp"
+# include "common_function.hpp"
 
-#define player_number 0
-#define another_player_number 1
+//#define player_number 0
+//#define another_player_number 1
 
 using namespace std;
 
@@ -28,8 +29,10 @@ player_flag(player_sum, true)
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/run1.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/run2.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/kick.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/weak_kick.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/weak_attack.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/powerful_kick.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/destroy_gard.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/special_kick.png") });
 	}
 	//アイリの画像
 	if ((getData().player[0] == 2) || (getData().player[1] == 2)) {
@@ -53,7 +56,6 @@ player_flag(player_sum, true)
 	player[1].direction = true;
 
 	internal_timer = (int)Time::GetMillisec();
-	init_connection();
 }
 
 int Game::getkey() {
@@ -72,51 +74,170 @@ int Game::getkey() {
 
 //TODO:音声認識が届いたら実装
 int Game::voice_command() {
-	if (KeyF.pressed()) return 2;
-	if (KeyG.pressed()) return 3;
+	if (KeyB.pressed()) return 1;
+	if (KeyV.pressed()) return 2;
+	if (KeyF.pressed()) return 3;
+	if (KeyG.pressed()) return 4;
+	if (KeyC.pressed()) return 5;
 	return 0;
 }
 
+void Game::update_error_screen() {
+	//エラーダイアログ
+	if (error_mode == 1) {
+		error_timer = (int)Time::GetMillisec();
+		error_mode = 2;
+		return;
+	}elif(error_mode == 2) {
+		int now_time = (int)Time::GetMillisec();
+		if (now_time - error_timer <= 200) {
+			error_pos_y = 1400 - 1040 * (now_time - error_timer) / 200;
+			back_alpha = 0.8 * (now_time - error_timer) / 200;
+		}
+		else {
+			error_pos_y = 360;
+			back_alpha = 0.8;
+			error_mode = 3;
+		}
+		return;
+	}elif(error_mode == 3) {
+		if (OK_shape.mouseOver())  Cursor::RequestStyle(CursorStyle::Hand);
+		if (Yes_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		//タイトルに戻る
+		if (OK_shape.leftClicked() || Yes_shape.leftClicked()) {
+			cancel_sound.playOneShot();
+			getData().before_scene = State::Game;
+			changeScene(State::Title, 0.8s);
+		}
+		return;
+	}
+}
+
+inline int Game::GameTimer() {
+	return (int)Time::GetMillisec() - connection_timer;
+}
+
 void Game::update() {
-	//プレイヤー情報を更新
-	update_player();
-	//APバーの描画情報を更新
-	update_AP_bar_animation();
-	//プレイヤーのアニメーションを更新
-	update_player_animation();
+	if (error_mode) {
+		update_error_screen();
+		return;
+	}
+	//ゲーム開始時間の調整
+	if (!is_connected) {
+		try {
+			if (getData().client->isOwner()) {
+				getData().client->update();
+				while (const auto event = getData().client->receiveReport()) {
+					if (event->type == U"Start") {
+						is_connected = true;
+						//Player
+						player_number = 0;
+						another_player_number = 1;
+						//ゲーム開始時刻
+						connection_timer = (int)Time::GetMillisec()+700;
+						ping_time = (getData().client->api->fetchServerStatus().get().ping).count();
+						connection_timer += ping_time;
+						fade_back_timer = GameTimer();
+						fade_back_alpha = 1.0;
+						//BGMを流す
+						bgm.play();
+					}
+				}
+			}else {
+				getData().client->sendReport(U"Start", true);
+				getData().client->update();
+				//Player
+				player_number = 1;
+				another_player_number = 0;
+				//時差調整
+				System::Sleep(0.1s);
+				//ゲーム開始時刻
+				connection_timer = (int)Time::GetMillisec() + 700 ;
+				is_connected = true;
+				fade_back_timer = GameTimer();
+				fade_back_alpha = 1.0;
+				//BGMを流す
+				bgm.play();
+			}
+		}catch (const APIClient::HTTPError& error) {
+			if (FromEnum(error.statusCode) == 404) {
+				error_mode = 1;
+				error_ID = 1;
+			}
+			else {
+				Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
+				OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
+			}
+		}
+		catch (const Error& error) {
+			if (error.what() == U"Session not found.") {
+				error_mode = 1;
+				error_ID = 2;
+			}else {
+				Print << error.what();
+				OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
+			}
+		}
+	}else {
+		//同期処理
+		synchronizate_data();
+		//フェードイン
+		if (fade_back_alpha > 0.0) {
+			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer))/ (700-(getData().client->isOwner()) ? ping_time : 0);
+			if (fade_back_alpha < 0.0)fade_back_alpha = 0.0;
+			return;
+		}
+		//プレイヤー情報を更新
+		update_player();
+		//APバーの描画情報を更新
+		update_AP_bar_animation();
+		//プレイヤーのアニメーションを更新
+		update_player_animation();
+	}
 }
 
 void Game::update_player() {
-	int now_time = (int)Time::GetMillisec();
-	Vec2 player_reserved_pos = player[player_number].pos[0];
-	//プレイヤー(ユーザー操作)の移動処理////////////////////////////////////////////////////////////
-	//左右移動処理
-	if (player[player_number].status & 3) {
-		int t = now_time - player[player_number].timer[0];
-		if (t < 50) {
-			player_reserved_pos.x = player[player_number].pos[1].x + ((player[player_number].status & 1) ? -1.0 : 1.0) * player[player_number].speed * t / 50;
-		}else {
-			player[player_number].status ^= (player[player_number].status&1)?1:2;
+	int now_time = GameTimer();
+	Vec2 player_reserved_pos[player_sum];
+	for (int i = 0; i < player_sum; i++)player_reserved_pos[i] = player[i].pos[0];
+	//プレイヤーの移動処理////////////////////////////////////////////////////////////
+	for (int i = 0; i < player_sum; i++) {
+		//左右移動処理
+		if (player[i].status & 3) {
+			player[i].timer[1] = now_time - player[i].timer[0];
+			if (player[i].timer[1]  < 100) {
+				player_reserved_pos[i].x = player[i].pos[1].x + ((player[i].status & 1) ? -1.0 : 1.0) * player[i].speed * player[i].timer[1] / 100;
+			}
+			else {
+				if (i == player_number) {
+					player[i].status ^= (player[i].status & 1) ? 1 : 2;
+				}else {
+					player[i].timer[0] = now_time;
+					player[i].timer[1] = 0;
+					player[i].pos[1].x = player[i].pos[0].x;
+				}
+			}
+		}
+		//ジャンプ処理
+		if (player[i].status & 4) {
+			player[i].timer[7] = now_time - player[i].timer[2];
+			if (player[i].timer[7] < 500) {
+				player_reserved_pos[i].y = player_min_y - 2.0 * player[i].timer[7] + 0.004 * player[i].timer[7] * player[i].timer[7];
+			}
+			else {
+				player[i].status ^= 4;
+				player_reserved_pos[i].y = player_min_y;
+			}
 		}
 	}
-	//ジャンプ処理
-	if (player[player_number].status & 4) {
-		int t = now_time - player[player_number].timer[2];
-		if (t < 500) {
-			player_reserved_pos.y = player_min_y - 2.0 * t + 0.004 * t * t;
-		}
-		else {
-			player[player_number].status ^= 4;
-			player_reserved_pos.y = player_min_y;
-		}
-	}
-	//キー入力処理
+	//プレイヤー(ユーザー操作)のキー入力処理////////////////////////////////////////////////////////////
 	if (int gotkey = getkey()) {
 		//左右移動
 		if ((player[player_number].status & 3) == 0){
 			if (gotkey & 10) {
 				player[player_number].status |= (gotkey & 2)?1:2;
 				player[player_number].timer[0] = now_time;
+				player[player_number].timer[1] = 0;
 				player[player_number].pos[1].x = player[player_number].pos[0].x;
 			}
 		}
@@ -125,42 +246,53 @@ void Game::update_player() {
 			jump_se.playOneShot();
 			player[player_number].status |= 4;
 			player[player_number].timer[2] = now_time;
+			player[player_number].timer[7] = 0;
 			player[player_number].pos[1].y = player[player_number].pos[0].y;
 		}
 	}
-	//プレイヤー(相手)の移動処理////////////////////////////////////////////////////////////////////
-
-	//TODO：通信関連が届いたら実装
-	synchronizate_data();
-
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
 		if (i == player_number) continue;
-		if ((abs(player_reserved_pos.x - player[i].pos[0].x) < 50.0)&&(abs(player_reserved_pos.y - player[i].pos[0].y) < 242.0)) {
+		if ((abs(player_reserved_pos[player_number].x - player_reserved_pos[i].x) < 70.0) && (abs(player_reserved_pos[player_number].y - player_reserved_pos[i].y) < 242.0)) {
 			//相手が動いている場合
 			if (player[i].status&3) {
-				//TODO:通信関連が届いたら実装
+				if (player[i].status == player[player_number].status) {
+					player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
+				}elif(player[player_number].status == 0) {
+					player_reserved_pos[player_number].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? -16.0 : 16.0;
+				}
+				else {
+					player_reserved_pos[player_number].x = player[player_number].pos[0].x;
+					player_reserved_pos[i].x = player[i].pos[0].x;
+				}
+			//自分だけが動いている場合
 			}else {
-				player[i].pos[0].x += (player_reserved_pos.x < player[i].pos[0].x) ? 16.0 : -16.0;
+				player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
 			}
 		}
 	}
 
 	//プレイヤーの向き
-	if (player_reserved_pos.x < player[another_player_number].pos[0].x) {
+	if (player_reserved_pos[player_number].x < player[another_player_number].pos[0].x) {
 		player[player_number].direction = false;
 		player[another_player_number].direction = true;
 	}else {
 		player[player_number].direction = true;
 		player[another_player_number].direction = false;
 	}
-	if (player[player_number].status & 3)player[player_number].direction = (player[player_number].status & 1);
-
+	for (int i = 0; i < player_sum; i++) {
+		if (player[i].status & 3)player[i].direction = (player[i].status & 1);
+	}
 	//技とかの起爆/////////////////////////////////////////////////////////////////////////////////
 	if (int got_voice = voice_command()) {
 		//弱攻撃
 		if (got_voice == 1) {
-
+			if ((player[player_number].status & 116) == 0) {
+				shot_se.playOneShot();
+				player[player_number].se[2] = true;
+				player[player_number].status |= 16;
+				player[player_number].timer[4] = now_time;
+			}
 		//狂攻撃
 		}elif(got_voice == 2) {
 			if ((player[player_number].status & 116) == 0) {
@@ -179,48 +311,109 @@ void Game::update_player() {
 				player[player_number].ap = 0;
 				player[player_number].special_attack = false;
 			}
+		//ガード
+		}elif(got_voice == 4) {
+			guard_se.playOneShot();
+			player[player_number].se[5] = true;
+			player[player_number].status |= 8;
+			player[player_number].timer[3] = now_time;
+			getData().client->sendAction(U"Guard", player_number);
+		//ガード破壊
+		}elif(got_voice == 5) {
+			if ((player[player_number].status & 116) == 0) {
+				shot_se.playOneShot();
+				player[player_number].se[5] = true;
+				player[player_number].status |= 128;
+				player[player_number].timer[12] = now_time;
+			}
 		}
 
 	}
 
 	//技とかの処理/////////////////////////////////////////////////////////////////////////////////
-	//弱攻撃
-	if (player[player_number].status & 16) {
-
-	}
-	//狂攻撃+必殺技
-	if (player[player_number].status & 96) {
-		int tmp = now_time - player[player_number].timer[(player[player_number].status & 32)?5:6];
-		if ((200 < tmp) && (tmp < 400)) {
-			for (int i = 0; i < player_sum; i++) {
-				if (i == player_number) continue;
-				int tmp_pos_x = sign(player[player_number].direction)*(player_reserved_pos.x - player[i].pos[0].x);
-				if ((5.0 < tmp_pos_x) &&(tmp_pos_x < 250.0) && (abs(player_reserved_pos.y - player[i].pos[0].y) < 242.0)) {
-					if ((player[i].event[0] & 2) == 0) {
-						//狂攻撃
-						if (player[player_number].status & 32) {
-							if (player[player_number].se[3]) {
-								player[player_number].se[3] = false;
+	for (int cnt = 0; cnt < player_sum; cnt++) {
+		//弱攻撃
+		if (player[cnt].status & 16) {
+			int t = now_time - player[cnt].timer[4];
+			if ((100 < t) && (t < 250)) {
+				for (int i = 0; i < player_sum; i++) {
+					if (i == cnt) continue;
+					int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+					if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+						if ((player[i].event & 1) == 0) {
+							if (player[cnt].se[2]) {
+								player[cnt].se[2] = false;
 								dos_se.playOneShot();
 							}
-							player[i].event[0] |= 2;
-							//TODO:あとで通信専用の時間に変更する
-							player[i].event[1] = now_time;
-							player[i].hp[1] -= 5;
-							player[player_number].ap += 3;
-						//必殺技
-						}else {
-							if (player[player_number].se[4]) {
-								player[player_number].se[4] = false;
-								dododos_se.playOneShot();
+							player[i].event |= 1;
+							if (player[i].status & 8) {
+								//TODO:攻撃無効化音
+							}else {
+								if (cnt == player_number)
+									getData().client->sendAction(U"WeakAttack", i);
+								player[i].hp[1] -= 3;
 							}
-							player[i].event[0] |= 4;
-							//TODO:あとで通信専用の時間に変更する
-							player[i].event[1] = now_time;
-							player[i].hp[1] -= 15;
+							player[cnt].ap += 1;
 						}
 					}
 				}
+			}
+		}
+		//狂攻撃+必殺技
+		if (player[cnt].status & 96) {
+			int tmp = now_time - player[cnt].timer[(player[cnt].status & 32) ? 5 : 6];
+			if ((200 < tmp) && (tmp < 400)) {
+				for (int i = 0; i < player_sum; i++) {
+					if (i == cnt) continue;
+					int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+					if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+						if ((player[i].event & 2) == 0) {
+							//狂攻撃
+							if (player[cnt].status & 32) {
+								if (player[cnt].se[3]) {
+									player[cnt].se[3] = false;
+									dos_se.playOneShot();
+								}
+								player[i].event |= 2;
+								if (player[i].status & 8) {
+									//TODO:攻撃無効化音
+								}else {
+									if (cnt == player_number)
+										getData().client->sendAction(U"StrongAttack", i);
+									player[i].hp[1] -= 5;
+								}
+								player[cnt].ap += 3;
+								//必殺技
+							}else {
+								if (player[cnt].se[4]) {
+									player[cnt].se[4] = false;
+									dododos_se.playOneShot();
+								}
+								player[i].event |= 4;
+								if (player[i].status & 8) {
+									//TODO:攻撃無効化音
+								}else {
+									if (cnt == player_number)
+										getData().client->sendAction(U"SpecialAttack", i);
+									player[i].hp[1] -= 15;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		//ガード破壊
+
+		//TODO:次はここから！！
+
+		//シールド
+		if (player[cnt].status & 8) {
+			int t = now_time - player[cnt].timer[3];
+			//ガード時間は1秒
+			if (t > 1000) {
+				player[cnt].status ^= 8;
+				getData().client->sendAction(U"VoidGuard", cnt);
 			}
 		}
 	}
@@ -241,16 +434,18 @@ void Game::update_player() {
 		if (player[i].hp[0] <= 0);//TODO:GAMEOVER処理
 	}
 
-	//移動範囲制限
-	player_reserved_pos.x = Clamp(player_reserved_pos.x, 50.0, 1850.0);
-
-	//プレイヤーの位置を更新を確定
-	player[player_number].pos[0] = player_reserved_pos;
+	
+	for (int i = 0; i < player_sum; i++) {
+		//移動範囲制限
+		player_reserved_pos[i].x = Clamp(player_reserved_pos[i].x, 50.0, 1850.0);
+		//プレイヤーの位置を更新を確定
+		player[i].pos[0] = player_reserved_pos[i];
+	}
 }
 
 //APバーのアニメーションを更新
 void Game::update_AP_bar_animation() {
-	int now_time = (int)Time::GetMillisec();
+	int now_time = GameTimer();
 	//APバーが満タンの時、炎のアニメーションを描く
 	for (int i = 0; i < player_sum; i++) {
 		if (!player_flag[i]) continue;
@@ -263,34 +458,168 @@ void Game::update_AP_bar_animation() {
 	}
 }
 
-//TODO:通信関連が届いたら実装
-void Game::init_connection() {
-	connection_timer = (int)Time::GetMillisec();
-	return;
-}
-
-//TODO:通信関連が届いたら実装
 void Game::synchronizate_data() {
-	if ((int)Time::GetMillisec() - connection_timer > 50) {
-		//TODO:通信処理
-
-		//いろいろ初期化
-		connection_timer = (int)Time::GetMillisec();
-		for (int i = 0; i < player_sum; i++) {
-			if (i == player_number) continue;
-			player[i].event[0] = 0;
-			player[i].event[1] = 0;
-			//TODO:同期後のHPを処理する
-			player[i].hp[0] = player[i].hp[1];
+	//同期
+	try {
+		getData().client->sendReport(U"PlayerInfoPos", player[player_number].pos);
+		if (player[player_number].status != player[player_number].old_status) {
+			getData().client->sendReport(U"PlayerStatus", player[player_number].status);
+			player[player_number].old_status = player[player_number].status;
 		}
+		getData().client->sendReport(U"PlayerInfoTimer", player[player_number].timer);
+		//自分のHPは基本的に相手が管理する
+		getData().client->sendReport(U"PlayerInfoHP", player[another_player_number].hp);
+		getData().client->sendReport(U"PlayerInfoAP", player[player_number].ap);
+		getData().client->update();
+		//一方的な報告の処理
+		while (const auto event = getData().client->receiveReport()) {
+			if (event->type == U"PlayerInfoPos") {
+				Json2ArrayPos((event->data).getString(), player[another_player_number].pos);
+			}
+			if (event->type == U"PlayerStatus") {
+				player[another_player_number].status = (event->data).get<int32>();
+			}
+			if (event->type == U"PlayerInfoTimer") {
+				Json2ArrayTimer((event->data).getString(), player[another_player_number].timer);
+			}
+			//自分のHPは基本的に相手が管理する
+			//したがって相手に自分のHPを聞かなくてはならない
+			if (event->type == U"PlayerInfoHP") {
+				Json2ArrayHP((event->data).getString(), player[player_number].hp);
+			}
+			if (event->type == U"PlayerInfoAP") {
+				player[another_player_number].ap = (event->data).get<int32>();
+			}
+		}
+		//相互確認が必要な処理
+		bool void_attack[player_sum] = { false };
+		while (const auto event = getData().client->receiveAction()) {
+			if (event->type == U"WeakAttack") {
+				//自分のHPは基本的に相手が管理する
+				if (event->data.get<int32>() != player_number) {
+					//ガード中
+					if (void_attack[event->data.get<int32>()]) {
+						//暫定HPを元に戻す
+						player[event->data.get<int32>()].hp[1] += 3;
+						//APを増やす
+						if (event->data.get<int32>() == player_number)player[event->data.get<int32>()].ap += 3;
+						//ガードしていない
+					}
+					else {
+						//実質HPを確定
+						player[event->data.get<int32>()].hp[0] -= 3;
+					}
+				}
+			}elif(event->type == U"StrongAttack") {
+				if (event->data.get<int32>() != player_number) {
+					//ガード中
+					if (void_attack[event->data.get<int32>()]) {
+						//暫定HPを元に戻す
+						player[event->data.get<int32>()].hp[1] += 5;
+						//APを増やす
+						if (event->data.get<int32>() == player_number)player[event->data.get<int32>()].ap += 5;
+						//ガードしていない
+					}
+					else {
+						//実質HPを確定
+						player[event->data.get<int32>()].hp[0] -= 5;
+					}
+				}
+			}elif(event->type == U"SpecialAttack") {
+				if (event->data.get<int32>() != player_number) {
+					//ガード中
+					if (void_attack[event->data.get<int32>()]) {
+						//暫定HPを元に戻す
+						player[event->data.get<int32>()].hp[1] += 15;
+						//APを増やす
+						if (event->data.get<int32>() == player_number)player[event->data.get<int32>()].ap += 15;
+						//ガードしていない
+					}
+					else {
+						//実質HPを確定
+						player[event->data.get<int32>()].hp[0] -= 15;
+					}
+				}
+			}elif(event->type == U"Guard") {
+				void_attack[event->data.get<int32>()] = true;
+			}elif(event->type == U"VoidGuard") {
+				void_attack[event->data.get<int32>()] = false;
+			}
+		}
+
+		//2秒ごとにpingを取得
+		if (GameTimer() - ping_timer > 2000) {
+			ping_timer = GameTimer();
+			ping = (int)getData().client->api->fetchServerStatus().get().ping.count();
+		}
+	}catch (const APIClient::HTTPError& error) {
+		Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
+		OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
+	}
+	catch (const Error& error) {
+		if (error.what() == U"Session not found.") {
+			error_mode = 1;
+			error_ID = 2;
+		}else {
+			Print << error.what();
+			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
+		}
+	}
+
+	for (int i = 0; i < player_sum; i++) {
+		player[i].event = 0;
+		//同期後のHPを確定する
+		player[i].hp[1] = player[i].hp[0];
 	}
 }
 
+#define remove_trash(str)\
+	str.replace(U"}", U"");\
+	str.replace(U"{", U"");\
+	str.replace(U")", U"");\
+	str.replace(U"(", U"");
+
+void Game::Json2ArrayTimer(String str, int(&timer)[16]) {
+	remove_trash(str);
+	// 文字列から数値を抽出
+	Array<int32> parts = str.split(U',').map(Parse<int32>);
+	for (int i = 0; i < 16; i++)timer[i] = parts[i];
+	timer[0] = GameTimer() - timer[1];
+	timer[2] = GameTimer() - timer[7];
+	timer[3] = GameTimer() - timer[8];
+	timer[4] = GameTimer() - timer[9];
+	timer[5] = GameTimer() - timer[10];
+	timer[6] = GameTimer() - timer[11];
+	timer[12] = GameTimer() - timer[13];
+	timer[14] = GameTimer() - timer[15];
+}
+
+void Game::Json2ArrayPos(String str,Vec2 (& pos)[2]) {
+	remove_trash(str);
+	// 文字列から数値を抽出
+	Array<double> parts = str.split(U',').map(Parse<double>);
+
+	if (parts.size() >= 4) {
+		pos[0].x = parts[0];
+		pos[0].y = parts[1];
+		pos[1].x = parts[2];
+		pos[1].y = parts[3];
+	}
+}
+
+void Game::Json2ArrayHP(String str, int(&hp)[3]) {
+	remove_trash(str);
+	// 文字列から数値を抽出
+	Array<int32> parts = str.split(U',').map(Parse<int32>);
+	for (int i = 0; i < 3; i++)hp[i] = parts[i];
+}
+
+#undef remove_trash
 
 void Game::update_player_animation() {
-	int now_time = (int)Time::GetMillisec();
+	int now_time = GameTimer();
 	for (int i = 0; i < player_sum; i++) {
-		if (!player_flag[i]) continue;
+		//if (!player_flag[i]) continue;
 		//待機中
 		if (player[i].status == 0) {
 			player[i].img_number = 0;
@@ -301,7 +630,16 @@ void Game::update_player_animation() {
 			continue;
 		//弱攻撃のアニメーション
 		}elif(player[i].status & 16) {
-			player[i].img_number = 0;
+			if (now_time - player[i].timer[4] < 60) {
+				player[i].img_number = 0;
+			}elif(now_time - player[i].timer[4] < 190) {
+				player[i].img_number = 4;
+			}elif(now_time - player[i].timer[4] < 250) {
+				player[i].img_number = 0;
+			}else {
+				player[i].status ^= 16;
+				player[i].img_number = 0;
+			}
 			continue;
 		//狂攻撃のアニメーション
 		}elif(player[i].status & 32) {
@@ -336,7 +674,8 @@ void Game::update_player_animation() {
 			continue;
 		//移動アニメーション
 		}elif(player[i].status & 3) {
-			if (now_time - player[i].img_timer > 160) {
+			int t = now_time - player[i].img_timer;
+			if (t > 160) {
 				player[i].img_timer = now_time;
 				player[i].img_status = 1+player[i].img_status % 2;
 			}
@@ -347,21 +686,46 @@ void Game::update_player_animation() {
 	}
 }
 
+void Game::draw() const {
+	if (!is_connected) {
+		Rect(0, 0, 1920, 1080).draw(ColorF{ Palette::Black });
+		connecting_img.drawAt(1500, 950);
+	}else {
+		background_img.draw(0, 0);
+		draw_HP_bar();
+		draw_AP_bar();
+		draw_ping();
 
-void Game::drawFadeIn(double t) const {
-	//BGMを流す
-	if (!bgm.isPlaying())bgm.play();
-	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,1.0 - t / 0.8 });
+		draw_player();
+
+		if (fade_back_alpha > 0) {
+			Rect(0, 0, 1920, 1080).draw(ColorF{ 0,fade_back_alpha });
+			connecting_img.drawAt(1500, 950, ColorF{ 1, fade_back_alpha });
+		}
+	}
+
+	//エラーダイアログ
+	if (error_mode) {
+		Rect(0, 0, 1920, 1080).draw(ColorF{ 0, back_alpha });
+		if (error_ID == 1) {
+			destroyed_img.drawAt(960, error_pos_y);
+		}elif(error_ID == 2) {
+			timeout_img.drawAt(960, error_pos_y);
+		}
+	}
 }
 
-void Game::draw() const {
-	Scene::SetBackground(ColorF(0.2, 0.8, 0.6));
-	background_img.draw(0,0);
-	draw_HP_bar();
-	draw_AP_bar();
-
-	draw_player();
+void Game::draw_ping() const {
+	if (ping <= 30) {
+		ping_fast_img.draw(1550, 7);
+		font(ping).drawAt(1720, 50, Palette::Green);
+	}elif(ping <= 100) {
+		ping_middle_img.draw(1550, 7);
+		font(ping).drawAt(1720, 50, ColorF{1.0,0.729,0.0});
+	}else {
+		ping_slow_img.draw(1550, 7);
+		font(ping).drawAt(1720, 50, ColorF{ 0.812,0.137,0.137 });
+	}
 }
 
 //キャラの描画
@@ -369,22 +733,24 @@ void Game::draw_player() const {
 	for (int i = 0; i < player_sum;i++) {
 		if (!player_flag[i]) continue;
 		player_img.at(getData().player[i]).at(player[i].img_number).mirrored(player[i].direction).drawAt(player[i].pos[0]);
+		//シールドの表示
+		if (player[i].status & 8)guard_img.drawAt(player[i].pos[0]);
 	}
 }
 
 //HPバーの描画
 void Game::draw_HP_bar() const {
 	//1PのHP
-	HP_bar_flame_img.draw(120, 70);
-	HP_bar_gray_img.draw(130, 78);
-	HP_bar_red_img(0, 0, 680.0 * ((double)player[0].hp[2] / player_max_hp), 25).draw(130, 78);
-	HP_bar_blue_img(0, 0, 680.0 * ((double)player[0].hp[1] / player_max_hp), 25).draw(130, 78);
+	HP_bar_flame_img.draw(120, 100);
+	HP_bar_gray_img.draw(130, 108);
+	HP_bar_red_img(0, 0, 680.0 * ((double)player[0].hp[2] / player_max_hp), 25).draw(130, 108);
+	HP_bar_blue_img(0, 0, 680.0 * ((double)player[0].hp[1] / player_max_hp), 25).draw(130, 108);
 
 	//2PのHP
-	HP_bar_flame_img.draw(1090, 70);
-	HP_bar_gray_img.draw(1100, 78);
-	HP_bar_red_img (680.0 * (1.0 - ((double)player[1].hp[2] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[2] / player_max_hp), 25).mirrored().draw(1100, 78);
-	HP_bar_blue_img(680.0 * (1.0 - ((double)player[1].hp[1] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[1] / player_max_hp), 25).mirrored().draw(1100, 78);
+	HP_bar_flame_img.draw(1090, 100);
+	HP_bar_gray_img.draw(1100, 108);
+	HP_bar_red_img (680.0 * (1.0 - ((double)player[1].hp[2] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[2] / player_max_hp), 25).mirrored().draw(1100, 108);
+	HP_bar_blue_img(680.0 * (1.0 - ((double)player[1].hp[1] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[1] / player_max_hp), 25).mirrored().draw(1100, 108);
 }
 
 //APバーの描画
