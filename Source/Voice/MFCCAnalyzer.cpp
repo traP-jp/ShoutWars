@@ -16,7 +16,8 @@ using namespace std;
  */
 
 MFCCAnalyzer::MFCCAnalyzer(Microphone mic, uint64 mfccHistoryLife, size_t mfccOrder, float preEmphasisCoefficient)
-	: mic(mic), mfccHistoryLife(mfccHistoryLife), mfccOrder(mfccOrder), preEmphasisCoefficient(preEmphasisCoefficient) {}
+	: mic(mic), mfccHistoryLife(mfccHistoryLife), mfccOrder(mfccOrder),
+	preEmphasisCoefficient(preEmphasisCoefficient), mfccHistory(make_shared<map<uint64, Array<float>>>()) {}
 
 Array<float> MFCCAnalyzer::analyze(FFTSampleLength frames, size_t melChannels) {
 	if (!mic.isRecording()) throw Error{ U"mic must be recording" };
@@ -74,14 +75,14 @@ Array<float> MFCCAnalyzer::analyze(FFTSampleLength frames, size_t melChannels) {
 	}
 
 	cleanMFCCHistory();
-	return mfccHistory[Time::GetMicrosec()] = mfcc;
+	return (*mfccHistory)[Time::GetMicrosec()] = mfcc;
 }
 
 Array<float> MFCCAnalyzer::getMelSpectrum() const {
 	return melSpectrum;
 }
 
-map<uint64, Array<float>> MFCCAnalyzer::getMFCCHistory() {
+shared_ptr<map<uint64, Array<float>>> MFCCAnalyzer::getMFCCHistory() {
 	cleanMFCCHistory();
 	return mfccHistory;
 }
@@ -96,5 +97,5 @@ float MFCCAnalyzer::melToFreq(float mel) {
 
 size_t MFCCAnalyzer::cleanMFCCHistory() {
 	const auto now = Time::GetMicrosec();
-	return erase_if(mfccHistory, [this, now](const auto& p) { return now - p.first > mfccHistoryLife; });
+	return erase_if(*mfccHistory, [this, now](const auto& p) { return now - p.first > mfccHistoryLife; });
 }

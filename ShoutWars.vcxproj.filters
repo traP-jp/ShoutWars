@@ -177,6 +177,9 @@
     <ClCompile Include="Source\Voice\MFCCAnalyzer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Voice\Phoneme.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="App\icon.ico">
@@ -497,6 +500,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Voice\MFCCAnalyzer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Voice\Phoneme.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
