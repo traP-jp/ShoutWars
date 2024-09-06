@@ -8,16 +8,16 @@
 struct Player {
 	//各種変数
 	Vec2 pos[2];
-	//ステータス(0:待機中,1:左移動,2:右移動,4ジャンプ,8:スタン,16:弱,32:狂,64:必殺,128～:予備)
+	//ステータス(0:待機中,1:左移動,2:右移動,4ジャンプ,8:ガード,16:弱,32:狂,64:必殺,128～:予備)
 	int status = 0;
 	int old_status = 0;
 	//HP(0:実質HP(確定),1:表示HP(未確定),2:表示HP(確定))
 	int hp[3] = { 1000,1000,1000 };
 	int ap = 0;
 	double speed = 80.0;
-	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:スタン,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6))
+	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:ガード,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6))
 	int timer[12];
-	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺)
+	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺,5:ガード)
 	bool se[5] = { false };
 	//Playerの向き(true:右,false:左)
 	bool direction = false;
@@ -46,6 +46,8 @@ private:
 	const static int player_status_sum = 10;
 	const static int player_max_hp = 1000;
 	const static int player_max_ap = 100;
+	//font////////////////////////////////////////////////////////////
+	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
 	const Texture background_img{ U"../images/game/system/background.png"};
 	const Texture HP_bar_flame_img{ U"../images/game/system/HP_bar_flame.png" };
@@ -58,6 +60,10 @@ private:
 	const Texture destroyed_img{ U"../images/game/system/destroyed.png" };
 	const Texture timeout_img{ U"../images/game/system/timeout.png" };
 	const Texture connecting_img{ U"../images/common/connecting.png" };
+	const Texture gard_img{ U"../images/game/system/gard.png" };
+	const Texture ping_fast_img{ U"../images/game/system/ping_fast.png" };
+	const Texture ping_middle_img{ U"../images/game/system/ping_middle.png" };
+	const Texture ping_slow_img{ U"../images/game/system/ping_slow.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	//音楽////////////////////////////////////////////////////////////
@@ -69,6 +75,7 @@ private:
 	const Audio kiran_se{ U"../audioes/kiran.wav" };
 	const Audio bom_se{ U"../audioes/bom.wav" };
 	const Audio cancel_sound{ U"../audioes/cancel.wav" };
+	const Audio gard_se{ U"../audioes/gard.mp3" };
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
@@ -96,6 +103,8 @@ private:
 	int connection_timer = 0;
 	double ping_time = 0.0;
 	bool is_connected = false;
+	int ping = 0;
+	int ping_timer = 0;
 
 	//内部関数////////////////////////////////////////////////////////
 
@@ -104,6 +113,7 @@ private:
 	void draw_player() const;
 	void draw_HP_bar() const;
 	void draw_AP_bar() const;
+	void draw_ping() const;
 	void update_player();
 	void update_player_animation();
 	void update_AP_bar_animation();
