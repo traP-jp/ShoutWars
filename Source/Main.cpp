@@ -1,9 +1,9 @@
 ﻿#include "common.hpp"
-//#include "logo.hpp"
-//#include "Title.hpp"
-//#include "Matching.hpp"
-//#include "Game.hpp"
-//#include "Config.hpp"
+#include "logo.hpp"
+#include "Title.hpp"
+#include "Matching.hpp"
+#include "Game.hpp"
+#include "Config.hpp"
 #include "Calibration.hpp"
 
 void Main() {
@@ -20,11 +20,11 @@ void Main() {
 	Window::SetTitle(U"ShoutWars");
 
 	App manager;
-	//manager.add<logo>(State::logo);
-	//manager.add<Title>(State::Title);
-	//manager.add<Matching>(State::Matching);
-	//manager.add<Game>(State::Game);
-	//manager.add<Config>(State::Config);
+	manager.add<logo>(State::logo);
+	manager.add<Title>(State::Title);
+	manager.add<Matching>(State::Matching);
+	manager.add<Game>(State::Game);
+	manager.add<Config>(State::Config);
 	//manager.add<Result>(State::Result);
 	manager.add<Calibration>(State::Calibration);
 

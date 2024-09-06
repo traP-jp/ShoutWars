@@ -24,6 +24,7 @@ void Calibration::update() {
 	// 音素登録ボタン
 	for (size_t id : step(12)) {
 		if (phonemeRects[id].mouseOver()) {
+			Cursor::RequestStyle(CursorStyle::Hand);
 			if (MouseL.down()) isWaitingToSet = true;
 			if (isWaitingToSet && MouseL.pressedDuration() >= 0.4s) {
 				isWaitingToSet = false;
@@ -32,6 +33,15 @@ void Calibration::update() {
 		}
 	}
 	if (MouseL.up()) isWaitingToSet = false;
+
+	// OK ボタン
+	if (!phoneme.isMFCCUnset() && okButton.mouseOver()) {
+		Cursor::RequestStyle(CursorStyle::Hand);
+		if (MouseL.down()) {
+			phoneme.save();
+			changeScene(State::Title);
+		}
+	}
 }
 
 void Calibration::draw() const {
@@ -76,7 +86,7 @@ void Calibration::draw() const {
 		if (!rect.mouseOver()) rect.drawFrame(4, Palette::White);
 		else if (!MouseL.pressed()) rect.drawFrame(12, Palette::White);
 		else if (MouseL.pressedDuration() < 0.5s) rect.drawFrame(12, Palette::Orange);
-		else rect.drawFrame(8, Palette::Limegreen);
+		else rect.drawFrame(10, Palette::Limegreen);
 		font(phonemeNames[id]).draw(
 			30,
 			Arg::topCenter(rect.bottomCenter() + Vec2{ 0, 20 }),
@@ -98,12 +108,15 @@ void Calibration::draw() const {
 
 	// タイトル
 	font(U"キャリブレーション").draw(60, 40, 30);
-}
 
-void Calibration::drawFadeIn(double t) const {
-	// TODO
-}
-
-void Calibration::drawFadeOut(double t) const {
-	// TODO
+	// OK ボタン
+	if (phoneme.isMFCCUnset()) {
+		okButton.draw(Palette::Forestgreen);
+		font(U"未登録の音素\nがあります").drawAt(25, okButton.center(), Palette::White);
+	}
+	else {
+		okButton.draw(Palette::Limegreen);
+		font(U"OK").drawAt(50, okButton.center(), Palette::Black);
+	}
+	if (okButton.mouseOver()) okButton.drawFrame(4, Palette::White);
 }

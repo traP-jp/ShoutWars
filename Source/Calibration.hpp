@@ -15,12 +15,12 @@ class Calibration : public App::Scene {
 		U"う (高)", U"う (低)", U"え (高)", U"え (低)", U"お (高)", U"お (低)",
 	};
 
+	RectF okButton{ Arg::topRight(1880, 40), 200, 70 };
+
 public:
 	Calibration(const InitData& init);
 	~Calibration();
 
 	void update() override;
 	void draw() const override;
-	void drawFadeIn(double t) const override;
-	void drawFadeOut(double t) const override;
 };
