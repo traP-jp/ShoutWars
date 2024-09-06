@@ -3,34 +3,101 @@
 using namespace std;
 
 Calibration::Calibration(const InitData& init) : IScene(init) {
-	if (System::EnumerateMicrophones().isEmpty()) throw Error{ U"No microphone is connected" };
-	mic = Microphone{ StartImmediately::Yes };
-	if (not mic.isRecording()) throw Error{ U"Failed to start recording" };
-	mfccAnalyzer = make_unique<MFCCAnalyzer>(mic);
+	for (uint32 i : step(6)) {
+		phonemeRects << RectF{ 140.0 + i * 240.0, 620.0 , 60.0, 360.0 };
+		phonemeRects << RectF{ 260.0 + i * 240.0, 620.0 , 60.0, 360.0 };
+	}
+	getData().phoneme.start();
+}
+
+Calibration::~Calibration() {
+	getData().phoneme.stop();
 }
 
 void Calibration::update() {
-	ClearPrint();
-	Print << U"bufferLength={}\nsampleRate={}\nposSample={}"_fmt(mic.getBufferLength(), mic.getSampleRate(), mic.posSample());
-	mic.fft(fftResult, FFTSampleLength::SL2K);
-	mfcc = mfccAnalyzer->analyze(FFTSampleLength::SL2K);
-	Print << U"MFCC:";
-	for (size_t i : step(mfcc.size())) Print << U"  [{:2}]={:.4f}"_fmt(i, mfcc[i]);
+	auto&& phoneme = getData().phoneme;
+
+	// 音声解析
+	phoneme.mic.fft(fftResult, FFTSampleLength::SL2K);
+	vowel = phoneme.estimate(FFTSampleLength::SL2K);
+
+	// 音素登録ボタン
+	for (size_t id : step(12)) {
+		if (phonemeRects[id].mouseOver()) {
+			if (MouseL.down()) isWaitingToSet = true;
+			if (isWaitingToSet && MouseL.pressedDuration() >= 0.4s) {
+				isWaitingToSet = false;
+				phoneme.setMFCC(id);
+			}
+		}
+	}
+	if (MouseL.up()) isWaitingToSet = false;
 }
 
 void Calibration::draw() const {
+	const auto nowUs = Time::GetMicrosec();
+	auto&& phoneme = getData().phoneme;
+
+	// 背景
+	RectF{ 0, 0, 1920, 1080 }.draw(Palette::Black);
+
+	// スペクトラム
 	const size_t hz = 800;
-	for (size_t i : step(hz)) {
+	for (size_t i : step(min(fftResult.buffer.size(), hz))) {
 		RectF{
 			Arg::bottomLeft(i * 1920.0 / hz, 1080),
 			1920.0 / hz, (1 + log10(fftResult.buffer[i] * 2) / 6) * 1080
-		}.draw(HSV{ 240 - 0.5 * i });
+		}.draw(HSV{ 240 - 0.45 * i, 0.3 });
 	}
-	RectF{ Arg::leftCenter(0, 540), 1920, 4 }.draw(Palette::Dimgray);
-	LineString points;
-	for (size_t i : step(mfcc.size())) points << Vec2{ (i + 0.5) * 1920.0 / mfcc.size(), 540 - mfcc[i] * 3 };
-	points.draw(6, Palette::Black);
-	points.draw(4, Palette::White);
+
+	// MFCC のグラフ
+	RectF{ Arg::topLeft(120, 140), 1680.0, 360.0 }.draw(Palette::Black);
+	for (const auto [timeUs, mfcc] : *phoneme.getMFCCHistory()) {
+		for (size_t i : step(12)) {
+			RectF{
+				Arg::topLeft(1800.0 - 1680.0 * (nowUs - timeUs) / (phoneme.mfccHistoryLife / 1.1), 140.0 + i * 30.0),
+				1680.0 * 50'000 / (phoneme.mfccHistoryLife / 1.1), 30.0
+			}.draw(HSV{ 150 - mfcc[i] * 2, 0.6 });
+		}
+	}
+	RectF{ Arg::rightCenter(120, 320), 200.0, 366.0 }.draw(Palette::Black);
+	RectF{ Arg::leftCenter(1800, 320), 200.0, 366.0 }.draw(Palette::Black);
+	RectF{ Arg::topLeft(120, 140), 1680.0, 360.0 }.drawFrame(6, Palette::White);
+
+	// 音素登録
+	for (size_t id : step(12)) {
+		const auto& rect = phonemeRects[id];
+		rect.draw(Palette::Black);
+		for (size_t i : step(12)) {
+			RectF{
+				rect.x, rect.y + i * (rect.h / 12), rect.w, rect.h / 12
+			}.draw(HSV{ 150 - phoneme.mfccList[id][i] * 2, 0.6 });
+		}
+		if (!rect.mouseOver()) rect.drawFrame(4, Palette::White);
+		else if (!MouseL.pressed()) rect.drawFrame(12, Palette::White);
+		else if (MouseL.pressedDuration() < 0.5s) rect.drawFrame(12, Palette::Orange);
+		else rect.drawFrame(8, Palette::Limegreen);
+		font(phonemeNames[id]).draw(
+			30,
+			Arg::topCenter(rect.bottomCenter() + Vec2{ 0, 20 }),
+			id == vowel ? Palette::Limegreen : Palette::Orange
+		);
+	}
+	font(U"登録したい音素を発音しながら緑に光るまで長押ししてください。").draw(40, 120, 540);
+
+	// 入力感度
+	double rootThreshold = sqrt(phoneme.volumeThreshold);
+	RectF{ Arg::bottomRight(1700.0, 940.0), 80.0, sqrt(phoneme.mic.rootMeanSquare()) * 360.0 }.draw(Palette::White);
+	RectF{ Arg::rightCenter(1700.0, 940.0 - rootThreshold * 360.0), 80.0, 4.0 }.draw(Palette::Skyblue);
+	RectF{ Arg::bottomRight(1700.0, 940.0), 80.0, 360.0 }.drawFrame(
+		4, phoneme.mic.rootMeanSquare() < phoneme.volumeThreshold ? Palette::Orange : Palette::Lime
+	);
+	SimpleGUI::VerticalSlider(rootThreshold, 0.0, 1.0, Vec2{ 1740.0, 565.0 }, 390.0);
+	phoneme.volumeThreshold = pow(rootThreshold, 2.0);
+	font(U"入力感度").draw(40, 1620, 980);
+
+	// タイトル
+	font(U"キャリブレーション").draw(60, 40, 30);
 }
 
 void Calibration::drawFadeIn(double t) const {

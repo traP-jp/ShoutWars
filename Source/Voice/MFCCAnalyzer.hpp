@@ -14,7 +14,7 @@ public:
 	/// @param mfccOrder MFCC 次数
 	/// @param preEmphasisCoefficient 高域強調係数
 	[[nodiscard]] explicit MFCCAnalyzer(
-		Microphone mic, uint64 mfccHistoryLife = 10'000'000uLL, size_t mfccOrder = 12, float preEmphasisCoefficient = 0.97
+		Microphone mic, uint64 mfccHistoryLife = 2'200'000uLL, size_t mfccOrder = 12, float preEmphasisCoefficient = 0.97
 	);
 
 	/// @brief 現在のマイク音声でフォルマント解析をする
@@ -29,15 +29,15 @@ public:
 	[[nodiscard]] Array<float> getMelSpectrum() const;
 
 	/// @brief MFCC の履歴を取得する
-	/// @return マイクロ秒と MFCC の std::map
-	[[nodiscard]] std::map<uint64, Array<float>> getMFCCHistory();
+	/// @return マイクロ秒と MFCC の std::map の共有ポインタ
+	[[nodiscard]] std::shared_ptr<std::map<uint64, Array<float>>> getMFCCHistory();
 
 protected:
 	static float freqToMel(float freq);
 	static float melToFreq(float mel);
 
 	Array<float> melSpectrum;
-	std::map<uint64, Array<float>> mfccHistory;
+	std::shared_ptr<std::map<uint64, Array<float>>> mfccHistory;
 
 	size_t cleanMFCCHistory();
 };
