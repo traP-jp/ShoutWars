@@ -76,7 +76,8 @@ int Game::getkey() {
 int Game::voice_command() {
 	if (KeyB.pressed()) return 1;
 	if (KeyV.pressed()) return 2;
-	if (KeyG.pressed()) return 3;
+	if (KeyF.pressed()) return 3;
+	if (KeyG.pressed()) return 4;
 	return 0;
 }
 
@@ -285,7 +286,7 @@ void Game::update_player() {
 		if (got_voice == 1) {
 			if ((player[player_number].status & 116) == 0) {
 				shot_se.playOneShot();
-				player[player_number].se[3] = true;
+				player[player_number].se[2] = true;
 				player[player_number].status |= 16;
 				player[player_number].timer[4] = now_time;
 			}
@@ -307,6 +308,13 @@ void Game::update_player() {
 				player[player_number].ap = 0;
 				player[player_number].special_attack = false;
 			}
+		//ガード
+		}elif(got_voice == 4) {
+			gard_se.playOneShot();
+			player[player_number].se[5] = true;
+			player[player_number].status |= 8;
+			player[player_number].timer[3] = now_time;
+			getData().client->sendAction(U"Guard", player_number);
 		}
 
 	}
@@ -322,8 +330,8 @@ void Game::update_player() {
 					int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 					if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
 						if ((player[i].event[0] & 1) == 0) {
-							if (player[cnt].se[3]) {
-								player[cnt].se[3] = false;
+							if (player[cnt].se[2]) {
+								player[cnt].se[2] = false;
 								dos_se.playOneShot();
 							}
 							getData().client->sendAction(U"WeakAttack", Vec2{ cnt,i });
@@ -453,6 +461,11 @@ void Game::synchronizate_data() {
 			}
 		}
 
+		//0.5秒ごとにpingを取得
+		if (GameTimer() - ping_timer > 500) {
+			ping_timer = GameTimer();
+			ping = (int)getData().client->api->fetchServerStatus().get().ping.count();
+		}
 	}catch (const APIClient::HTTPError& error) {
 		Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
 		OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
@@ -587,6 +600,7 @@ void Game::draw() const {
 		background_img.draw(0, 0);
 		draw_HP_bar();
 		draw_AP_bar();
+		draw_ping();
 
 		draw_player();
 
@@ -607,6 +621,19 @@ void Game::draw() const {
 	}
 }
 
+void Game::draw_ping() const {
+	if (ping <= 30) {
+		ping_fast_img.draw(1550, 7);
+		font(ping).drawAt(1720, 50, Palette::Green);
+	}elif(ping <= 100) {
+		ping_middle_img.draw(1550, 7);
+		font(ping).drawAt(1720, 50, Palette::Orange);
+	}else {
+		ping_slow_img.draw(1550, 7);
+		font(ping).drawAt(1720, 50, Palette::Red);
+	}
+}
+
 //キャラの描画
 void Game::draw_player() const {
 	for (int i = 0; i < player_sum;i++) {
@@ -618,16 +645,16 @@ void Game::draw_player() const {
 //HPバーの描画
 void Game::draw_HP_bar() const {
 	//1PのHP
-	HP_bar_flame_img.draw(120, 70);
-	HP_bar_gray_img.draw(130, 78);
-	HP_bar_red_img(0, 0, 680.0 * ((double)player[0].hp[2] / player_max_hp), 25).draw(130, 78);
-	HP_bar_blue_img(0, 0, 680.0 * ((double)player[0].hp[1] / player_max_hp), 25).draw(130, 78);
+	HP_bar_flame_img.draw(120, 100);
+	HP_bar_gray_img.draw(130, 108);
+	HP_bar_red_img(0, 0, 680.0 * ((double)player[0].hp[2] / player_max_hp), 25).draw(130, 108);
+	HP_bar_blue_img(0, 0, 680.0 * ((double)player[0].hp[1] / player_max_hp), 25).draw(130, 108);
 
 	//2PのHP
-	HP_bar_flame_img.draw(1090, 70);
-	HP_bar_gray_img.draw(1100, 78);
-	HP_bar_red_img (680.0 * (1.0 - ((double)player[1].hp[2] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[2] / player_max_hp), 25).mirrored().draw(1100, 78);
-	HP_bar_blue_img(680.0 * (1.0 - ((double)player[1].hp[1] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[1] / player_max_hp), 25).mirrored().draw(1100, 78);
+	HP_bar_flame_img.draw(1090, 100);
+	HP_bar_gray_img.draw(1100, 108);
+	HP_bar_red_img (680.0 * (1.0 - ((double)player[1].hp[2] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[2] / player_max_hp), 25).mirrored().draw(1100, 108);
+	HP_bar_blue_img(680.0 * (1.0 - ((double)player[1].hp[1] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[1] / player_max_hp), 25).mirrored().draw(1100, 108);
 }
 
 //APバーの描画
