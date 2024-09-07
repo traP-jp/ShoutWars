@@ -820,6 +820,7 @@ void Game::draw() const {
 		connecting_img.drawAt(1500, 950);
 	}else {
 		background_img.draw(0, 0);
+		command_img.draw(120, 150);
 		draw_HP_bar();
 		draw_AP_bar();
 		draw_ping();
