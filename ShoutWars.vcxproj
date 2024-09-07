@@ -116,6 +116,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Calibration.cpp" />
     <ClCompile Include="Source\common_function.cpp" />
     <ClCompile Include="Source\Config.cpp" />
     <ClCompile Include="Source\Game.cpp" />
@@ -125,6 +126,9 @@
     <ClCompile Include="Source\Multiplay\RoomInfo.cpp" />
     <ClCompile Include="Source\Result.cpp" />
     <ClCompile Include="Source\Title.cpp" />
+    <ClCompile Include="Source\Voice\MFCCAnalyzer.cpp" />
+    <ClCompile Include="Source\Voice\Phoneme.cpp" />
+    <ClCompile Include="Source\Voice\WordDetector.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -235,6 +239,7 @@
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Calibration.hpp" />
     <ClInclude Include="Source\common.hpp" />
     <ClInclude Include="Source\common_function.hpp" />
     <ClInclude Include="Source\Config.hpp" />
@@ -244,6 +249,9 @@
     <ClInclude Include="Source\Multiplay\RoomInfo.hpp" />
     <ClInclude Include="Source\Result.hpp" />
     <ClInclude Include="Source\Title.hpp" />
+    <ClInclude Include="Source\Voice\MFCCAnalyzer.hpp" />
+    <ClInclude Include="Source\Voice\Phoneme.hpp" />
+    <ClInclude Include="Source\Voice\WordDetector.hpp" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Source\Multiplay\APIClient.hpp" />
     <ClInclude Include="Source\Multiplay\SyncClient.hpp" />
