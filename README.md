@@ -1,4 +1,4 @@
-﻿# ShoutWars
+# ShoutWars
 
 **© 2024 traP Community**  
 ソースコードのライセンス: [MIT License](LICENSE)  
