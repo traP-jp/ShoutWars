@@ -147,6 +147,7 @@ private:
 public:
 
 	Game(const InitData& init);
+	~Game() { getData().phoneme.stop(); }
 
 	void update() override;
 

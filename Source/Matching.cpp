@@ -6,7 +6,7 @@ using namespace std;
 Matching::Matching(const InitData& init) : IScene(init)
 {
 	//資格を満たしているかどうか
-	if (!getData().phoneme.isMFCCUnset()) {
+	if (getData().phoneme.isMFCCUnset()) {
 		error_ID = 7;
 		error_mode = 1;
 	}
