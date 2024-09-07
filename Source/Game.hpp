@@ -1,5 +1,6 @@
 ﻿# pragma once
 # include "common.hpp"
+# include "Voice/WordDetector.hpp"
 #include <vector>
 #include <cmath>
 #include <string>
@@ -80,9 +81,12 @@ private:
 	const Audio cancel_sound{ U"../audioes/cancel.wav" };
 	const Audio guard_se{ U"../audioes/guard.mp3" };
 	const Audio void_damage_se{ U"../audioes/void_damage.mp3" };
+	const Audio break_guard_se{ U"../audioes/break_guard.wav" };
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
+	//特殊変数////////////////////////////////////////////////////////
+	WordDetector wordDetector{};
 
 	//変数////////////////////////////////////////////////////////////
 	//プレイヤーが存在するか

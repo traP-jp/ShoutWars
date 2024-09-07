@@ -37,7 +37,7 @@ void Title::update()
 			click_sound.playOneShot();
 			setting_flag = true;
 			getData().before_scene = State::Title;
-			changeScene(State::Config, 0.5s);
+			changeScene(State::Calibration, 0.5s);
 		}
 		//電卓出現
 		if (button2_shape.leftClicked()) {
