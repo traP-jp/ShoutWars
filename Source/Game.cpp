@@ -69,6 +69,9 @@ player_flag(player_sum, true)
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/destroy_guard.png") });
 	}
 
+	//録音開始!
+	getData().phoneme.start();
+
 	player[0].pos[0] = {600.0,player_min_y};
 	player[1].pos[0] = {1200,player_min_y};
 	player[1].direction = true;
