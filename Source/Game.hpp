@@ -68,6 +68,7 @@ private:
 	const Texture you_win_img{ U"../images/game/system/you_win.png" };
 	const Texture you_lose_img{ U"../images/game/system/you_lose.png" };
 	const Texture settle_img{ U"../images/game/system/settle.png" };
+	const Texture command_img{ U"../images/game/system/command.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	//音楽////////////////////////////////////////////////////////////
