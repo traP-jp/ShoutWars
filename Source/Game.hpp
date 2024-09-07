@@ -17,14 +17,14 @@ struct Player {
 	double speed = 80.0;
 	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:ガード,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6),12:ガード破壊,13:進捗(12),14:特殊攻撃,15:進捗(14))
 	int timer[16];
+
 	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺,5:ガード,6:ガード破壊)
-	bool se[6] = { false };
+	bool se[7] = { false };
 	//Playerの向き(true:右,false:左)
 	bool direction = false;
-	//1回限りのイベント(0:なし,1:弱,2:狂,4:必殺)
+	//1回限りのイベント(0:なし,1:弱,2:狂,4:必殺,8:ガード破壊)
 	int event;
 	//必殺技が使えるか
-	//XXX:debug用
 	bool special_attack = false;
 
 	int img_number = 0;
@@ -43,9 +43,9 @@ private:
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
 	const static int player_min_y = 650;
-	const static int player_status_sum = 10;
 	const static int player_max_hp = 1000;
-	const static int player_max_ap = 100;
+	//技が発動するために必要なAP
+	const static int player_max_ap = 500;
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
@@ -66,6 +66,7 @@ private:
 	const Texture ping_slow_img{ U"../images/game/system/ping_slow.png" };
 	const Texture you_win_img{ U"../images/game/system/you_win.png" };
 	const Texture you_lose_img{ U"../images/game/system/you_lose.png" };
+	const Texture settle_img{ U"../images/game/system/settle.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	//音楽////////////////////////////////////////////////////////////
@@ -78,6 +79,7 @@ private:
 	const Audio bom_se{ U"../audioes/bom.wav" };
 	const Audio cancel_sound{ U"../audioes/cancel.wav" };
 	const Audio guard_se{ U"../audioes/guard.mp3" };
+	const Audio void_damage_se{ U"../audioes/void_damage.mp3" };
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
@@ -93,6 +95,9 @@ private:
 	//描画用変数
 	double fade_back_alpha = 1.0;
 	int fade_back_timer = 0;
+	double settle_fade = 0.0;
+	bool finish_fade_mode = false;
+	double finish_fade = 0.0;
 	//エラー関連
 	int error_mode = 0;
 	//1:404,2:タイムアウト
@@ -100,6 +105,11 @@ private:
 	int error_timer = 0;
 	int error_pos_y = 1400;
 	double back_alpha = 0.0;
+	//ゲームシステム用
+	bool is_game_finished = false;
+	bool are_you_winnner = true;
+	int settle_timer = 0;
+	int settle_mode = 0;
 
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;
@@ -116,9 +126,11 @@ private:
 	void draw_HP_bar() const;
 	void draw_AP_bar() const;
 	void draw_ping() const;
+	void draw_settle() const;
 	void update_player();
 	void update_player_animation();
 	void update_AP_bar_animation();
+	void update_settle();
 	void synchronizate_data();
 	void update_error_screen();
 	int voice_command();
