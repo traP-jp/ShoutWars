@@ -18,37 +18,42 @@ player_flag(player_sum, true)
 	//玲の画像
 	if ((getData().player[0] == 0) || (getData().player[1] == 0)) {
 		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/waiting.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/run1.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/run2.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/1.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/2.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/running.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/running.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/kick.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/weak_attack.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/powerful_kick.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/destroy_guard.png") });
 	}
 	//ユウカの画像
 	if ((getData().player[0] == 1) || (getData().player[1] == 1)) {
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/waiting.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/run1.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/run2.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/running.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/special_kick.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/kick.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/weak_attack.png") });
 		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/powerful_kick.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/destroy_gard.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/special_kick.png") });
+		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/destroy_guard.png") });
 	}
 	//アイリの画像
 	if ((getData().player[0] == 2) || (getData().player[1] == 2)) {
 		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/waiting.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/run1.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/run2.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/1.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/2.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/running.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/running.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/kick.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/weak_attack.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/powerful_kick.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/destroy_guard.png") });
 	}
 	//No.0の画像
 	if ((getData().player[0] == 3) || (getData().player[1] == 3)) {
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/waiting.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/run1.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/run2.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/1.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/2.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/running.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/running.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/kick.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/weak_attack.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/powerful_kick.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/destroy_guard.png") });
 	}
 
 	player[0].pos[0] = {600.0,player_min_y};
@@ -180,7 +185,7 @@ void Game::update() {
 		}
 	}else {
 		//同期処理
-		synchronizate_data();
+		if (!is_game_finished)synchronizate_data();
 		//フェードイン
 		if (fade_back_alpha > 0.0) {
 			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer))/ (700-(getData().client->isOwner()) ? ping_time : 0);
@@ -188,13 +193,62 @@ void Game::update() {
 			return;
 		}
 		//プレイヤー情報を更新
-		update_player();
+		if (!is_game_finished)update_player();
 		//APバーの描画情報を更新
 		update_AP_bar_animation();
 		//プレイヤーのアニメーションを更新
 		update_player_animation();
+		//決着！
+		if (is_game_finished)update_settle();
 	}
 }
+
+void Game::update_settle() {
+	//決着！
+	if (settle_mode == 0) {
+		if (GameTimer() - settle_timer <= 1000) {
+			settle_fade = EaseOutExpo((double)(GameTimer() - settle_timer) / 1000.0);
+		}else {
+			settle_timer = GameTimer();
+			settle_fade = 1.0;
+			settle_mode = 1;
+		}
+	//表示を続ける
+	}elif(settle_mode == 1) {
+		if (GameTimer() - settle_timer > 500) {
+			settle_mode = 2;
+			settle_timer = GameTimer();
+		}
+	//You Win/Loseの表示
+	}elif(settle_mode == 2) {
+		if (GameTimer() - settle_timer <= 1000) {
+			settle_fade = 1.0 - EaseOutExpo((double)(GameTimer() - settle_timer) / 1000.0);
+		}
+		else {
+			settle_fade = 0.0;
+			settle_mode = 3;
+			settle_timer = GameTimer();
+
+		}
+	//待機
+	}elif(settle_mode == 3) {
+		if (GameTimer() - settle_timer > 2000) {
+			settle_mode = 4;
+			settle_timer = GameTimer();
+			finish_fade_mode = true;
+			bgm.pause(2s);
+		}
+	//フェードアウトしながらタイトル画面へ
+	}elif(settle_mode == 4) {
+		double t = (double)(GameTimer() - settle_timer);
+		finish_fade = Min(t / 2000.0,1.0);
+		if (t >= 2000.0) {
+			getData().before_scene = State::Game;
+			changeScene(State::Title, 0.8s);
+		}
+	}
+}
+
 
 void Game::update_player() {
 	int now_time = GameTimer();
@@ -322,7 +376,7 @@ void Game::update_player() {
 		}elif(got_voice == 5) {
 			if ((player[player_number].status & 116) == 0) {
 				shot_se.playOneShot();
-				player[player_number].se[5] = true;
+				player[player_number].se[6] = true;
 				player[player_number].status |= 128;
 				player[player_number].timer[12] = now_time;
 			}
@@ -347,7 +401,7 @@ void Game::update_player() {
 							}
 							player[i].event |= 1;
 							if (player[i].status & 8) {
-								//TODO:攻撃無効化音
+								void_damage_se.playOneShot();
 							}else {
 								if (cnt == player_number)
 									getData().client->sendAction(U"WeakAttack", i);
@@ -376,7 +430,7 @@ void Game::update_player() {
 								}
 								player[i].event |= 2;
 								if (player[i].status & 8) {
-									//TODO:攻撃無効化音
+									void_damage_se.playOneShot();
 								}else {
 									if (cnt == player_number)
 										getData().client->sendAction(U"StrongAttack", i);
@@ -391,7 +445,7 @@ void Game::update_player() {
 								}
 								player[i].event |= 4;
 								if (player[i].status & 8) {
-									//TODO:攻撃無効化音
+									void_damage_se.playOneShot();
 								}else {
 									if (cnt == player_number)
 										getData().client->sendAction(U"SpecialAttack", i);
@@ -404,8 +458,34 @@ void Game::update_player() {
 			}
 		}
 		//ガード破壊
+		if (player[cnt].status & 128) {
+			int t = now_time - player[cnt].timer[12];
+			if ((100 < t) && (t < 250)) {
+				for (int i = 0; i < player_sum; i++) {
+					if (i == cnt) continue;
+					int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+					if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+						if ((player[i].event & 8) == 0) {
+							if (player[cnt].se[6]) {
+								player[cnt].se[6] = false;
+								dos_se.playOneShot();
+							}
+							player[i].event |= 8;
+							if (player[i].status & 8) {
+								//TODO:ガード破壊音
+								player[i].status ^= 8;
+							}
+							if (cnt == player_number)
+								getData().client->sendAction(U"DestroyGuard", i);
+							player[i].hp[1] -= 1;
+							player[cnt].ap += 1;
+						}
+					}
+				}
+			}
+		}
 
-		//TODO:次はここから！！
+		//todo:特殊攻撃
 
 		//シールド
 		if (player[cnt].status & 8) {
@@ -430,8 +510,14 @@ void Game::update_player() {
 	}
 	//HP管理///////////////////////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
+		player[i].hp[1] = Max(player[i].hp[1], 0);
 		if (player[i].hp[2] > player[i].hp[0])player[i].hp[2]--;
-		if (player[i].hp[0] <= 0);//TODO:GAMEOVER処理
+		if (player[i].hp[0] <= 0) {
+			//敗北を通知
+			getData().client->sendAction(U"Loser", i);
+			player[i].hp[0] = 0;
+			player[i].hp[2] = 0;
+		}
 	}
 
 	
@@ -544,6 +630,15 @@ void Game::synchronizate_data() {
 				void_attack[event->data.get<int32>()] = true;
 			}elif(event->type == U"VoidGuard") {
 				void_attack[event->data.get<int32>()] = false;
+			}elif(event->type == U"DestroyGuard") {
+				void_attack[event->data.get<int32>()] = false;
+				player[event->data.get<int32>()].hp[0] -= 1;
+			}elif(event->type == U"Loser") {
+				is_game_finished = true;
+				are_you_winnner = (event->data.get<int32>() != player_number);
+				settle_timer = GameTimer();
+				//笹食ってる場合じゃねぇ！！
+				break;
 			}
 		}
 
@@ -659,12 +754,27 @@ void Game::update_player_animation() {
 		}elif(player[i].status & 64) {
 			if (now_time - player[i].timer[6] < 120) {
 				player[i].img_number = 3;
-			}elif (now_time - player[i].timer[6] < 330) {
+			}elif(now_time - player[i].timer[6] < 330) {
 				player[i].img_number = 5;
-			}elif (now_time - player[i].timer[6] < 450) {
+			}elif(now_time - player[i].timer[6] < 450) {
 				player[i].img_number = 3;
-			}else{
+			}
+			else {
 				player[i].status ^= 64;
+				player[i].img_number = 0;
+			}
+			continue;
+		//ガード破壊のアニメーション
+		}elif(player[i].status & 128) {
+			if (now_time - player[i].timer[12] < 60) {
+				player[i].img_number = 0;
+			}elif(now_time - player[i].timer[12] < 190) {
+				player[i].img_number = 6;
+			}elif(now_time - player[i].timer[12] < 250) {
+				player[i].img_number = 0;
+			}
+			else {
+				player[i].status ^= 128;
 				player[i].img_number = 0;
 			}
 			continue;
@@ -674,12 +784,7 @@ void Game::update_player_animation() {
 			continue;
 		//移動アニメーション
 		}elif(player[i].status & 3) {
-			int t = now_time - player[i].img_timer;
-			if (t > 160) {
-				player[i].img_timer = now_time;
-				player[i].img_status = 1+player[i].img_status % 2;
-			}
-			player[i].img_number = player[i].img_status;
+			player[i].img_number = 1;
 			continue;
 		}
 		player[i].img_number = 0;
@@ -688,6 +793,7 @@ void Game::update_player_animation() {
 
 void Game::draw() const {
 	if (!is_connected) {
+		//通信中...
 		Rect(0, 0, 1920, 1080).draw(ColorF{ Palette::Black });
 		connecting_img.drawAt(1500, 950);
 	}else {
@@ -698,6 +804,11 @@ void Game::draw() const {
 
 		draw_player();
 
+		draw_settle();
+
+		if (finish_fade_mode)Rect(0, 0, 1920, 1080).draw(ColorF{ 0, finish_fade });
+
+		//通信中...
 		if (fade_back_alpha > 0) {
 			Rect(0, 0, 1920, 1080).draw(ColorF{ 0,fade_back_alpha });
 			connecting_img.drawAt(1500, 950, ColorF{ 1, fade_back_alpha });
@@ -711,6 +822,17 @@ void Game::draw() const {
 			destroyed_img.drawAt(960, error_pos_y);
 		}elif(error_ID == 2) {
 			timeout_img.drawAt(960, error_pos_y);
+		}
+	}
+}
+
+void Game::draw_settle() const {
+	settle_img.scaled(1.0/((settle_fade == 0.0)?0.0000001: settle_fade)).drawAt(960, 540, ColorF{1,settle_fade});
+	if (settle_mode >= 2) {
+		if (are_you_winnner) {
+			you_win_img .drawAt(960, 540 + 1080 * settle_fade, ColorF{ 1, 1.0 - settle_fade});
+		}else {
+			you_lose_img.drawAt(960, 540 + 1080 * settle_fade, ColorF{ 1, 1.0 - settle_fade });
 		}
 	}
 }
