@@ -37,9 +37,11 @@ void Phoneme::stop() {
 size_t Phoneme::estimate(FFTSampleLength frames) {
 	if (!mic.isRecording()) return 0;
 
+	// analyze MFCC
 	const auto& currentMFCC = mfccAnalyzer->analyze(frames, 40);
 	if (mic.rootMeanSquare() < volumeThreshold) return 0;
 
+	// estimate phoneme
 	const double currentNorm = sqrt(accumulate(
 		currentMFCC.begin(), currentMFCC.end(), 0.0, [](const auto& norm, const auto& x) { return norm + x * x; }
 	));
