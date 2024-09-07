@@ -33,6 +33,7 @@ class Matching : public App::Scene
 	const Texture decide_img{ U"../images/matching/decide.png" };
 	const Texture decided_img{ U"../images/matching/decided.png" };
 	const Texture fixed_img{ U"../images/matching/fixed.png" };
+	const Texture calibration_img{ U"../images/matching/calibration.png" };
 	Texture stand_char_img[4] = { stand_char_img1,stand_char_img2,stand_char_img3,stand_char_img4 };
 	//shape////////////////////////////////////////////////////////////
 	const Quad select_char_shape1 { Vec2{280,720},Vec2{577,720},Vec2{527,957},Vec2{230,957} };
@@ -74,7 +75,7 @@ class Matching : public App::Scene
 
 	//エラーダイアログ関連
 	int error_mode = 0;
-	//0:バグ,1:404,2:810,3:400,4:500,5:スネ夫,6:時間切れ
+	//0:バグ,1:404,2:810,3:400,4:500,5:スネ夫,6:時間切れ,7:音声認識のセットアップやれ
 	int error_ID = 0;
 	int error_pos_y = 1400;
 	int error_timer = 0;

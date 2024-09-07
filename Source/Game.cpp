@@ -1,8 +1,21 @@
 ﻿#include "Game.hpp"
 # include "common_function.hpp"
 
-//#define player_number 0
-//#define another_player_number 1
+//音声コマンド
+//「殴れ」
+#define 弱攻撃 U"AUE"
+//「キック」
+#define 狂攻撃 U"IU"
+//「龍虎水雷撃」
+#define 必殺技 U"UOUIAIEI"
+//「ガード」
+#define ガード1 U"AO"
+//「守れ」
+#define ガード2 U"AOE"
+//「壊せ」
+#define ガード破壊1 U"OAE"
+//「刺せ」
+#define ガード破壊2 U"AE" 
 
 using namespace std;
 
@@ -77,13 +90,22 @@ int Game::getkey() {
 	return retkey;
 }
 
-//TODO:音声認識が届いたら実装
 int Game::voice_command() {
+	wordDetector.addVowel(getData().vowels[getData().phoneme.estimate()]);
+	if (wordDetector.detect(弱攻撃))return 1;
+	if (wordDetector.detect(狂攻撃))return 2;
+	if (wordDetector.detect(必殺技))return 3;
+	if (wordDetector.detect(ガード1))return 4;
+	if (wordDetector.detect(ガード2))return 4;
+	if (wordDetector.detect(ガード破壊1))return 5;
+	if (wordDetector.detect(ガード破壊2))return 5;
+
+	/*
 	if (KeyB.pressed()) return 1;
 	if (KeyV.pressed()) return 2;
 	if (KeyF.pressed()) return 3;
 	if (KeyG.pressed()) return 4;
-	if (KeyC.pressed()) return 5;
+	if (KeyC.pressed()) return 5;*/
 	return 0;
 }
 
@@ -472,7 +494,7 @@ void Game::update_player() {
 							}
 							player[i].event |= 8;
 							if (player[i].status & 8) {
-								//TODO:ガード破壊音
+								break_guard_se.playOneShot();
 								player[i].status ^= 8;
 							}
 							if (cnt == player_number)
@@ -485,7 +507,7 @@ void Game::update_player() {
 			}
 		}
 
-		//todo:特殊攻撃
+		//TODO:特殊攻撃
 
 		//シールド
 		if (player[cnt].status & 8) {

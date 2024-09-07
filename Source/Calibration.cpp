@@ -39,8 +39,15 @@ void Calibration::update() {
 		Cursor::RequestStyle(CursorStyle::Hand);
 		if (MouseL.down()) {
 			phoneme.save();
-			changeScene(State::Title);
+			State old_scene = getData().before_scene;
+			getData().before_scene = State::Config;
+			changeScene(old_scene, 0.5s);
 		}
+	}
+
+	//通信は継続
+	if (getData().before_scene == State::Matching) {
+		getData().client->update();
 	}
 }
 

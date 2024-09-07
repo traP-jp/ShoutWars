@@ -5,10 +5,14 @@ using namespace std;
 
 Matching::Matching(const InitData& init) : IScene(init)
 {
-	//画像の読み込み
+	//資格を満たしているかどうか
+	if (!getData().phoneme.isMFCCUnset()) {
+		error_ID = 7;
+		error_mode = 1;
+	}
 	
 	//通信関連の処理
-	if (getData().before_scene != State::Config) {
+	if (getData().before_scene != State::Calibration) {
 		//鯖との接続を確立する
 		//todo:urlとかはテキストに書く
 		const auto api = std::make_shared<APIClient>(U"0.0", U"https://shoutwars.trap.games/api/v2");
@@ -64,7 +68,7 @@ void Matching::setErrorMessage(int error_code,String message)
 	}elif(error_code == 500) {
 		error_ID = 4;
 		error_mode = 1;
-	//TODO:エラーダイアログに変える
+	//TODO:完全なエラーダイアログに変える
 	}else {
 		Print << U"[SERVER ERROR:" << error_code << U"] " << message;
 		OutputLogFile("(SERVER ERROR:CODE [" +to_string(error_code) + "])\n" + message.narrow());
@@ -226,7 +230,7 @@ void Matching::update()
 		//設定
 		if (setting_shape.leftClicked()) {
 			getData().before_scene = State::Matching;
-			changeScene(State::Config, 0.5s);
+			changeScene(State::Calibration, 0.5s);
 		}
 
 		//キャラ選択
@@ -397,6 +401,8 @@ void Matching::drawErrorDialog() const
 		suneo_img.drawAt(960, error_pos_y);
 	}elif(error_ID == 6) {
 		timeout_img.drawAt(960, error_pos_y);
+	}elif(error_ID == 7) {
+		calibration_img.drawAt(960, error_pos_y);
 	}
 }
 
