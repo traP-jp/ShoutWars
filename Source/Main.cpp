@@ -29,7 +29,7 @@ void Main() {
 	manager.add<Calibration>(State::Calibration);
 
 	//XXX:debug用
-	manager.init(State::Calibration);
+	manager.init(State::Title);
 
 	while (System::Update() && manager.update()) {};
 }
