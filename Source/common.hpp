@@ -36,7 +36,8 @@ struct GameData
 	int player[2] = { 1,0 };
 
 	// 音素認識用 (音素: [0:無, 1:息, 2:ア, 3:あ, 4:イ, 5:い, 6:ウ, 7:う, 8:エ, 9:え, 10:オ, 11:お])
-	Phoneme phoneme{ U"config.json", 0.01, 12};
+	Phoneme phoneme{ U"config.json", 0.01, 12 };
+	Array<char32> vowels = { U' ', U' ', U'A', U'A', U'I', U'I', U'U', U'U', U'E', U'E', U'O', U'O' };
 	
 	//通信用
 	std::unique_ptr<SyncClient> client;
