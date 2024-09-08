@@ -830,6 +830,19 @@ void Game::draw() const {
 
 		draw_player();
 
+		String inputVowels = U"";
+		for (const auto& vowel : wordDetector.getVowelBuffer(10)) {
+			if (vowel == U'A') inputVowels += U"ア";
+			if (vowel == U'I') inputVowels += U"イ";
+			if (vowel == U'U') inputVowels += U"ウ";
+			if (vowel == U'E') inputVowels += U"エ";
+			if (vowel == U'O') inputVowels += U"オ";
+		}
+		font(U"入力: {}"_fmt(inputVowels)).draw(60, 10, 10, Palette::Lightgray);
+		//double vowelHistoryLife = wordDetector.vowelHistoryLife;
+		//SimpleGUI::Slider(U"vowelHistoryLife={}us"_fmt(vowelHistoryLife), vowelHistoryLife, 0.0, 1000000.0, Vec2(600, 30), 300, 500);
+		//wordDetector.vowelHistoryLife = vowelHistoryLife;
+
 		draw_settle();
 
 		if (finish_fade_mode)Rect(0, 0, 1920, 1080).draw(ColorF{ 0, finish_fade });
