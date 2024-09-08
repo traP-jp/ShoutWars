@@ -87,7 +87,7 @@ private:
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
 	//特殊変数////////////////////////////////////////////////////////
-	WordDetector wordDetector{};
+	mutable WordDetector wordDetector{};
 
 	//変数////////////////////////////////////////////////////////////
 	//プレイヤーが存在するか
