@@ -938,6 +938,6 @@ void Game::draw_AP_bar() const {
 			fire_img.at(player[1].fire_animation).draw(1610, 800);
 		}
 	}else {
-		AP_bar_img(0, 0, 360.0 * ((double)player[1].ap / 100), 42).mirrored().draw(1305, 992);
+		AP_bar_img(0, 0, 360.0 * ((double)player[1].ap / player_max_ap), 42).mirrored().draw(1305, 992);
 	}
 }
