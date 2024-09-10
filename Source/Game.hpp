@@ -6,6 +6,8 @@
 #include <string>
 #include <algorithm>
 
+#define debug_mode
+
 struct Player {
 	//各種変数
 	Vec2 pos[2];
@@ -27,6 +29,8 @@ struct Player {
 	int event;
 	//必殺技が使えるか
 	bool special_attack = false;
+	//キャラ(0:玲（レイ）,1:ユウカ,2:アイリ,3:No.0 (レイ）
+	int number = 0;
 
 	int img_number = 0;
 	int img_status = 0;
@@ -119,7 +123,11 @@ private:
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;
 	double ping_time = 0.0;
+#ifndef debug_mode
 	bool is_connected = false;
+#else
+	bool is_connected = true;
+#endif
 	int ping = 0;
 	int ping_timer = 0;
 
