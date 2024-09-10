@@ -52,10 +52,10 @@ player_flag(player_sum, true)
 	if ((getData().player[0] == 2) || (getData().player[1] == 2)) {
 		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/waiting.png") });
 		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/running.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/running.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/kick.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/weak_attack.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/powerful_kick.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/special_gun.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/strong_knife.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/gun.png") });
+		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/beautiful_knife.png") });
 		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/destroy_guard.png") });
 	}
 	//No.0の画像
@@ -70,11 +70,15 @@ player_flag(player_sum, true)
 	}
 
 	//録音開始!
+#ifndef debug_mode
 	getData().phoneme.start();
+#endif
 
 	player[0].pos[0] = {600.0,player_min_y};
 	player[1].pos[0] = {1200,player_min_y};
 	player[1].direction = true;
+	player[0].number = getData().player[0];
+	player[1].number = getData().player[1];
 
 	internal_timer = (int)Time::GetMillisec();
 }
@@ -94,6 +98,7 @@ int Game::getkey() {
 }
 
 int Game::voice_command() {
+#ifndef debug_mode
 	wordDetector.addVowel(getData().vowels[getData().phoneme.estimate()]);
 	if (wordDetector.detect(弱攻撃))return 1;
 	if (wordDetector.detect(狂攻撃))return 2;
@@ -102,13 +107,13 @@ int Game::voice_command() {
 	if (wordDetector.detect(ガード2))return 4;
 	if (wordDetector.detect(ガード破壊1))return 5;
 	if (wordDetector.detect(ガード破壊2))return 5;
-
-	/*
+#else
 	if (KeyB.pressed()) return 1;
 	if (KeyV.pressed()) return 2;
 	if (KeyF.pressed()) return 3;
 	if (KeyG.pressed()) return 4;
-	if (KeyC.pressed()) return 5;*/
+	if (KeyC.pressed()) return 5;
+#endif
 	return 0;
 }
 
@@ -152,6 +157,7 @@ void Game::update() {
 		update_error_screen();
 		return;
 	}
+#ifndef debug_mode
 	//ゲーム開始時間の調整
 	if (!is_connected) {
 		try {
@@ -217,6 +223,12 @@ void Game::update() {
 			if (fade_back_alpha < 0.0)fade_back_alpha = 0.0;
 			return;
 		}
+#else
+	if (!bgm.isPlaying()) bgm.play();
+	for (int i = 0; i < player_sum; i++) {
+		player[i].event = 0;
+	}
+#endif
 		//プレイヤー情報を更新
 		if (!is_game_finished)update_player();
 		//APバーの描画情報を更新
@@ -225,7 +237,9 @@ void Game::update() {
 		update_player_animation();
 		//決着！
 		if (is_game_finished)update_settle();
+#ifndef debug_mode
 	}
+#endif
 }
 
 void Game::update_settle() {
@@ -396,7 +410,9 @@ void Game::update_player() {
 			player[player_number].se[5] = true;
 			player[player_number].status |= 8;
 			player[player_number].timer[3] = now_time;
-			getData().client->sendAction(U"Guard", player_number);
+#ifndef debug_mode
+			getData().client->sendAction(U"Guard", player_numbefr);
+#endif
 		//ガード破壊
 		}elif(got_voice == 5) {
 			if ((player[player_number].status & 116) == 0) {
@@ -428,8 +444,10 @@ void Game::update_player() {
 							if (player[i].status & 8) {
 								void_damage_se.playOneShot();
 							}else {
+#ifndef debug_mode
 								if (cnt == player_number)
 									getData().client->sendAction(U"WeakAttack", i);
+#endif
 								player[i].hp[1] -= 3;
 							}
 							player[cnt].ap += 1;
@@ -457,8 +475,10 @@ void Game::update_player() {
 								if (player[i].status & 8) {
 									void_damage_se.playOneShot();
 								}else {
+#ifndef debug_mode
 									if (cnt == player_number)
 										getData().client->sendAction(U"StrongAttack", i);
+#endif
 									player[i].hp[1] -= 5;
 								}
 								player[cnt].ap += 3;
@@ -472,8 +492,10 @@ void Game::update_player() {
 								if (player[i].status & 8) {
 									void_damage_se.playOneShot();
 								}else {
+#ifndef debug_mode
 									if (cnt == player_number)
 										getData().client->sendAction(U"SpecialAttack", i);
+#endif
 									player[i].hp[1] -= 15;
 								}
 							}
@@ -500,8 +522,10 @@ void Game::update_player() {
 								break_guard_se.playOneShot();
 								player[i].status ^= 8;
 							}
+#ifndef debug_mode
 							if (cnt == player_number)
 								getData().client->sendAction(U"DestroyGuard", i);
+#endif
 							player[i].hp[1] -= 1;
 							player[cnt].ap += 1;
 						}
@@ -518,7 +542,9 @@ void Game::update_player() {
 			//ガード時間は1秒
 			if (t > 1000) {
 				player[cnt].status ^= 8;
+#ifndef debug_mode
 				getData().client->sendAction(U"VoidGuard", cnt);
+#endif
 			}
 		}
 	}
@@ -539,7 +565,9 @@ void Game::update_player() {
 		if (player[i].hp[2] > player[i].hp[0])player[i].hp[2]--;
 		if (player[i].hp[0] <= 0) {
 			//敗北を通知
+#ifndef debug_mode
 			getData().client->sendAction(U"Loser", i);
+#endif
 			player[i].hp[0] = 0;
 			player[i].hp[2] = 0;
 		}
@@ -817,11 +845,13 @@ void Game::update_player_animation() {
 }
 
 void Game::draw() const {
+#ifndef debug_mode
 	if (!is_connected) {
 		//通信中...
 		Rect(0, 0, 1920, 1080).draw(ColorF{ Palette::Black });
 		connecting_img.drawAt(1500, 950);
 	}else {
+#endif
 		background_img.draw(0, 0);
 		command_img.draw(120, 150);
 		draw_HP_bar();
@@ -834,12 +864,14 @@ void Game::draw() const {
 
 		if (finish_fade_mode)Rect(0, 0, 1920, 1080).draw(ColorF{ 0, finish_fade });
 
+#ifndef debug_mode
 		//通信中...
 		if (fade_back_alpha > 0) {
 			Rect(0, 0, 1920, 1080).draw(ColorF{ 0,fade_back_alpha });
 			connecting_img.drawAt(1500, 950, ColorF{ 1, fade_back_alpha });
 		}
 	}
+#endif
 
 	//エラーダイアログ
 	if (error_mode) {
