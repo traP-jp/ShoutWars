@@ -21,8 +21,8 @@ struct Player {
 	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:ガード,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6),12:ガード破壊,13:進捗(12),14:特殊攻撃,15:進捗(14))
 	int timer[16];
 
-	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺,5:ガード,6:ガード破壊)
-	bool se[7] = { false };
+	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺,5:ガード,6:ガード破壊,7:特殊攻撃)
+	bool se[8] = { false };
 	//Playerの向き(true:右,false:左)
 	bool direction = false;
 	//1回限りのイベント(0:なし,1:弱,2:狂,4:必殺,8:ガード破壊)
@@ -33,6 +33,8 @@ struct Player {
 	int number = 0;
 	//アイリ専用
 	int knife_mode = 0;
+	int airi_old_timer = 0;
+	double wave_pos = 0.0;
 
 	int img_number = 0;
 	int img_status = 0;
@@ -48,6 +50,7 @@ struct bullet {
 	int timer;
 	bool exist = false;
 	int direction;
+	int mode;
 };
 
 struct knife {
@@ -69,8 +72,8 @@ private:
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
 	const static int player_max_ap = 500;
-	//最大同時存在弾丸数は10
-	const static int max_bullet = 10;
+	//最大同時存在弾丸数は60
+	const static int max_bullet = 60;
 	//最大同時存在ナイフ数は50本
 	const static int max_knives = 50;
 	//構造体////////////////////////////////////////////////////////////
@@ -184,6 +187,7 @@ private:
 	inline int GameTimer();
 	int search_bullet();
 	int search_knife();
+	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
 	//各キャラ専用関数
 	void rei_attack(int cnt,int now_time,Vec2 player_reserved_pos[]);
 	void yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
