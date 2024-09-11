@@ -70,7 +70,7 @@ player_flag(player_sum, true)
 	}
 
 	//録音開始!
-#ifndef debug_mode
+#ifndef debug_voice
 	getData().phoneme.start();
 #endif
 
@@ -98,7 +98,7 @@ int Game::getkey() {
 }
 
 int Game::voice_command() {
-#ifndef debug_mode
+#ifndef debug_voice
 	wordDetector.addVowel(getData().vowels[getData().phoneme.estimate()]);
 	if (wordDetector.detect(弱攻撃))return 1;
 	if (wordDetector.detect(狂攻撃))return 2;
@@ -568,9 +568,9 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							if (cnt == player_number)
 								getData().client->sendAction(U"WeakAttack", i);
 #endif
-							player[i].hp[1] -= 3;
+							player[i].hp[1] -= yuuka_weak_atttack;
 						}
-						player[cnt].ap += 1;
+						player[cnt].ap += yuuka_weak_atttack_ap;
 					}
 				}
 			}
@@ -600,9 +600,9 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 								if (cnt == player_number)
 									getData().client->sendAction(U"StrongAttack", i);
 #endif
-								player[i].hp[1] -= 5;
+								player[i].hp[1] -= yuuka_strong_attack;
 							}
-							player[cnt].ap += 3;
+							player[cnt].ap += yuuka_strong_attack_ap;
 							//必殺技
 						}
 						else {
@@ -619,7 +619,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 								if (cnt == player_number)
 									getData().client->sendAction(U"SpecialAttack", i);
 #endif
-								player[i].hp[1] -= 15;
+								player[i].hp[1] -= yuuka_special_attack;
 							}
 						}
 					}
@@ -648,18 +648,18 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						if (bullet[i].mode == 0) {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", i);
+								getData().client->sendAction(U"WeakAttack", j);
 #endif
-							player[j].hp[1] -= 5;
-							player[cnt].ap += 3;
+							player[j].hp[1] -= airi_weak_atttack;
+							player[cnt].ap += airi_weak_atttack_ap;
 						//特殊
 						}else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"SpecialAttack", i);
+								getData().client->sendAction(U"UniqueAttack", j);
 #endif
-							player[j].hp[1] -= 3;
-							player[cnt].ap += 2;
+							player[j].hp[1] -= airi_uniqe_attack;
+							player[cnt].ap += airi_uniqe_attack_ap;
 						}
 						
 					}
@@ -712,7 +712,8 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					if (cnt == player_number)
 						getData().client->sendAction(U"SpecialAttack", another_player_number);
 #endif
-					player[another_player_number].hp[1] -= 8;
+					player[another_player_number].hp[1] -= airi_special_attack;
+					player[another_player_number].ap += airi_special_attack_ap;
 				}
 				knife[i].exist = false;
 			}
@@ -760,9 +761,9 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							if (cnt == player_number)
 								getData().client->sendAction(U"StrongAttack", i);
 #endif
-							player[i].hp[1] -= 7;
+							player[i].hp[1] -= airi_strong_attack;
 						}
-						player[cnt].ap += 5;
+						player[cnt].ap += airi_strong_attack_ap;
 					}
 				}
 			}
@@ -868,6 +869,7 @@ void Game::synchronizate_data() {
 		//自分のHPは基本的に相手が管理する
 		getData().client->sendReport(U"PlayerInfoHP", player[another_player_number].hp);
 		getData().client->sendReport(U"PlayerInfoAP", player[player_number].ap);
+		getData().client->sendReport(U"PlayerInfoSpecialAttack", player[player_number].special_attack);
 		getData().client->update();
 		//一方的な報告の処理
 		while (const auto event = getData().client->receiveReport()) {
@@ -888,6 +890,9 @@ void Game::synchronizate_data() {
 			if (event->type == U"PlayerInfoAP") {
 				player[another_player_number].ap = (event->data).get<int32>();
 			}
+			if (event->type == U"PlayerInfoSpecialAttack") {
+				player[another_player_number].special_attack = (event->data).get<bool>();
+			}
 		}
 		//相互確認が必要な処理
 		bool void_attack[player_sum] = { false };
@@ -898,14 +903,11 @@ void Game::synchronizate_data() {
 					//ガード中
 					if (void_attack[event->data.get<int32>()]) {
 						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += 3;
-						//APを増やす
-						if (event->data.get<int32>() == player_number)player[event->data.get<int32>()].ap += 3;
+						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 0);
 						//ガードしていない
-					}
-					else {
+					}else {
 						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= 3;
+						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 0);
 					}
 				}
 			}elif(event->type == U"StrongAttack") {
@@ -913,14 +915,11 @@ void Game::synchronizate_data() {
 					//ガード中
 					if (void_attack[event->data.get<int32>()]) {
 						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += 5;
-						//APを増やす
-						if (event->data.get<int32>() == player_number)player[event->data.get<int32>()].ap += 5;
+						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 1);
 						//ガードしていない
-					}
-					else {
+					}else {
 						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= 5;
+						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 1);
 					}
 				}
 			}elif(event->type == U"SpecialAttack") {
@@ -928,14 +927,23 @@ void Game::synchronizate_data() {
 					//ガード中
 					if (void_attack[event->data.get<int32>()]) {
 						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += 15;
-						//APを増やす
-						if (event->data.get<int32>() == player_number)player[event->data.get<int32>()].ap += 15;
-						//ガードしていない
-					}
-					else {
+						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 2);
+					//ガードしていない
+					}else {
 						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= 15;
+						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 2);
+					}
+				}
+			}elif (event-> type == U"UniqueAttack"){
+				if (event->data.get<int32>() != player_number) {
+					//ガード中
+					if (void_attack[event->data.get<int32>()]) {
+						//暫定HPを元に戻す
+						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 3);
+					//ガードしていない
+					}else {
+						//実質HPを確定
+						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 3);
 					}
 				}
 			}elif(event->type == U"Guard") {
@@ -1270,5 +1278,61 @@ void Game::draw_AP_bar() const {
 		}
 	}else {
 		AP_bar_img(0, 0, 360.0 * ((double)player[1].ap / player_max_ap), 42).mirrored().draw(1305, 992);
+	}
+}
+
+int Game::get_character_power(int character_number, int attack_sort) {
+	if (character_number == 0) {
+		switch (attack_sort)
+		{
+		case 0:
+			return rei_weak_atttack;
+		case 1:
+			return rei_strong_attack;
+		case 2:
+			return rei_special_attack;
+		default:
+			return 0;
+		}
+
+	}elif(character_number == 1) {
+		switch (attack_sort)
+		{
+		case 0:
+			return yuuka_weak_atttack;
+		case 1:
+			return yuuka_strong_attack;
+		case 2:
+			return yuuka_special_attack;
+		default:
+			return 0;
+		}
+	}elif(character_number == 2) {
+		switch (attack_sort)
+		{
+		case 0:
+			return airi_weak_atttack;
+		case 1:
+			return airi_strong_attack;
+		case 2:
+			return airi_special_attack;
+		case 3:
+			return airi_uniqe_attack;
+		default:
+			return 0;
+		}
+	}else {
+		switch (attack_sort)
+		{
+		case 0:
+			return no0_weak_atttack;
+		case 1:
+			return no0_strong_attack;
+		case 2:
+			return no0_special_attack;
+		default:
+			return 0;
+		}
+
 	}
 }
