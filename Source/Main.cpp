@@ -27,7 +27,7 @@ void Main() {
 	
 
 	//XXX:debug用
-	manager.init(State::Game);
+	manager.init(State::Title);
 
 	while (System::Update() && manager.update()) {};
 }

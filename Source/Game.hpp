@@ -6,7 +6,7 @@
 #include <string>
 #include <algorithm>
 
-#define debug_mode
+//#define debug_mode
 
 struct Player {
 	//各種変数
@@ -71,6 +71,45 @@ struct knife {
 class Game : public App::Scene
 {
 private:
+	//キャラ性能に関する定数////////////////////////////////////////////
+	//玲（レイ）
+	//ダメージ量
+	const static int rei_weak_atttack = 5;
+	const static int rei_strong_attack = 7;
+	const static int rei_special_attack = 8;
+	//AP回復量
+	const static int rei_weak_atttack_ap = 3;
+	const static int rei_strong_attack_ap = 5;
+	const static int rei_special_attack_ap = 8;
+
+	//ユウカ
+	//ダメージ量
+	const static int yuuka_weak_atttack = 3;
+	const static int yuuka_strong_attack = 5;
+	const static int yuuka_special_attack = 15;
+	//AP回復量
+	const static int yuuka_weak_atttack_ap = 1;
+	const static int yuuka_strong_attack_ap = 3;
+	//アイリ
+	//ダメージ量
+	const static int airi_weak_atttack = 5;
+	const static int airi_strong_attack = 7;
+	const static int airi_special_attack = 8;
+	const static int airi_uniqe_attack = 3;
+	//AP回復量
+	const static int airi_weak_atttack_ap = 3;
+	const static int airi_strong_attack_ap = 5;
+	const static int airi_special_attack_ap = 8;
+	const static int airi_uniqe_attack_ap = 2;
+	//No.0 (レイ）
+	//ダメージ量
+	const static int no0_weak_atttack = 5;
+	const static int no0_strong_attack = 7;
+	const static int no0_special_attack = 8;
+	//AP回復量
+	const static int no0_weak_atttack_ap = 3;
+	const static int no0_strong_attack_ap = 5;
+	const static int no0_special_attack_ap = 8;
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
 	const static int player_min_y = 650;
@@ -199,6 +238,10 @@ private:
 	void airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
 	void setting_knife(int cnt,int now_time,Vec2 player_reserved_pos[], int now_number);
 	void no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
+
+	//get_character_power_ap(番号,HPならtrue、APならfalse,攻撃の種類)
+	//攻撃の種類(0:弱,1:狂,2:必殺,3:特殊)
+	int get_character_power(int character_number, int attack_sort);
 
 public:
 

@@ -5,6 +5,9 @@
 #define elif else if
 #define M_PI 3.14159265358979323846
 
+//XXX:Debug用
+#define debug_voice
+
 // シーンの名前
 enum class State
 {
