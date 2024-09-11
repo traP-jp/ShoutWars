@@ -31,6 +31,8 @@ struct Player {
 	bool special_attack = false;
 	//キャラ(0:玲（レイ）,1:ユウカ,2:アイリ,3:No.0 (レイ）
 	int number = 0;
+	//アイリ専用
+	int knife_mode = 0;
 
 	int img_number = 0;
 	int img_status = 0;
@@ -40,17 +42,41 @@ struct Player {
 	int fire_animation_timer = 0;
 };
 
+struct bullet {
+	Vec2 pos;
+	Vec2 old_pos;
+	int timer;
+	bool exist = false;
+	int direction;
+};
+
+struct knife {
+	Vec2 pos;
+	Vec2 old_pos;
+	int mode = 0;
+	int timer[2];
+	bool exist = false;
+	double angle;
+	int img_number;
+};
+
 class Game : public App::Scene
 {
 private:
-	//構造体////////////////////////////////////////////////////////////
-	struct Player player[2];
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
 	const static int player_min_y = 650;
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
 	const static int player_max_ap = 500;
+	//最大同時存在弾丸数は10
+	const static int max_bullet = 10;
+	//最大同時存在ナイフ数は50本
+	const static int max_knives = 50;
+	//構造体////////////////////////////////////////////////////////////
+	struct Player player[player_sum];
+	struct bullet bullet[max_bullet];
+	struct knife knife[max_knives];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
@@ -73,6 +99,8 @@ private:
 	const Texture you_lose_img{ U"../images/game/system/you_lose.png" };
 	const Texture settle_img{ U"../images/game/system/settle.png" };
 	const Texture command_img{ U"../images/game/system/command.png" };
+	const Texture guns_img{ U"../images/game/system/guns.png" };
+	const Texture knives_img{ U"../images/game/system/knives.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	//音楽////////////////////////////////////////////////////////////
@@ -136,6 +164,8 @@ private:
 	//1:上,2:左,4:下,8:右
 	int getkey();
 	void draw_player() const;
+	void draw_bullet() const;
+	void draw_knife() const;
 	void draw_HP_bar() const;
 	void draw_AP_bar() const;
 	void draw_ping() const;
@@ -152,6 +182,15 @@ private:
 	void Json2ArrayTimer(String str, int(&timer)[16]);
 	void Json2ArrayHP(String str, int(&hp)[3]);
 	inline int GameTimer();
+	int search_bullet();
+	int search_knife();
+	//各キャラ専用関数
+	void rei_attack(int cnt,int now_time,Vec2 player_reserved_pos[]);
+	void yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
+	void airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
+	void setting_knife(int cnt,int now_time,Vec2 player_reserved_pos[], int now_number);
+	void no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
+
 public:
 
 	Game(const InitData& init);
