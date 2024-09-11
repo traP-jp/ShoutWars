@@ -56,10 +56,15 @@ struct bullet {
 struct knife {
 	Vec2 pos;
 	Vec2 old_pos;
+	Vec2 goal_pos;
 	int mode = 0;
 	int timer[2];
 	bool exist = false;
-	double angle;
+	bool horming = true;
+	//0:表示用アングル,1:元のアングル,2:目標アングル
+	double angle[3];
+	double distance;
+	int time;
 	int img_number;
 };
 
