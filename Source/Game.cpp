@@ -42,6 +42,7 @@ using namespace std;
 
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
+command_img(4),
 fire_img(5),
 player_flag(player_sum, true)
 {
@@ -89,6 +90,11 @@ player_flag(player_sum, true)
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/powerful_kick.png") });
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/destroy_guard.png") });
 	}
+	//コマンド画像
+	command_img.at(0) = Texture{ Unicode::Widen("../images/game/system/rei_command.png") };
+	command_img.at(1) = Texture{ Unicode::Widen("../images/game/system/yuuka_command.png") };
+	command_img.at(2) = Texture{ Unicode::Widen("../images/game/system/airi_command.png") };
+	command_img.at(3) = Texture{ Unicode::Widen("../images/game/system/no0_command.png") };
 
 	//録音開始!
 #ifndef debug_voice
@@ -1172,7 +1178,7 @@ void Game::draw() const {
 	}else {
 #endif
 		background_img.draw(0, 0);
-		command_img.draw(120, 150);
+		command_img.at(getData().player[player_number]).draw(120, 150);
 		draw_HP_bar();
 		draw_AP_bar();
 		draw_ping();
