@@ -145,11 +145,11 @@ private:
 	const Texture you_win_img{ U"../images/game/system/you_win.png" };
 	const Texture you_lose_img{ U"../images/game/system/you_lose.png" };
 	const Texture settle_img{ U"../images/game/system/settle.png" };
-	const Texture command_img{ U"../images/game/system/command.png" };
 	const Texture guns_img{ U"../images/game/system/guns.png" };
 	const Texture knives_img{ U"../images/game/system/knives.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
+	std::vector<Texture> command_img;
 	//音楽////////////////////////////////////////////////////////////
 	const Audio bgm{ U"../audioes/Es-Boss3_loop.ogg" , Arg::loopBegin = 28.848843537415s};
 	const Audio dos_se{ U"../audioes/dos.wav" };
