@@ -1,5 +1,6 @@
 ﻿# pragma once
 
+# include "MFCC.hpp"
 # include <Siv3D.hpp>
 
 class MFCCAnalyzer {
@@ -22,7 +23,7 @@ public:
 	/// @param melChannels メル周波数の分割数
 	/// @return MFCC
 	/// @throw Error マイクが録音中でない
-	Array<float> analyze(FFTSampleLength frames = FFTSampleLength::SL2K, size_t melChannels = 40);
+	MFCC analyze(FFTSampleLength frames = FFTSampleLength::SL2K, size_t melChannels = 40);
 
 	/// @brief 最後のメルスペクトラムを取得する
 	/// @return メルスペクトラム
@@ -30,14 +31,14 @@ public:
 
 	/// @brief MFCC の履歴を取得する
 	/// @return マイクロ秒と MFCC の std::map の共有ポインタ
-	[[nodiscard]] std::shared_ptr<std::map<uint64, Array<float>>> getMFCCHistory();
+	[[nodiscard]] std::shared_ptr<std::map<uint64, MFCC>> getMFCCHistory();
 
 protected:
 	static float freqToMel(float freq);
 	static float melToFreq(float mel);
 
 	Array<float> melSpectrum;
-	std::shared_ptr<std::map<uint64, Array<float>>> mfccHistory;
+	std::shared_ptr<std::map<uint64, MFCC>> mfccHistory;
 
 	size_t cleanMFCCHistory();
 };
