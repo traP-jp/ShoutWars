@@ -411,7 +411,7 @@ void Game::update_player() {
 			player[player_number].status |= 8;
 			player[player_number].timer[3] = now_time;
 #ifndef debug_mode
-			getData().client->sendAction(U"Guard", player_numbefr);
+			getData().client->sendAction(U"Guard", player_number);
 #endif
 		//ガード破壊
 		}elif(got_voice == 5) {

@@ -17,9 +17,9 @@ using namespace std;
 
 MFCCAnalyzer::MFCCAnalyzer(Microphone mic, uint64 mfccHistoryLife, size_t mfccOrder, float preEmphasisCoefficient)
 	: mic(mic), mfccHistoryLife(mfccHistoryLife), mfccOrder(mfccOrder),
-	preEmphasisCoefficient(preEmphasisCoefficient), mfccHistory(make_shared<map<uint64, Array<float>>>()) {}
+	preEmphasisCoefficient(preEmphasisCoefficient), mfccHistory(make_shared<map<uint64, MFCC>>()) {}
 
-Array<float> MFCCAnalyzer::analyze(FFTSampleLength frames, size_t melChannels) {
+MFCC MFCCAnalyzer::analyze(FFTSampleLength frames, size_t melChannels) {
 	if (!mic.isRecording()) throw Error{ U"mic must be recording" };
 
 	// get data from mic
@@ -67,10 +67,10 @@ Array<float> MFCCAnalyzer::analyze(FFTSampleLength frames, size_t melChannels) {
 	}
 
 	// DCT
-	Array<float> mfcc(mfccOrder, 0.0f);
+	MFCC mfcc{ Array<float>(mfccOrder, 0.0f) };
 	for (size_t i : Range(1, mfccOrder)) {
 		for (size_t j : step(melChannels)) {
-			mfcc[i - 1] += log10(abs(melSpectrum[j])) * cos(Math::Pi * i * (j + 0.5) / melChannels) * 10;
+			mfcc.feature[i - 1] += log10(abs(melSpectrum[j])) * cos(Math::Pi * i * (j + 0.5) / melChannels) * 10;
 		}
 	}
 
@@ -82,7 +82,7 @@ Array<float> MFCCAnalyzer::getMelSpectrum() const {
 	return melSpectrum;
 }
 
-shared_ptr<map<uint64, Array<float>>> MFCCAnalyzer::getMFCCHistory() {
+shared_ptr<map<uint64, MFCC>> MFCCAnalyzer::getMFCCHistory() {
 	cleanMFCCHistory();
 	return mfccHistory;
 }

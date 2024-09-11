@@ -6,7 +6,7 @@
 #include <string>
 #include <algorithm>
 
-#define debug_mode
+//#define debug_mode
 
 struct Player {
 	//各種変数

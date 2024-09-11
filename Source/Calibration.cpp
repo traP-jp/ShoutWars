@@ -74,7 +74,7 @@ void Calibration::draw() const {
 			RectF{
 				Arg::topLeft(1800.0 - 1680.0 * (nowUs - timeUs) / (phoneme.mfccHistoryLife / 1.1), 140.0 + i * 30.0),
 				1680.0 * 50'000 / (phoneme.mfccHistoryLife / 1.1), 30.0
-			}.draw(HSV{ 150 - mfcc[i] * 2, 0.6 });
+			}.draw(HSV{ 510.0 - mfcc.feature[i] * 2.0, 0.6 });
 		}
 	}
 	RectF{ Arg::rightCenter(120, 320), 200.0, 366.0 }.draw(Palette::Black);
@@ -88,7 +88,7 @@ void Calibration::draw() const {
 		for (size_t i : step(12)) {
 			RectF{
 				rect.x, rect.y + i * (rect.h / 12), rect.w, rect.h / 12
-			}.draw(HSV{ 150 - phoneme.mfccList[id][i] * 2, 0.6 });
+			}.draw(HSV{ 510.0 - phoneme.mfccList[id].feature[i] * 2.0, 0.6 });
 		}
 		if (!rect.mouseOver()) rect.drawFrame(4, Palette::White);
 		else if (!MouseL.pressed()) rect.drawFrame(12, Palette::White);

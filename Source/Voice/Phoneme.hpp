@@ -10,7 +10,7 @@ public:
 	FilePathView configPath;
 	Microphone mic;
 	double volumeThreshold;
-	Array<std::array<float, mfccOrder>> mfccList; // 0 はノイズ
+	Array<MFCC> mfccList; // 0 はノイズ
 	uint64 mfccHistoryLife;
 
 	/// @param configPath 設定ファイルのパス
@@ -47,7 +47,7 @@ public:
 	/// @brief MFCC の履歴を取得する
 	/// @return マイクロ秒と MFCC の std::map の共有ポインタ
 	/// @throw Error 録音中でない
-	[[nodiscard]] std::shared_ptr<std::map<uint64, Array<float>>> getMFCCHistory() const;
+	[[nodiscard]] std::shared_ptr<std::map<uint64, MFCC>> getMFCCHistory() const;
 
 protected:
 	std::unique_ptr<MFCCAnalyzer> mfccAnalyzer;
