@@ -2,20 +2,41 @@
 # include "common_function.hpp"
 
 //音声コマンド
-//「殴れ」
-#define 弱攻撃 U"AUE"
-//「キック」
-#define 狂攻撃 U"IU"
-//「龍虎水雷撃」
-#define 必殺技 U"UOUIAIEI"
+//共通//////////////////////////////////////
+
 //「ガード」
 #define ガード1 U"AO"
 //「守れ」
 #define ガード2 U"AOE"
 //「壊せ」
-#define ガード破壊1 U"OAE"
+#define ガード破壊共通 U"OAE"
+//玲////////////////////////////////////////
+
+
+//ユウカ////////////////////////////////////
+
+//「殴れ」
+#define ユウカ_弱攻撃 U"AUE"
+//「キック」
+#define ユウカ_狂攻撃 U"IU"
+//「龍虎水雷撃」
+#define ユウカ_必殺技 U"UOUIAIEI"
 //「刺せ」
-#define ガード破壊2 U"AE"
+#define ユウカ_ガード破壊 U"AE"
+//アイリ////////////////////////////////////
+
+//「撃て」
+#define アイリ_弱攻撃 U"UE"
+//「斬れ」
+#define アイリ_狂攻撃 U"IE"
+//TODO:考えろ
+#define アイリ_必殺技 U"O"
+//「連射」
+#define アイリ_特殊攻撃 U"EIA"
+//「刺せ」
+#define アイリ_ガード破壊 U"AE"
+//No.0////////////////////////////////////
+
 
 using namespace std;
 
@@ -100,13 +121,31 @@ int Game::getkey() {
 int Game::voice_command() {
 #ifndef debug_voice
 	wordDetector.addVowel(getData().vowels[getData().phoneme.estimate()]);
-	if (wordDetector.detect(弱攻撃))return 1;
-	if (wordDetector.detect(狂攻撃))return 2;
-	if (wordDetector.detect(必殺技))return 3;
+	if (getData().player[player_number] == 0) {
+		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
+		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
+		if (wordDetector.detect(ユウカ_必殺技))return 3;
+		if (wordDetector.detect(ユウカ_ガード破壊))return 5;
+	}elif(getData().player[player_number] == 1) {
+		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
+		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
+		if (wordDetector.detect(ユウカ_必殺技))return 3;
+		if (wordDetector.detect(ユウカ_ガード破壊))return 5;
+	}elif(getData().player[player_number] == 2) {
+		if (wordDetector.detect(アイリ_弱攻撃))return 1;
+		if (wordDetector.detect(アイリ_狂攻撃))return 2;
+		if (wordDetector.detect(アイリ_必殺技))return 3;
+		if (wordDetector.detect(アイリ_ガード破壊))return 5;
+		if (wordDetector.detect(アイリ_特殊攻撃))return 6;
+	}else {
+		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
+		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
+		if (wordDetector.detect(ユウカ_必殺技))return 3;
+		if (wordDetector.detect(ユウカ_ガード破壊))return 5;
+	}
 	if (wordDetector.detect(ガード1))return 4;
 	if (wordDetector.detect(ガード2))return 4;
-	if (wordDetector.detect(ガード破壊1))return 5;
-	if (wordDetector.detect(ガード破壊2))return 5;
+	if (wordDetector.detect(ガード破壊共通))return 5;
 #else
 	if (KeyB.pressed()) return 1;
 	if (KeyV.pressed()) return 2;
@@ -548,8 +587,8 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	//弱攻撃
 	if (player[cnt].status & 16) {
-		int t = now_time - player[cnt].timer[4];
-		if ((100 < t) && (t < 250)) {
+		player[cnt].timer[9] = now_time - player[cnt].timer[4];
+		if ((100 < player[cnt].timer[9]) && (player[cnt].timer[9] < 250)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
 				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
@@ -578,7 +617,8 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	}
 	//狂攻撃+必殺技
 	if (player[cnt].status & 96) {
-		int tmp = now_time - player[cnt].timer[(player[cnt].status & 32) ? 5 : 6];
+		player[cnt].timer[(player[cnt].status & 32) ? 10 : 11] = now_time - player[cnt].timer[(player[cnt].status & 32) ? 5 : 6];
+		int tmp = player[cnt].timer[(player[cnt].status & 32) ? 10 : 11];
 		if ((200 < tmp) && (tmp < 400)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
@@ -594,8 +634,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							player[i].event |= 2;
 							if (player[i].status & 8) {
 								void_damage_se.playOneShot();
-							}
-							else {
+							}else {
 #ifndef debug_mode
 								if (cnt == player_number)
 									getData().client->sendAction(U"StrongAttack", i);
@@ -604,8 +643,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							}
 							player[cnt].ap += yuuka_strong_attack_ap;
 							//必殺技
-						}
-						else {
+						}else {
 							if (player[cnt].se[4]) {
 								player[cnt].se[4] = false;
 								dododos_se.playOneShot();
@@ -613,8 +651,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							player[i].event |= 4;
 							if (player[i].status & 8) {
 								void_damage_se.playOneShot();
-							}
-							else {
+							}else {
 #ifndef debug_mode
 								if (cnt == player_number)
 									getData().client->sendAction(U"SpecialAttack", i);
@@ -723,8 +760,8 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 
 	//弱攻撃(銃)
 	if (player[cnt].status & 16) {
-		int t = now_time - player[cnt].timer[4];
-		if ((180 < t) && player[cnt].se[2]) {
+		player[cnt].timer[9] = now_time - player[cnt].timer[4];
+		if ((180 < player[cnt].timer[9]) && player[cnt].se[2]) {
 			player[cnt].se[2] = false;
 			shot_se.playOneShot();
 			//銃弾の発生
@@ -741,8 +778,8 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 
 	//狂攻撃(ナイフ)
 	if (player[cnt].status & 32) {
-		int t = now_time - player[cnt].timer[5];
-		if ((200 < t) && (t < 400)) {
+		player[cnt].timer[10] = now_time - player[cnt].timer[5];
+		if ((200 < player[cnt].timer[10]) && (player[cnt].timer[10] < 400)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
 				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
@@ -771,28 +808,28 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	}
 	//必殺技(大量(25本)のナイフ)
 	if (player[cnt].status & 64) {
-		int t = now_time - player[cnt].timer[6];
-		if ((140 < t) && player[cnt].se[4]) {
+		player[cnt].timer[11] = now_time - player[cnt].timer[6];
+		if ((140 < player[cnt].timer[11]) && player[cnt].se[4]) {
 			player[cnt].se[4] = false;
 			setting_knife(cnt,now_time,player_reserved_pos,0);
 		}
-		if ((180 < t) && (player[cnt].knife_mode <= 1)) {
+		if ((180 < player[cnt].timer[11]) && (player[cnt].knife_mode <= 1)) {
 			setting_knife(cnt, now_time, player_reserved_pos, 1);
 		}
-		if ((220 < t) && (player[cnt].knife_mode <= 2)) {
+		if ((220 < player[cnt].timer[11]) && (player[cnt].knife_mode <= 2)) {
 			setting_knife(cnt, now_time, player_reserved_pos, 2);
 		}
-		if ((260 < t) && (player[cnt].knife_mode <= 3)) {
+		if ((260 < player[cnt].timer[11]) && (player[cnt].knife_mode <= 3)) {
 			setting_knife(cnt, now_time, player_reserved_pos, 3);
 		}
-		if ((300 < t) && (player[cnt].knife_mode <= 4)) {
+		if ((300 < player[cnt].timer[11]) && (player[cnt].knife_mode <= 4)) {
 			setting_knife(cnt, now_time, player_reserved_pos, 4);
 		}
 	}
 	//特殊攻撃(連射)
 	if (player[cnt].status & 256) {
-		int t = now_time - player[cnt].timer[14];
-		if (t > 150) {
+		player[cnt].timer[15] = now_time - player[cnt].timer[14];
+		if (player[cnt].timer[15] > 150) {
 			int tmp = now_time - player[cnt].airi_old_timer;
 			if (tmp > 20) {
 				player[cnt].airi_old_timer = now_time;
@@ -830,7 +867,7 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[],int n
 		knife[knife_number].mode = 0;
 		knife[knife_number].horming = true;
 		knife[knife_number].img_number = i;
-		knife[knife_number].goal_pos = player_reserved_pos[another_player_number];
+		knife[knife_number].goal_pos = player_reserved_pos[(cnt == player_number)?another_player_number:player_number];
 		knife[knife_number].distance = sqrt(pow(knife[knife_number].goal_pos.x - knife[knife_number].pos.x, 2) + pow(knife[knife_number].goal_pos.y - knife[knife_number].pos.y, 2));
 		knife[knife_number].time = knife[knife_number].distance / 1.8;
 		set_angle += M_PI / 7.0;
