@@ -677,18 +677,34 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			if (now_time - knife[i].timer[0] > 500) {
 				knife[i].mode = 1;
 				knife[i].timer[1] = now_time;
-				knife[i].angle = atan2(player_reserved_pos[another_player_number].y - knife[i].pos.y, player_reserved_pos[another_player_number].x - knife[i].pos.x);
+				knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
 			}
 		//発射
 		}else{
-			knife[i].pos = knife[i].old_pos + 2.5 * (now_time-knife[i].timer[1]) * Vec2 { cos(knife[i].angle), sin(knife[i].angle) };
+			double t = now_time - knife[i].timer[1];
+			double distance = sqrt(pow(knife[i].goal_pos.x - knife[i].pos.x, 2) + pow(knife[i].goal_pos.y - knife[i].pos.y, 2));
+			if (distance < 32.0) {
+				knife[i].horming = false;
+			}elif(knife[i].horming) {
+				knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
+				double tmp_angle = knife[i].angle[2] - knife[i].angle[1];
+				// 角度差を-π～πの間に収める
+				if (tmp_angle > M_PI) tmp_angle -= 2.0 * M_PI;
+				if (tmp_angle < -M_PI) tmp_angle += 2.0 * M_PI;
+				knife[i].angle[0] = knife[i].angle[1] + tmp_angle * EaseOutExpo(Min(t / knife[i].time,1.0));
+			}
+			//ナイフの移動
+			knife[i].pos += (Scene::DeltaTime()) * 1800.0 * Vec2 { cos(knife[i].angle[0]), sin(knife[i].angle[0]) };
+			//角度を-π～πの間に収める
+			if (knife[i].angle[0] >  M_PI) knife[i].angle[0] -= 2.0 * M_PI;
+			if (knife[i].angle[0] < -M_PI) knife[i].angle[0] += 2.0 * M_PI;
 			//画面外に出たら退場
-			if ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920) || (knife[i].pos.y < 0) || (knife[i].pos.y > 1080))
+			if ((t > knife[i].time) && ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920) || (knife[i].pos.y < 0) || (knife[i].pos.y > 1080)))
 				knife[i].exist = false;
 			//当たり判定処理
 			int distance_x = abs(player_reserved_pos[another_player_number].x - knife[i].pos.x);
 			int distance_y = abs(player_reserved_pos[another_player_number].y - knife[i].pos.y);
-			if ((distance_x < 30.0) && (distance_y < ((player[another_player_number].status & 3) == 0)? 180.0:90.0)) {
+			if ((distance_x < 20.0) && (distance_y < ((player[another_player_number].status & 3) == 0)? 180.0:90.0)) {
 				if (player[another_player_number].status & 8) {
 					void_damage_se.playOneShot();
 				}else {
@@ -772,7 +788,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			setting_knife(cnt, now_time, player_reserved_pos, 4);
 		}
 	}
-	//TODO:特殊攻撃(連射)
+	//特殊攻撃(連射)
 	if (player[cnt].status & 256) {
 		int t = now_time - player[cnt].timer[14];
 		if (t > 150) {
@@ -804,10 +820,18 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[],int n
 		if (knife_number == -1) break;
 		knife[knife_number].pos = player_reserved_pos[cnt] + Vec2{ cos(set_angle) * 180.0, sin(set_angle) * 180.0 };
 		knife[knife_number].old_pos = knife[knife_number].pos;
-		knife[knife_number].angle = knife_angle + (M_PI * 2.0 / 5.0) * i;
+		knife[knife_number].angle[0] = knife_angle + (M_PI*2 / 5.0) * i;
+		//角度を-π～πの間に収める
+		if (knife[knife_number].angle[0] >  M_PI)knife[knife_number].angle[0] -= M_PI * 2.0;
+		if (knife[knife_number].angle[0] < -M_PI)knife[knife_number].angle[0] += M_PI * 2.0;
+		knife[knife_number].angle[1] = knife[knife_number].angle[0];
 		knife[knife_number].timer[0] = now_time;
 		knife[knife_number].mode = 0;
+		knife[knife_number].horming = true;
 		knife[knife_number].img_number = i;
+		knife[knife_number].goal_pos = player_reserved_pos[another_player_number];
+		knife[knife_number].distance = sqrt(pow(knife[knife_number].goal_pos.x - knife[knife_number].pos.x, 2) + pow(knife[knife_number].goal_pos.y - knife[knife_number].pos.y, 2));
+		knife[knife_number].time = knife[knife_number].distance / 1.8;
 		set_angle += M_PI / 7.0;
 	}
 }
@@ -1185,7 +1209,7 @@ void Game::draw_bullet() const {
 void Game::draw_knife() const {
 	for (int i = 0; i < max_knives; i++) {
 		if (!knife[i].exist)continue;
-		knives_img(0,28*knife[i].img_number,54,28).rotated(knife[i].angle).drawAt(knife[i].pos);
+		knives_img(0,28*knife[i].img_number,54,28).rotated(knife[i].angle[0]).drawAt(knife[i].pos);
 	}
 }
 
