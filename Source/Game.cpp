@@ -12,6 +12,14 @@
 #define ガード破壊共通 U"OAE"
 //玲////////////////////////////////////////
 
+//「殴れ」
+#define 玲_弱攻撃 U"AUE"
+//「蹴れ」
+#define 玲_狂攻撃 U"EE"
+//「龍虎水雷撃」
+#define 玲_必殺技 U"UOUIAIEI"
+//「刺せ」
+#define 玲_ガード破壊 U"AE"
 
 //ユウカ////////////////////////////////////
 
@@ -37,6 +45,14 @@
 #define アイリ_ガード破壊 U"AE"
 //No.0////////////////////////////////////
 
+//「殴れ」
+#define No0_弱攻撃 U"AUE"
+//「蹴れ」
+#define No0_狂攻撃 U"EE"
+//「龍虎水雷撃」
+#define No0_必殺技 U"UOUIAIEI"
+//「刺せ」
+#define No0_ガード破壊 U"AE"
 
 using namespace std;
 
@@ -54,10 +70,10 @@ player_flag(player_sum, true)
 	if ((getData().player[0] == 0) || (getData().player[1] == 0)) {
 		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/waiting.png") });
 		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/running.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/running.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/kick.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/special_attack.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/strong_attack.png") });
 		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/weak_attack.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/powerful_kick.png") });
+		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/super_attack.png") });
 		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/destroy_guard.png") });
 	}
 	//ユウカの画像
@@ -84,10 +100,10 @@ player_flag(player_sum, true)
 	if ((getData().player[0] == 3) || (getData().player[1] == 3)) {
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/waiting.png") });
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/running.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/running.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/kick.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/special_attack.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/strong_attack.png") });
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/weak_attack.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/powerful_kick.png") });
+		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/super_attack.png") });
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/destroy_guard.png") });
 	}
 	//コマンド画像
@@ -128,10 +144,10 @@ int Game::voice_command() {
 #ifndef debug_voice
 	wordDetector.addVowel(getData().vowels[getData().phoneme.estimate()]);
 	if (getData().player[player_number] == 0) {
-		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
-		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
-		if (wordDetector.detect(ユウカ_必殺技))return 3;
-		if (wordDetector.detect(ユウカ_ガード破壊))return 5;
+		if (wordDetector.detect(玲_弱攻撃))return 1;
+		if (wordDetector.detect(玲_狂攻撃))return 2;
+		if (wordDetector.detect(玲_必殺技))return 3;
+		if (wordDetector.detect(玲_ガード破壊))return 5;
 	}elif(getData().player[player_number] == 1) {
 		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
 		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
@@ -144,10 +160,10 @@ int Game::voice_command() {
 		if (wordDetector.detect(アイリ_ガード破壊))return 5;
 		if (wordDetector.detect(アイリ_特殊攻撃))return 6;
 	}else {
-		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
-		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
-		if (wordDetector.detect(ユウカ_必殺技))return 3;
-		if (wordDetector.detect(ユウカ_ガード破壊))return 5;
+		if (wordDetector.detect(No0_弱攻撃))return 1;
+		if (wordDetector.detect(No0_狂攻撃))return 2;
+		if (wordDetector.detect(No0_必殺技))return 3;
+		if (wordDetector.detect(No0_ガード破壊))return 5;
 	}
 	if (wordDetector.detect(ガード1))return 4;
 	if (wordDetector.detect(ガード2))return 4;
@@ -586,8 +602,34 @@ int Game::search_knife() {
 	return -1;
 }
 
+void Game::weak_bullet(int cnt, int now_time, Vec2 player_reserved_pos[]) {
+	//弱攻撃(銃)
+	if (player[cnt].status & 16) {
+		player[cnt].timer[9] = now_time - player[cnt].timer[4];
+		if ((180 < player[cnt].timer[9]) && player[cnt].se[2]) {
+			player[cnt].se[2] = false;
+			shot_se.playOneShot();
+			//銃弾の発生
+			int bullet_number = search_bullet();
+			if (bullet_number != -1) {
+				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 120,-120 };
+				bullet[bullet_number].old_pos = bullet[bullet_number].pos;
+				bullet[bullet_number].direction = !player[cnt].direction;
+				bullet[bullet_number].timer = now_time;
+				bullet[bullet_number].mode = 0;
+				bullet[bullet_number].character = player[cnt].number;
+			}
+		}
+	}
+}
+
 void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
-	yuuka_attack(cnt, now_time, player_reserved_pos);
+
+
+	//弱攻撃
+	weak_bullet(cnt, now_time, player_reserved_pos);
+	//狂攻撃
+
 }
 
 void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
@@ -677,6 +719,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	//銃弾の移動・当たり判定処理
 	for (int i = 0; i < max_bullet; i++) {
 		if (!bullet[i].exist)continue;
+		if (bullet[i].character != player[cnt].number)continue;
 		bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 3.0;
 		if ((bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920))bullet[i].exist = false;
 		for (int j = 0; j < player_sum; j++) {
@@ -765,22 +808,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	}
 
 	//弱攻撃(銃)
-	if (player[cnt].status & 16) {
-		player[cnt].timer[9] = now_time - player[cnt].timer[4];
-		if ((180 < player[cnt].timer[9]) && player[cnt].se[2]) {
-			player[cnt].se[2] = false;
-			shot_se.playOneShot();
-			//銃弾の発生
-			int bullet_number = search_bullet();
-			if (bullet_number != -1) {
-				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) *120,-120};
-				bullet[bullet_number].old_pos = bullet[bullet_number].pos;
-				bullet[bullet_number].direction = !player[cnt].direction;
-				bullet[bullet_number].timer = now_time;
-				bullet[bullet_number].mode = 0;
-			}
-		}
-	}
+	weak_bullet(cnt, now_time, player_reserved_pos);
 
 	//狂攻撃(ナイフ)
 	if (player[cnt].status & 32) {
