@@ -37,8 +37,8 @@
 #define アイリ_弱攻撃 U"UE"
 //「斬れ」
 #define アイリ_狂攻撃 U"IE"
-//TODO:考えろ
-#define アイリ_必殺技 U"O"
+//「デッドリーアサルト」
+#define アイリ_必殺技 U"EOIAAUO"
 //「連射」
 #define アイリ_特殊攻撃 U"EIA"
 //「刺せ」
@@ -107,10 +107,10 @@ player_flag(player_sum, true)
 		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/destroy_guard.png") });
 	}
 	//コマンド画像
-	command_img.at(0) = Texture{ Unicode::Widen("../images/game/system/rei_command.png") };
-	command_img.at(1) = Texture{ Unicode::Widen("../images/game/system/yuuka_command.png") };
-	command_img.at(2) = Texture{ Unicode::Widen("../images/game/system/airi_command.png") };
-	command_img.at(3) = Texture{ Unicode::Widen("../images/game/system/no0_command.png") };
+	command_img.at(0) = Texture{ Unicode::Widen("../images/game/system/command_rei.png") };
+	command_img.at(1) = Texture{ Unicode::Widen("../images/game/system/command_yuuka.png") };
+	command_img.at(2) = Texture{ Unicode::Widen("../images/game/system/command_airi.png") };
+	command_img.at(3) = Texture{ Unicode::Widen("../images/game/system/command_no0.png") };
 
 	//録音開始!
 #ifndef debug_voice
