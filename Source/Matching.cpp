@@ -5,11 +5,13 @@ using namespace std;
 
 Matching::Matching(const InitData& init) : IScene(init)
 {
+#ifndef debug_voice
 	//資格を満たしているかどうか
 	if (getData().phoneme.isMFCCUnset()) {
 		error_ID = 7;
 		error_mode = 1;
 	}
+#endif
 	
 	//通信関連の処理
 	if (getData().before_scene != State::Calibration) {
