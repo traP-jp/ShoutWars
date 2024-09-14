@@ -6,7 +6,7 @@
 #include <string>
 #include <algorithm>
 
-//#define debug_mode
+#define debug_mode
 
 struct Player {
 	//各種変数
@@ -51,6 +51,7 @@ struct bullet {
 	bool exist = false;
 	int direction;
 	int mode;
+	int character;
 };
 
 struct knife {
@@ -239,7 +240,9 @@ private:
 	void setting_knife(int cnt,int now_time,Vec2 player_reserved_pos[], int now_number);
 	void no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
 
-	//get_character_power_ap(番号,HPならtrue、APならfalse,攻撃の種類)
+	void weak_bullet(int cnt, int now_time, Vec2 player_reserved_pos[]);
+
+	//get_character_power_ap(番号,攻撃の種類)
 	//攻撃の種類(0:弱,1:狂,2:必殺,3:特殊)
 	int get_character_power(int character_number, int attack_sort);
 
