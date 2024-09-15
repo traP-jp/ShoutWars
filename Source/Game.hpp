@@ -21,8 +21,8 @@ struct Player {
 	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:ガード,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6),12:ガード破壊,13:進捗(12),14:特殊攻撃,15:進捗(14))
 	int timer[16];
 
-	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺,5:ガード,6:ガード破壊)
-	bool se[7] = { false };
+	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺,5:ガード,6:ガード破壊,7:特殊攻撃)
+	bool se[8] = { false };
 	//Playerの向き(true:右,false:左)
 	bool direction = false;
 	//1回限りのイベント(0:なし,1:弱,2:狂,4:必殺,8:ガード破壊)
@@ -31,6 +31,10 @@ struct Player {
 	bool special_attack = false;
 	//キャラ(0:玲（レイ）,1:ユウカ,2:アイリ,3:No.0 (レイ）
 	int number = 0;
+	//アイリ専用
+	int knife_mode = 0;
+	int airi_old_timer = 0;
+	double wave_pos = 0.0;
 
 	int img_number = 0;
 	int img_status = 0;
@@ -40,17 +44,87 @@ struct Player {
 	int fire_animation_timer = 0;
 };
 
+struct bullet {
+	Vec2 pos;
+	Vec2 old_pos;
+	int timer;
+	bool exist = false;
+	int direction;
+	int mode;
+	int character;
+};
+
+struct knife {
+	Vec2 pos;
+	Vec2 old_pos;
+	Vec2 goal_pos;
+	int mode = 0;
+	int timer[2];
+	bool exist = false;
+	bool horming = true;
+	//0:表示用アングル,1:元のアングル,2:目標アングル
+	double angle[3];
+	double distance;
+	int time;
+	int img_number;
+};
+
 class Game : public App::Scene
 {
 private:
-	//構造体////////////////////////////////////////////////////////////
-	struct Player player[2];
+	//キャラ性能に関する定数////////////////////////////////////////////
+	//玲（レイ）
+	//ダメージ量
+	const static int rei_weak_atttack = 5;
+	const static int rei_strong_attack = 7;
+	const static int rei_special_attack = 8;
+	//AP回復量
+	const static int rei_weak_atttack_ap = 3;
+	const static int rei_strong_attack_ap = 5;
+	const static int rei_special_attack_ap = 8;
+
+	//ユウカ
+	//ダメージ量
+	const static int yuuka_weak_atttack = 3;
+	const static int yuuka_strong_attack = 5;
+	const static int yuuka_special_attack = 15;
+	//AP回復量
+	const static int yuuka_weak_atttack_ap = 1;
+	const static int yuuka_strong_attack_ap = 3;
+	//アイリ
+	//ダメージ量
+	const static int airi_weak_atttack = 5;
+	const static int airi_strong_attack = 7;
+	const static int airi_special_attack = 8;
+	const static int airi_uniqe_attack = 3;
+	//AP回復量
+	const static int airi_weak_atttack_ap = 3;
+	const static int airi_strong_attack_ap = 5;
+	const static int airi_special_attack_ap = 8;
+	const static int airi_uniqe_attack_ap = 2;
+	//No.0 (レイ）
+	//ダメージ量
+	const static int no0_weak_atttack = 5;
+	const static int no0_strong_attack = 7;
+	const static int no0_special_attack = 8;
+	//AP回復量
+	const static int no0_weak_atttack_ap = 3;
+	const static int no0_strong_attack_ap = 5;
+	const static int no0_special_attack_ap = 8;
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
 	const static int player_min_y = 650;
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
 	const static int player_max_ap = 500;
+	//最大同時存在弾丸数は60
+	const static int max_bullet = 60;
+	//最大同時存在ナイフ数は50本
+	const static int max_knives = 50;
+	//構造体////////////////////////////////////////////////////////////
+	struct Player player[player_sum];
+	struct bullet bullet[max_bullet];
+	struct knife knife[max_knives];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
@@ -72,9 +146,11 @@ private:
 	const Texture you_win_img{ U"../images/game/system/you_win.png" };
 	const Texture you_lose_img{ U"../images/game/system/you_lose.png" };
 	const Texture settle_img{ U"../images/game/system/settle.png" };
-	const Texture command_img{ U"../images/game/system/command.png" };
+	const Texture guns_img{ U"../images/game/system/guns.png" };
+	const Texture knives_img{ U"../images/game/system/knives.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
+	std::vector<Texture> command_img;
 	//音楽////////////////////////////////////////////////////////////
 	const Audio bgm{ U"../audioes/Es-Boss3_loop.ogg" , Arg::loopBegin = 28.848843537415s};
 	const Audio dos_se{ U"../audioes/dos.wav" };
@@ -136,6 +212,8 @@ private:
 	//1:上,2:左,4:下,8:右
 	int getkey();
 	void draw_player() const;
+	void draw_bullet() const;
+	void draw_knife() const;
 	void draw_HP_bar() const;
 	void draw_AP_bar() const;
 	void draw_ping() const;
@@ -152,6 +230,22 @@ private:
 	void Json2ArrayTimer(String str, int(&timer)[16]);
 	void Json2ArrayHP(String str, int(&hp)[3]);
 	inline int GameTimer();
+	int search_bullet();
+	int search_knife();
+	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
+	//各キャラ専用関数
+	void rei_attack(int cnt,int now_time,Vec2 player_reserved_pos[]);
+	void yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
+	void airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
+	void setting_knife(int cnt,int now_time,Vec2 player_reserved_pos[], int now_number);
+	void no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
+
+	void weak_bullet(int cnt, int now_time, Vec2 player_reserved_pos[]);
+
+	//get_character_power_ap(番号,攻撃の種類)
+	//攻撃の種類(0:弱,1:狂,2:必殺,3:特殊)
+	int get_character_power(int character_number, int attack_sort);
+
 public:
 
 	Game(const InitData& init);
