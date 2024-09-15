@@ -142,7 +142,12 @@ int Game::getkey() {
 
 int Game::voice_command() {
 #ifndef debug_voice
-	wordDetector.addVowel(getData().vowels[getData().phoneme.estimate()]);
+	HashTable<char32, double> scores;
+	for (const auto& [id, score] : getData().phoneme.estimate() | views::enumerate) {
+		const auto vowel = getData().vowels[id];
+		if (vowel != U' ') scores[vowel] = max(scores[vowel], pow(score, 2) * (score >= 0.0 ? 1.0 : -1.0));
+	}
+	wordDetector.addScores(scores);
 	if (getData().player[player_number] == 0) {
 		if (wordDetector.detect(玲_弱攻撃))return 1;
 		if (wordDetector.detect(玲_狂攻撃))return 2;
@@ -1215,18 +1220,20 @@ void Game::draw() const {
 		draw_knife();
 		draw_player();
 
-		String inputVowels = U"";
-		for (const auto& vowel : wordDetector.getVowelBuffer(10)) {
-			if (vowel == U'A') inputVowels += U"ア";
-			if (vowel == U'I') inputVowels += U"イ";
-			if (vowel == U'U') inputVowels += U"ウ";
-			if (vowel == U'E') inputVowels += U"エ";
-			if (vowel == U'O') inputVowels += U"オ";
-		}
-		font(U"入力: {}"_fmt(inputVowels)).draw(60, 10, 10, Palette::Lightgray);
-		//double vowelHistoryLife = wordDetector.vowelHistoryLife;
-		//SimpleGUI::Slider(U"vowelHistoryLife={}us"_fmt(vowelHistoryLife), vowelHistoryLife, 0.0, 1000000.0, Vec2(600, 30), 300, 500);
-		//wordDetector.vowelHistoryLife = vowelHistoryLife;
+		// WordDetector のパラメータ調整用
+		//double coolTime = wordDetector.coolTime;
+		//SimpleGUI::Slider(U"coolTime={}us"_fmt(coolTime), coolTime, 0.0, 1'000'000.0, Vec2(600, 20), 300, 500);
+		//wordDetector.coolTime = coolTime;
+		//double wordTimeout = wordDetector.wordTimeout;
+		//SimpleGUI::Slider(U"wordTimeout={}us"_fmt(wordTimeout), wordTimeout, 0.0, 1'000'000.0, Vec2(600, 60), 300, 500);
+		//wordDetector.wordTimeout = wordTimeout;
+		//double wordTimeLimit = wordDetector.wordTimeLimit;
+		//SimpleGUI::Slider(U"wordTimeLimit={}us"_fmt(wordTimeLimit), wordTimeLimit, 0.0, 10'000'000.0, Vec2(600, 100), 300, 500);
+		//wordDetector.wordTimeLimit = wordTimeLimit;
+		//double scoresHistoryLife = wordDetector.scoresHistoryLife;
+		//SimpleGUI::Slider(U"scoresHistoryLife={}us"_fmt(scoresHistoryLife), scoresHistoryLife, 0.0, 1'000'000.0, Vec2(600, 140), 300, 500);
+		//wordDetector.scoresHistoryLife = scoresHistoryLife;
+		//SimpleGUI::Slider(U"scoreThreshold={}"_fmt(wordDetector.scoreThreshold), wordDetector.scoreThreshold, -1.0, 1.0, Vec2(600, 180), 300, 500);
 
 		draw_settle();
 

@@ -126,6 +126,7 @@
     <ClCompile Include="Source\Multiplay\RoomInfo.cpp" />
     <ClCompile Include="Source\Result.cpp" />
     <ClCompile Include="Source\Title.cpp" />
+    <ClCompile Include="Source\Voice\MFCC.cpp" />
     <ClCompile Include="Source\Voice\MFCCAnalyzer.cpp" />
     <ClCompile Include="Source\Voice\Phoneme.cpp" />
     <ClCompile Include="Source\Voice\WordDetector.cpp" />
@@ -250,6 +251,7 @@
     <ClInclude Include="Source\Multiplay\RoomInfo.hpp" />
     <ClInclude Include="Source\Result.hpp" />
     <ClInclude Include="Source\Title.hpp" />
+    <ClInclude Include="Source\Voice\MFCC.hpp" />
     <ClInclude Include="Source\Voice\MFCCAnalyzer.hpp" />
     <ClInclude Include="Source\Voice\Phoneme.hpp" />
     <ClInclude Include="Source\Voice\WordDetector.hpp" />

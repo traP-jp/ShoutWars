@@ -10,7 +10,7 @@ public:
 	FilePathView configPath;
 	Microphone mic;
 	double volumeThreshold;
-	Array<std::array<float, mfccOrder>> mfccList; // 0 はノイズ
+	Array<MFCC> mfccList; // 0 はノイズ
 	uint64 mfccHistoryLife;
 
 	/// @param configPath 設定ファイルのパス
@@ -28,8 +28,8 @@ public:
 
 	/// @brief 音声を解析し音素を推定する (重い処理なので 1 秒に 60 回までしか呼ぶな)
 	/// @param frames 音声解析に使うサンプル数 (大きいほど重くなる)
-	/// @return 推定された音素の ID (インデックス)
-	[[nodiscard]] size_t estimate(FFTSampleLength frames = FFTSampleLength::SL2K);
+	/// @return それぞれの音素とのコサイン類似度 (値域は [-1.0 1.0])
+	[[nodiscard]] Array<double> estimate(FFTSampleLength frames = FFTSampleLength::SL2K);
 
 	/// @brief MFCC を全て設定できていないかを調べる
 	/// @return mfccList が全て埋まっていないかどうか
@@ -47,7 +47,7 @@ public:
 	/// @brief MFCC の履歴を取得する
 	/// @return マイクロ秒と MFCC の std::map の共有ポインタ
 	/// @throw Error 録音中でない
-	[[nodiscard]] std::shared_ptr<std::map<uint64, Array<float>>> getMFCCHistory() const;
+	[[nodiscard]] std::shared_ptr<std::map<uint64, MFCC>> getMFCCHistory() const;
 
 protected:
 	std::unique_ptr<MFCCAnalyzer> mfccAnalyzer;
