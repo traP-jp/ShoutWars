@@ -28,8 +28,8 @@ public:
 
 	/// @brief 音声を解析し音素を推定する (重い処理なので 1 秒に 60 回までしか呼ぶな)
 	/// @param frames 音声解析に使うサンプル数 (大きいほど重くなる)
-	/// @return 推定された音素の ID (インデックス)
-	[[nodiscard]] size_t estimate(FFTSampleLength frames = FFTSampleLength::SL2K);
+	/// @return それぞれの音素とのコサイン類似度 (値域は [-1.0 1.0])
+	[[nodiscard]] Array<double> estimate(FFTSampleLength frames = FFTSampleLength::SL2K);
 
 	/// @brief MFCC を全て設定できていないかを調べる
 	/// @return mfccList が全て埋まっていないかどうか
