@@ -7,17 +7,17 @@
 //「ガード」
 #define ガード1 U"AO"
 //「守れ」
-#define ガード2 U"AOE"
+#define ガード2 U"AOE" // ガードに吸われる
 //「壊せ」
 #define ガード破壊共通 U"OAE"
 //玲////////////////////////////////////////
 
 //「殴れ」
 #define 玲_弱攻撃 U"AUE"
-//「蹴れ」
-#define 玲_狂攻撃 U"EE"
+//「キック」
+#define 玲_狂攻撃 U"IU"
 //「龍虎水雷撃」
-#define 玲_必殺技 U"UOUIAIEI"
+#define 玲_必殺技 U"AIEI" //U"UOUIAIEI"
 //「刺せ」
 #define 玲_ガード破壊 U"AE"
 
@@ -28,7 +28,7 @@
 //「キック」
 #define ユウカ_狂攻撃 U"IU"
 //「龍虎水雷撃」
-#define ユウカ_必殺技 U"UOUIAIEI"
+#define ユウカ_必殺技 U"AIEI" //U"UOUIAIEI"
 //「刺せ」
 #define ユウカ_ガード破壊 U"AE"
 //アイリ////////////////////////////////////
@@ -38,7 +38,7 @@
 //「斬れ」
 #define アイリ_狂攻撃 U"IE"
 //「デッドリーアサルト」
-#define アイリ_必殺技 U"EOIAAUO"
+#define アイリ_必殺技 U"IAUO" //U"EOIAUO"
 //「連射」
 #define アイリ_特殊攻撃 U"EIA"
 //「刺せ」
@@ -47,10 +47,10 @@
 
 //「殴れ」
 #define No0_弱攻撃 U"AUE"
-//「蹴れ」
-#define No0_狂攻撃 U"EE"
+//「キック」
+#define No0_狂攻撃 U"IU"
 //「龍虎水雷撃」
-#define No0_必殺技 U"UOUIAIEI"
+#define No0_必殺技 U"AIEI" //U"UOUIAIEI"
 //「刺せ」
 #define No0_ガード破壊 U"AE"
 
@@ -573,7 +573,7 @@ void Game::update_player() {
 		}
 	}
 
-	
+
 	for (int i = 0; i < player_sum; i++) {
 		//移動範囲制限
 		player_reserved_pos[i].x = Clamp(player_reserved_pos[i].x, 50.0, 1850.0);
@@ -747,7 +747,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							player[j].hp[1] -= airi_uniqe_attack;
 							player[cnt].ap += airi_uniqe_attack_ap;
 						}
-						
+
 					}
 					bullet[i].exist = false;
 					break;
