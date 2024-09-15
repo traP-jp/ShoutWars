@@ -19,7 +19,7 @@ void Calibration::update() {
 
 	// 音声解析
 	phoneme.mic.fft(fftResult, FFTSampleLength::SL2K);
-	phonemeId = phoneme.estimate(FFTSampleLength::SL2K);
+	phonemeScores = phoneme.estimate(FFTSampleLength::SL2K);
 
 	// 音素登録ボタン
 	for (size_t id : step(12)) {
@@ -97,7 +97,7 @@ void Calibration::draw() const {
 		font(phonemeNames[id]).draw(
 			30,
 			Arg::topCenter(rect.bottomCenter() + Vec2{ 0, 20 }),
-			id == phonemeId ? Palette::Limegreen : Palette::Orange
+			phonemeScores[id] >= 0.75 ? Palette::Limegreen : Palette::Orange
 		);
 	}
 	font(U"登録したい音素を発音しながら緑に光るまで長押ししてください。").draw(40, 120, 540);

@@ -4,7 +4,8 @@ using namespace std;
 
 Phoneme::Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t n, uint64 mfccHistoryLife)
 	: configPath(configPath), volumeThreshold(defaultVolumeThreshold), mfccList(n), mfccHistoryLife(mfccHistoryLife) {
-	for (auto&& mfcc : mfccList) mfcc.feature = Array<float>(mfccOrder, 0.0f);
+	if (n < 1) throw Error{ U"The number of phoneme must not be empty" };
+	for (auto&& mfcc : mfccList) mfcc.feature = Array<double>(mfccOrder, 0.0);
 	JSON config = JSON::Load(configPath);
 	try {
 		if (config && config.isObject()) {
@@ -16,7 +17,7 @@ Phoneme::Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t 
 					const auto mfcc = config[U"mfcc"][id];
 					if (!mfcc.isArray() || mfcc.size() != mfccOrder) continue;
 					for (size_t i : step(mfccOrder)) {
-						if (mfcc[i].isNumber()) mfccList[id].feature[i] = mfcc[i].get<float>();
+						if (mfcc[i].isNumber()) mfccList[id].feature[i] = mfcc[i].get<double>();
 					}
 				}
 			}
@@ -39,21 +40,22 @@ void Phoneme::stop() {
 	mfccAnalyzer.reset();
 }
 
-size_t Phoneme::estimate(FFTSampleLength frames) {
-	if (!mic.isRecording()) return 0;
+Array<double> Phoneme::estimate(FFTSampleLength frames) {
+	const size_t n = mfccList.size();
+	Array<double> silenceScores(n, -1.0);
+	silenceScores[0] = 1.0;
+	if (!mic.isRecording()) return silenceScores;
 
 	// analyze MFCC
 	const auto& currentMFCC = mfccAnalyzer->analyze(frames, 40);
-	if (mic.rootMeanSquare() < volumeThreshold) return 0;
+	if (mic.rootMeanSquare() < volumeThreshold) return silenceScores;
 
 	// estimate phoneme
-	return ranges::max_element(mfccList, {}, [&](const auto& targetMFCC) {
-		return currentMFCC.cosineSimilarity(targetMFCC);
-	}) - mfccList.begin();
+	return mfccList.map([&](MFCC mfcc) -> double { return currentMFCC.cosineSimilarity(mfcc); });
 }
 
 bool Phoneme::isMFCCUnset() const {
-	return ranges::any_of(mfccList, [](MFCC mfcc) { return mfcc.isUnset();  });
+	return ranges::any_of(mfccList, [](MFCC mfcc) { return mfcc.isUnset(); });
 }
 
 void Phoneme::setMFCC(uint64 id) {
