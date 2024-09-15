@@ -2,43 +2,73 @@
 
 using namespace std;
 
-WordDetector::WordDetector(uint64 vowelHistoryLife) : vowelHistoryLife(vowelHistoryLife) {}
+WordDetector::WordDetector(
+	uint64 coolTime, uint64 wordTimeout, uint64 wordTimeLimit, uint64 scoresHistoryLife, double scoreThreshold
+)
+	: coolTime(coolTime), wordTimeout(wordTimeout), wordTimeLimit(wordTimeLimit), scoresHistoryLife(scoresHistoryLife),
+	scoreThreshold(scoreThreshold), lastDetected(0uLL) {}
 
-char32 WordDetector::addVowel(char32 vowel) {
-	vowelHistory << pair{ Time::GetMicrosec(), vowel };
-	const auto peakVowel = peak();
-	if (vowelBuffer.empty() || vowelBuffer.back() != peakVowel) {
-		if (peakVowel != U' ') vowelBuffer << peakVowel;
-	}
-	return peakVowel;
+HashTable<char32, bool> WordDetector::addScores(HashTable<char32, double> scores) {
+	const auto now = Time::GetMicrosec();
+	scoresHistory << pair{ now, scores };
+	if (now < lastDetected + coolTime) return {};
+	const auto chances = vowelChances();
+	vowelsBuffer << pair{ now, chances };
+	//String chancesStr = U"";
+	//for (const auto& [vowel, chance] : chances) chancesStr += U"{}={}, "_fmt(vowel, chance);
+	//Print << U"time: {}us, chances: {}"_fmt(now, chancesStr);
+	return chances;
 }
 
 bool WordDetector::detect(String word) {
-	if (vowelBuffer.ends_with(word)) {
-		vowelBuffer.clear();
-		return true;
+	const auto now = Time::GetMicrosec();
+	if (now < lastDetected + coolTime) return false;
+	vowelsBuffer.remove_if([this, now](const auto& v) { return now - v.first > wordTimeLimit; });
+
+	// Dynamic Programming
+	Array<uint64> lastWordTimes(word.size() + 1, 4e18);
+	lastWordTimes.back() = now;
+	for (const auto& [time, vowels] : vowelsBuffer | views::reverse) {
+		Array<uint64> currentWordTimes = lastWordTimes;
+		for (size_t i : step(word.size())) {
+			if (!vowels.contains(word[i])) continue;
+			if (!vowels.at(word[i])) continue;
+			if (min(lastWordTimes[i + 1], lastWordTimes[i]) <= time + wordTimeout) {
+				if (i == 0) {
+					// goal
+					vowelsBuffer.clear();
+					lastDetected = now;
+					return true;
+				}
+				currentWordTimes[i] = min(currentWordTimes[i], time);
+			}
+		}
+		lastWordTimes.swap(currentWordTimes);
 	}
 	return false;
 }
 
-char32 WordDetector::peak() {
+HashTable<char32, bool> WordDetector::vowelChances() {
 	const auto now = Time::GetMicrosec();
-	vowelHistory.remove_if([this, now](const auto& v) { return now - v.first > vowelHistoryLife; });
+	scoresHistory.remove_if([this, now](const auto& s) { return now - s.first > scoresHistoryLife; });
 
-	HashTable<char32, uint64> vowelTimes;
-	for (size_t i : step(vowelHistory.size())) {
-		vowelTimes[vowelHistory[i].second] +=
-			(i + 1 < vowelHistory.size() ? vowelHistory[i + 1].first : now) - vowelHistory[i].first;
+	HashTable<char32, double> areas;
+	for (size_t i : step(scoresHistory.size())) {
+		const auto dt = (i + 1 < scoresHistory.size() ? scoresHistory[i + 1].first : now) - scoresHistory[i].first;
+		for (const auto& [vowel, score] : scoresHistory[i].second) areas[vowel] += score * dt;
 	}
 
-	char32 peakVowel = U' ';
-	vowelTimes[peakVowel] = 0;
-	for (const auto& [vowel, time] : vowelTimes) {
-		if (time >= vowelTimes[peakVowel]) peakVowel = vowel;
-	}
-	return peakVowel;
+	HashTable<char32, bool> chances;
+	for (const auto& [vowel, area] : areas) chances[vowel] = area >= scoreThreshold * scoresHistoryLife;
+	return chances;
 }
 
-StringView WordDetector::getVowelBuffer(size_t limit) const {
-	return vowelBuffer.substrView(max(vowelBuffer.size(), limit) - limit);
+Array<std::pair<uint64, HashTable<char32, bool>>> WordDetector::getVowelsBuffer(uint64 limit) const {
+	if (limit == 0) return vowelsBuffer;
+	const auto now = Time::GetMicrosec();
+	Array<std::pair<uint64, HashTable<char32, bool>>> result;
+	for (const auto& [time, vowels] : vowelsBuffer) {
+		if (now - time <= limit) result << pair{ time, vowels };
+	}
+	return result;
 }
