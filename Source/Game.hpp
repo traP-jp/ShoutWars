@@ -6,7 +6,7 @@
 #include <string>
 #include <algorithm>
 
-//#define debug_mode
+#define debug_mode
 
 struct Player {
 	//各種変数
@@ -47,11 +47,13 @@ struct Player {
 struct bullet {
 	Vec2 pos;
 	Vec2 old_pos;
+	double angle;
 	int timer;
 	bool exist = false;
 	int direction;
 	int mode;
 	int character;
+	int type = 0;
 };
 
 struct knife {
@@ -163,6 +165,8 @@ private:
 	const Audio guard_se{ U"../audioes/guard.mp3" };
 	const Audio void_damage_se{ U"../audioes/void_damage.mp3" };
 	const Audio break_guard_se{ U"../audioes/break_guard.wav" };
+	const Audio gun_se{ U"../audioes/gun.mp3" };
+	const Audio bomber_se{ U"../audioes/bomber.mp3" };
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
@@ -240,7 +244,8 @@ private:
 	void setting_knife(int cnt,int now_time,Vec2 player_reserved_pos[], int now_number);
 	void no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
 
-	void weak_bullet(int cnt, int now_time, Vec2 player_reserved_pos[]);
+	//type=0:弱,1:狂,2:必殺
+	void call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int type);
 
 	//get_character_power_ap(番号,攻撃の種類)
 	//攻撃の種類(0:弱,1:狂,2:必殺,3:特殊)
