@@ -607,13 +607,13 @@ int Game::search_knife() {
 	return -1;
 }
 
-void Game::weak_bullet(int cnt, int now_time, Vec2 player_reserved_pos[]) {
-	//弱攻撃(銃)
+void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int type) {
+	//銃攻撃
 	if (player[cnt].status & 16) {
-		player[cnt].timer[9] = now_time - player[cnt].timer[4];
-		if ((180 < player[cnt].timer[9]) && player[cnt].se[2]) {
-			player[cnt].se[2] = false;
-			shot_se.playOneShot();
+		player[cnt].timer[9+type] = now_time - player[cnt].timer[4+type];
+		if ((180 < player[cnt].timer[9+type]) && player[cnt].se[2+type]) {
+			player[cnt].se[2+type] = false;
+			gun_se.playOneShot();
 			//銃弾の発生
 			int bullet_number = search_bullet();
 			if (bullet_number != -1) {
@@ -622,6 +622,7 @@ void Game::weak_bullet(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				bullet[bullet_number].direction = !player[cnt].direction;
 				bullet[bullet_number].timer = now_time;
 				bullet[bullet_number].mode = 0;
+				bullet[bullet_number].type = type;
 				bullet[bullet_number].character = player[cnt].number;
 			}
 		}
@@ -629,12 +630,73 @@ void Game::weak_bullet(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 }
 
 void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
+	//銃弾の移動+当たり判定
+	for (int i = 0; i < max_bullet; i++) {
+		if (!bullet[i].exist)continue;
+		if (bullet[i].character != player[cnt].number)continue;
+		//銃弾の移動
+		//弱
+		if (bullet[i].type == 0) {
+			bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 3.0;
+		//狂
+		}elif(bullet[i].type == 1) {
+			if (now_time - bullet[i].timer < 50) {
+				bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 2.0;
+			}else {
+				//爆発
+				bomber_se.playOneShot();
 
+
+				for (int i = 0; i < 5; i++) {
+					int bullet_number = search_bullet();
+					if (bullet_number == -1)break;
+					bullet[bullet_number].pos = bullet[i].pos;
+					bullet[bullet_number].old_pos = bullet[bullet_number].pos;
+					bullet[bullet_number].angle = (2.0*M_PI/5)*i;
+					bullet[bullet_number].timer = now_time;
+					bullet[bullet_number].mode = 0;
+					bullet[bullet_number].type = 2;
+					bullet[bullet_number].character = player[cnt].number;
+				}
+			}
+		}
+
+		//場外退場
+		if ((bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920))bullet[i].exist = false;
+
+		//当たり判定
+		for (int j = 0; j < player_sum; j++) {
+			if (j == cnt)continue;
+			//弱攻撃
+			if (bullet[i].type == 0) {
+				//頭を下げればぶつかりません～♪
+				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && ((player[j].status & 3) == 0)) {
+					if ((player[j].event & 1) == 0) {
+						player[j].event |= 1;
+						if (player[j].status & 8) {
+							void_damage_se.playOneShot();
+						}else {
+#ifndef debug_mode
+							if (cnt == player_number)
+								getData().client->sendAction(U"WeakAttack", j);
+#endif
+							player[j].hp[1] -= rei_weak_atttack;
+							player[cnt].ap += rei_weak_atttack_ap;
+						}
+						bullet[i].exist = false;
+						break;
+					}
+				}
+			}
+		}
+	}
 
 	//弱攻撃
-	weak_bullet(cnt, now_time, player_reserved_pos);
-	//狂攻撃
-
+	call_bullet(cnt, now_time, player_reserved_pos,0);
+	//狂攻撃(爆発する銃)
+	call_bullet(cnt, now_time, player_reserved_pos, 1);
+	//必殺技(反射する銃)
+	call_bullet(cnt, now_time, player_reserved_pos, 2);
 }
 
 void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
@@ -813,7 +875,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	}
 
 	//弱攻撃(銃)
-	weak_bullet(cnt, now_time, player_reserved_pos);
+	call_bullet(cnt, now_time, player_reserved_pos,0);
 
 	//狂攻撃(ナイフ)
 	if (player[cnt].status & 32) {
