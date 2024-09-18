@@ -48,6 +48,7 @@ struct bullet {
 	Vec2 pos;
 	Vec2 old_pos;
 	double angle;
+	double old_angle;
 	int timer;
 	bool exist = false;
 	int direction;
@@ -80,6 +81,7 @@ private:
 	const static int rei_weak_atttack = 5;
 	const static int rei_strong_attack = 7;
 	const static int rei_special_attack = 8;
+	const static int rei_strong_attack_bomb = 10;
 	//AP回復量
 	const static int rei_weak_atttack_ap = 3;
 	const static int rei_strong_attack_ap = 5;
@@ -119,8 +121,8 @@ private:
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
 	const static int player_max_ap = 500;
-	//最大同時存在弾丸数は60
-	const static int max_bullet = 60;
+	//最大同時存在弾丸数は120
+	const static int max_bullet = 120;
 	//最大同時存在ナイフ数は50本
 	const static int max_knives = 50;
 	//構造体////////////////////////////////////////////////////////////

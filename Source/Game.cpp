@@ -609,7 +609,7 @@ int Game::search_knife() {
 
 void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int type) {
 	//銃攻撃
-	if (player[cnt].status & 16) {
+	if (player[cnt].status & (16*(int)pow(2,type))) {
 		player[cnt].timer[9+type] = now_time - player[cnt].timer[4+type];
 		if ((180 < player[cnt].timer[9+type]) && player[cnt].se[2+type]) {
 			player[cnt].se[2+type] = false;
@@ -640,35 +640,55 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 3.0;
 		//狂
 		}elif(bullet[i].type == 1) {
-			if (now_time - bullet[i].timer < 50) {
-				bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 2.0;
+			if (now_time - bullet[i].timer < 200) {
+				bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 1.5;
 			}else {
 				//爆発
 				bomber_se.playOneShot();
-
-
-				for (int i = 0; i < 5; i++) {
-					int bullet_number = search_bullet();
-					if (bullet_number == -1)break;
-					bullet[bullet_number].pos = bullet[i].pos;
-					bullet[bullet_number].old_pos = bullet[bullet_number].pos;
-					bullet[bullet_number].angle = (2.0*M_PI/5)*i;
-					bullet[bullet_number].timer = now_time;
-					bullet[bullet_number].mode = 0;
-					bullet[bullet_number].type = 2;
-					bullet[bullet_number].character = player[cnt].number;
+				//当たり判定
+				if (abs(player_reserved_pos[another_player_number].x - bullet[i].pos.x) < 60.0) {
+					if (player[another_player_number].status & 8) {
+						void_damage_se.playOneShot();
+					}else {
+#ifndef debug_mode
+						if (cnt == player_number)
+							getData().client->sendAction(U"StrongAttackBomb", j);
+#endif
+						player[another_player_number].hp[1] -= rei_strong_attack_bomb;
+						player[cnt].ap += rei_strong_attack_ap;
+					}
+				}else {
+					for (int i = 0; i < 6; i++) {
+						int bullet_number = search_bullet();
+						if (bullet_number == -1)break;
+						bullet[bullet_number].pos = bullet[i].pos;
+						bullet[bullet_number].old_pos = bullet[bullet_number].pos;
+						bullet[bullet_number].angle = (M_PI / 3.0) * i;
+						bullet[bullet_number].old_angle = bullet[bullet_number].angle;
+						bullet[bullet_number].timer = now_time;
+						bullet[bullet_number].mode = 0;
+						bullet[bullet_number].type = 2;
+						bullet[bullet_number].character = player[cnt].number;
+					}
 				}
+				bullet[i].exist = false;
 			}
+		//狂(爆発後)
+		}elif(bullet[i].type == 2) {
+			bullet[i].pos.x = bullet[i].old_pos.x + cos(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
+			bullet[i].pos.y = bullet[i].old_pos.y + sin(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
+			bullet[i].angle = bullet[i].old_angle - (now_time - bullet[i].timer) * (M_PI/3000);
 		}
 
 		//場外退場
-		if ((bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920))bullet[i].exist = false;
+		if ((bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920) || (bullet[i].pos.y < 0) || (bullet[i].pos.y > 1080))
+			bullet[i].exist = false;
 
 		//当たり判定
 		for (int j = 0; j < player_sum; j++) {
 			if (j == cnt)continue;
 			//弱攻撃
-			if (bullet[i].type == 0) {
+			if (bullet[i].type <= 1) {
 				//頭を下げればぶつかりません～♪
 				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && ((player[j].status & 3) == 0)) {
 					if ((player[j].event & 1) == 0) {
@@ -686,6 +706,21 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						bullet[i].exist = false;
 						break;
 					}
+				}
+			}elif(bullet[i].type == 2) {
+				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && (abs(player_reserved_pos[j].y - bullet[i].pos.y) < 195.0)) {
+					if (player[j].status & 8) {
+						void_damage_se.playOneShot();
+					}else {
+#ifndef debug_mode
+						if (cnt == player_number)
+							getData().client->sendAction(U"StrongAttack", j);
+#endif
+						player[j].hp[1] -= rei_strong_attack;
+						player[cnt].ap += rei_strong_attack_ap;
+					}
+					bullet[i].exist = false;
+					break;
 				}
 			}
 		}
