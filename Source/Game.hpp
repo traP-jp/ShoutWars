@@ -72,6 +72,14 @@ struct knife {
 	int img_number;
 };
 
+struct occation_effect {
+	Vec2 pos;
+	int timer;
+	bool exist = false;
+	double alpha = 1.0;
+	double scale = 3.0;
+};
+
 class Game : public App::Scene
 {
 private:
@@ -124,11 +132,14 @@ private:
 	//最大同時存在弾丸数は120
 	const static int max_bullet = 120;
 	//最大同時存在ナイフ数は50本
-	const static int max_knives = 50;
+	const static int max_knife = 50;
+	//最大同時存在エフェクト数は10
+	const static int max_occation = 10;
 	//構造体////////////////////////////////////////////////////////////
 	struct Player player[player_sum];
 	struct bullet bullet[max_bullet];
-	struct knife knife[max_knives];
+	struct knife knife[max_knife];
+	struct occation_effect occation[max_occation];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
@@ -152,6 +163,7 @@ private:
 	const Texture settle_img{ U"../images/game/system/settle.png" };
 	const Texture guns_img{ U"../images/game/system/guns.png" };
 	const Texture knives_img{ U"../images/game/system/knives.png" };
+	const Texture occation_img{ U"../images/game/system/occation.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	std::vector<Texture> command_img;
@@ -220,6 +232,7 @@ private:
 	void draw_player() const;
 	void draw_bullet() const;
 	void draw_knife() const;
+	void draw_effects() const;
 	void draw_HP_bar() const;
 	void draw_AP_bar() const;
 	void draw_ping() const;
@@ -228,6 +241,7 @@ private:
 	void update_player_animation();
 	void update_AP_bar_animation();
 	void update_settle();
+	void update_effects();
 	void synchronizate_data();
 	void update_error_screen();
 	int voice_command();
@@ -236,8 +250,6 @@ private:
 	void Json2ArrayTimer(String str, int(&timer)[16]);
 	void Json2ArrayHP(String str, int(&hp)[3]);
 	inline int GameTimer();
-	int search_bullet();
-	int search_knife();
 	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
 	//各キャラ専用関数
 	void rei_attack(int cnt,int now_time,Vec2 player_reserved_pos[]);

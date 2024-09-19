@@ -56,6 +56,11 @@
 
 using namespace std;
 
+//マクロ
+#define search(p1) int p1##_number = -1; for (int i = 0; i < max_##p1; i++) { if (!p1[i].exist) { p1[i].exist = true; p1##_number = i;break; } };
+
+
+
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
 command_img(4),
@@ -302,11 +307,28 @@ void Game::update() {
 		update_AP_bar_animation();
 		//プレイヤーのアニメーションを更新
 		update_player_animation();
+		//各種エフェクトの更新
+		update_effects();
 		//決着！
 		if (is_game_finished)update_settle();
 #ifndef debug_mode
 	}
 #endif
+}
+
+void Game::update_effects() {
+	int now_time = GameTimer();
+	//エフェクトの更新
+	for (int i = 0; i < max_occation; i++) {
+		if (!occation[i].exist)continue;
+		int t = now_time - occation[i].timer;
+		if (t > 500) {
+			occation[i].exist = false;
+		}else {
+			occation[i].alpha = 1.0 - EaseOutExpo((double)t / 500.0);
+			occation[i].scale = 3.0 + 7.0 * EaseOutExpo((double)t / 500.0);
+		}
+	}
 }
 
 void Game::update_settle() {
@@ -587,26 +609,6 @@ void Game::update_player() {
 	}
 }
 
-int Game::search_bullet() {
-    for (int i = 0; i < max_bullet; i++) {
-		if (!bullet[i].exist) {
-			bullet[i].exist = true;
-			return i;
-		}
-	}
-	return -1;
-}
-
-int Game::search_knife() {
-	for (int i = 0; i < max_knives; i++) {
-		if (!knife[i].exist) {
-			knife[i].exist = true;
-			return i;
-		}
-	}
-	return -1;
-}
-
 void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int type) {
 	//銃攻撃
 	if (player[cnt].status & (16*(int)pow(2,type))) {
@@ -615,9 +617,9 @@ void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int typ
 			player[cnt].se[2+type] = false;
 			gun_se.playOneShot();
 			//銃弾の発生
-			int bullet_number = search_bullet();
+			search(bullet);
 			if (bullet_number != -1) {
-				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 120,-120 };
+				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 120,-120+type*37 };
 				bullet[bullet_number].old_pos = bullet[bullet_number].pos;
 				bullet[bullet_number].direction = !player[cnt].direction;
 				bullet[bullet_number].timer = now_time;
@@ -640,11 +642,20 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 3.0;
 		//狂
 		}elif(bullet[i].type == 1) {
-			if (now_time - bullet[i].timer < 200) {
+			if (now_time - bullet[i].timer < 250) {
 				bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 1.5;
 			}else {
 				//爆発
 				bomber_se.playOneShot();
+				//エフェクトの発生
+				search(occation);
+				if (occation_number != -1) {
+					occation[occation_number].pos = bullet[i].pos;
+					occation[occation_number].timer = now_time;
+					occation[occation_number].alpha = 1.0;
+					occation[occation_number].scale = 3.0;
+				}
+
 				//当たり判定
 				if (abs(player_reserved_pos[another_player_number].x - bullet[i].pos.x) < 60.0) {
 					if (player[another_player_number].status & 8) {
@@ -659,12 +670,13 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					}
 				}else {
 					for (int i = 0; i < 6; i++) {
-						int bullet_number = search_bullet();
+						search(bullet);
 						if (bullet_number == -1)break;
 						bullet[bullet_number].pos = bullet[i].pos;
 						bullet[bullet_number].old_pos = bullet[bullet_number].pos;
 						bullet[bullet_number].angle = (M_PI / 3.0) * i;
 						bullet[bullet_number].old_angle = bullet[bullet_number].angle;
+						bullet[bullet_number].direction = bullet[i].direction;
 						bullet[bullet_number].timer = now_time;
 						bullet[bullet_number].mode = 0;
 						bullet[bullet_number].type = 2;
@@ -677,7 +689,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		}elif(bullet[i].type == 2) {
 			bullet[i].pos.x = bullet[i].old_pos.x + cos(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
 			bullet[i].pos.y = bullet[i].old_pos.y + sin(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
-			bullet[i].angle = bullet[i].old_angle - (now_time - bullet[i].timer) * (M_PI/3000);
+			bullet[i].angle = bullet[i].old_angle - (bullet[i].direction?-1.0:1.0)*(now_time - bullet[i].timer) * (M_PI/3000);
 		}
 
 		//場外退場
@@ -858,7 +870,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		}
 	}
 	//ナイフの移動・当たり判定処理
-	for (int i = 0; i < max_knives; i++) {
+	for (int i = 0; i < max_knife; i++) {
 		if (!knife[i].exist)continue;
 		//待機
 		if (knife[i].mode == 0) {
@@ -970,7 +982,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			if (tmp > 20) {
 				player[cnt].airi_old_timer = now_time;
 				//銃弾の発生
-				int bullet_number = search_bullet();
+				search(bullet);
 				if (bullet_number != -1) {
 					bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 60,-50 };
 					bullet[bullet_number].old_pos = bullet[bullet_number].pos;
@@ -990,7 +1002,7 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[],int n
 	double knife_angle = (M_PI * 2.0 / 5.0) * now_number;
 	//ナイフ召喚x5
 	for (int i = 0; i < 5; i++) {
-		int knife_number = search_knife();
+		search(knife);
 		if (knife_number == -1) break;
 		knife[knife_number].pos = player_reserved_pos[cnt] + Vec2{ cos(set_angle) * 180.0, sin(set_angle) * 180.0 };
 		knife[knife_number].old_pos = knife[knife_number].pos;
@@ -1316,6 +1328,7 @@ void Game::draw() const {
 		draw_bullet();
 		draw_knife();
 		draw_player();
+		draw_effects();
 
 		// WordDetector のパラメータ調整用
 		//double coolTime = wordDetector.coolTime;
@@ -1384,15 +1397,24 @@ void Game::draw_ping() const {
 void Game::draw_bullet() const {
 	for (int i = 0; i < max_bullet; i++) {
 		if (!bullet[i].exist)continue;
-		guns_img(0,0,14,7).mirrored(bullet[i].direction).drawAt(bullet[i].pos);
+		guns_img(0,7*bullet[i].type, 14, 7).mirrored(bullet[i].direction).drawAt(bullet[i].pos);
 	}
 }
 
 //ナイフの描画
 void Game::draw_knife() const {
-	for (int i = 0; i < max_knives; i++) {
+	for (int i = 0; i < max_knife; i++) {
 		if (!knife[i].exist)continue;
 		knives_img(0,28*knife[i].img_number,54,28).rotated(knife[i].angle[0]).drawAt(knife[i].pos);
+	}
+}
+
+//エフェクトの描画
+void Game::draw_effects() const {
+	for (int i = 0; i < max_occation; i++) {
+		if (!occation[i].exist)continue;
+		const ScopedRenderStates2D blend{ BlendState::Additive };
+		occation_img.scaled(occation[i].scale).drawAt(occation[i].pos, ColorF{1.0,occation[i].alpha});
 	}
 }
 
