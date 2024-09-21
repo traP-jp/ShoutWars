@@ -624,8 +624,9 @@ void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int typ
 				bullet[bullet_number].direction = !player[cnt].direction;
 				bullet[bullet_number].timer = now_time;
 				bullet[bullet_number].mode = 0;
-				bullet[bullet_number].type = type;
+				bullet[bullet_number].type = (type == 2)?3:type;
 				bullet[bullet_number].character = player[cnt].number;
+				bullet[bullet_number].disable_disappear = (type == 2);
 			}
 		}
 	}
@@ -669,12 +670,12 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						player[cnt].ap += rei_strong_attack_ap;
 					}
 				}else {
-					for (int i = 0; i < 6; i++) {
+					for (int j = 0; j < 6; j++) {
 						search(bullet);
 						if (bullet_number == -1)break;
 						bullet[bullet_number].pos = bullet[i].pos;
 						bullet[bullet_number].old_pos = bullet[bullet_number].pos;
-						bullet[bullet_number].angle = (M_PI / 3.0) * i;
+						bullet[bullet_number].angle = (M_PI / 3.0) * j;
 						bullet[bullet_number].old_angle = bullet[bullet_number].angle;
 						bullet[bullet_number].direction = bullet[i].direction;
 						bullet[bullet_number].timer = now_time;
@@ -690,10 +691,58 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			bullet[i].pos.x = bullet[i].old_pos.x + cos(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
 			bullet[i].pos.y = bullet[i].old_pos.y + sin(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
 			bullet[i].angle = bullet[i].old_angle - (bullet[i].direction?-1.0:1.0)*(now_time - bullet[i].timer) * (M_PI/3000);
+		//必殺(第一段階)
+		}elif(bullet[i].type == 3) {
+			bullet[i].angle = -(bullet[i].direction ? M_PI / 15.0:M_PI*14.0/15.0);
+			bullet[i].pos.x = bullet[i].old_pos.x + 2.5 * (now_time - bullet[i].timer) * cos(bullet[i].angle);
+			bullet[i].pos.y = bullet[i].old_pos.y + 2.5 * (now_time - bullet[i].timer) * sin(bullet[i].angle);
+			//第二段階(反射)
+			if ((bullet[i].pos.x < 10) || (bullet[i].pos.x > 1910)) {
+				gun_reflect1_se.playOneShot();
+				bullet[i].type = 4;
+				bullet[i].angle = M_PI-bullet[i].angle;
+				bullet[i].old_pos = bullet[i].pos;
+				bullet[i].timer = now_time;
+			}
+		//必殺(第二、三段階)
+		}elif ((bullet[i].type == 4) || (bullet[i].type == 5)) {
+			bullet[i].pos.x = bullet[i].old_pos.x + 4.2 * (now_time - bullet[i].timer) * cos(bullet[i].angle);
+			bullet[i].pos.y = bullet[i].old_pos.y + 4.2 * (now_time - bullet[i].timer) * sin(bullet[i].angle);
+			//反射
+			if ((bullet[i].pos.y < 0) || (bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920)) {
+				if (bullet[i].type == 4) {
+					gun_reflect2_se.playOneShot();
+					bullet[i].angle = 2.0*M_PI - bullet[i].angle;
+					bullet[i].old_pos = bullet[i].pos;
+					bullet[i].timer = now_time;
+				//第三段階(反射して相手へ)
+				}else {
+					gun_reflect3_se.playOneShot();
+					bullet[i].angle = atan2(player_reserved_pos[another_player_number].y-80.0 - bullet[i].pos.y, player_reserved_pos[another_player_number].x - bullet[i].pos.x);
+					bullet[i].old_pos = bullet[i].pos;
+					bullet[i].timer = now_time;
+				}
+				bullet[i].type++;
+			}
+		//必殺(最終段階:高速で相手へ)
+		}elif(bullet[i].type == 6) {
+			bullet[i].pos.x = bullet[i].old_pos.x + 6.0 * (now_time - bullet[i].timer)  * cos(bullet[i].angle);
+			bullet[i].pos.y = bullet[i].old_pos.y + 6.0 * (now_time - bullet[i].timer)  * sin(bullet[i].angle);
+		}
+
+		//残像の発生
+		if ((3 <= bullet[i].type) && (bullet[i].type <= 6)) {
+			search(after_images);
+			if (after_images_number != -1) {
+				after_images[after_images_number].pos = bullet[i].pos;
+				after_images[after_images_number].timer = now_time;
+				after_images[after_images_number].alpha = 1.0;
+				after_images[after_images_number].angle = bullet[i].angle;
+			}
 		}
 
 		//場外退場
-		if ((bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920) || (bullet[i].pos.y < 0) || (bullet[i].pos.y > 1080))
+		if ((!bullet[i].disable_disappear) && ((bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920) || (bullet[i].pos.y < 0) || (bullet[i].pos.y > 1080)))
 			bullet[i].exist = false;
 
 		//当たり判定
@@ -734,7 +783,34 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					bullet[i].exist = false;
 					break;
 				}
+			//必殺技(最終段階)
+			}elif(bullet[i].type == 6) {
+				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 50.0) && (abs(player_reserved_pos[j].y - bullet[i].pos.y) < 195.0)) {
+					if (player[j].status & 64) {
+						void_damage_se.playOneShot();
+					}else {
+#ifndef debug_mode
+						if (cnt == player_number)
+							getData().client->sendAction(U"SpecialAttack", j);
+#endif
+						player[j].hp[1] -= rei_special_attack;
+						player[cnt].ap += rei_special_attack_ap;
+					}
+					bullet[i].exist = false;
+					break;
+				}
 			}
+		}
+	}
+
+	//残像の更新
+	for (int i = 0; i < max_after_images; i++) {
+		if (!after_images[i].exist)continue;
+		int t = now_time - after_images[i].timer;
+		if (t > 500) {
+			after_images[i].exist = false;
+		}else {
+			after_images[i].alpha = 1.0 - EaseOutExpo((double)t / 500.0);
 		}
 	}
 
@@ -1328,6 +1404,7 @@ void Game::draw() const {
 		draw_bullet();
 		draw_knife();
 		draw_player();
+		draw_after_images();
 		draw_effects();
 
 		// WordDetector のパラメータ調整用
@@ -1397,7 +1474,7 @@ void Game::draw_ping() const {
 void Game::draw_bullet() const {
 	for (int i = 0; i < max_bullet; i++) {
 		if (!bullet[i].exist)continue;
-		guns_img(0,7*bullet[i].type, 14, 7).mirrored(bullet[i].direction).drawAt(bullet[i].pos);
+		guns_img(0,7*min(bullet[i].type,3), 14, 7).mirrored(bullet[i].direction).drawAt(bullet[i].pos);
 	}
 }
 
@@ -1415,6 +1492,15 @@ void Game::draw_effects() const {
 		if (!occation[i].exist)continue;
 		const ScopedRenderStates2D blend{ BlendState::Additive };
 		occation_img.scaled(occation[i].scale).drawAt(occation[i].pos, ColorF{1.0,occation[i].alpha});
+	}
+}
+
+//銃弾の残像の描画
+void Game::draw_after_images() const {
+	for (int i = 0; i < max_after_images; i++) {
+		if (!after_images[i].exist)continue;
+		const ScopedRenderStates2D blend{ BlendState::Additive };
+		guns_img(0, 21, 14, 7).rotated(after_images[i].angle).drawAt(after_images[i].pos, ColorF{ 1.0,after_images[i].alpha });
 	}
 }
 
