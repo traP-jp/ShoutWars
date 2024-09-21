@@ -51,6 +51,7 @@ struct bullet {
 	double old_angle;
 	int timer;
 	bool exist = false;
+	bool disable_disappear = false;
 	int direction;
 	int mode;
 	int character;
@@ -80,20 +81,29 @@ struct occation_effect {
 	double scale = 3.0;
 };
 
+struct after_image {
+	Vec2 pos;
+	double angle;
+	int timer;
+	bool exist = false;
+	double alpha = 1.0;
+	int img_number;
+};
+
 class Game : public App::Scene
 {
 private:
 	//キャラ性能に関する定数////////////////////////////////////////////
 	//玲（レイ）
 	//ダメージ量
-	const static int rei_weak_atttack = 5;
-	const static int rei_strong_attack = 7;
-	const static int rei_special_attack = 8;
+	const static int rei_weak_atttack = 4;
+	const static int rei_strong_attack = 6;
+	const static int rei_special_attack = 100;
 	const static int rei_strong_attack_bomb = 10;
 	//AP回復量
-	const static int rei_weak_atttack_ap = 3;
-	const static int rei_strong_attack_ap = 5;
-	const static int rei_special_attack_ap = 8;
+	const static int rei_weak_atttack_ap = 5;
+	const static int rei_strong_attack_ap = 12;
+	const static int rei_special_attack_ap = 16;
 
 	//ユウカ
 	//ダメージ量
@@ -110,10 +120,10 @@ private:
 	const static int airi_special_attack = 8;
 	const static int airi_uniqe_attack = 3;
 	//AP回復量
-	const static int airi_weak_atttack_ap = 3;
-	const static int airi_strong_attack_ap = 5;
-	const static int airi_special_attack_ap = 8;
-	const static int airi_uniqe_attack_ap = 2;
+	const static int airi_weak_atttack_ap = 4;
+	const static int airi_strong_attack_ap = 6;
+	const static int airi_special_attack_ap = 9;
+	const static int airi_uniqe_attack_ap = 5;
 	//No.0 (レイ）
 	//ダメージ量
 	const static int no0_weak_atttack = 5;
@@ -135,11 +145,14 @@ private:
 	const static int max_knife = 50;
 	//最大同時存在エフェクト数は10
 	const static int max_occation = 10;
+	//最大同時存在残像数は20
+	const static int max_after_images = 20;
 	//構造体////////////////////////////////////////////////////////////
 	struct Player player[player_sum];
 	struct bullet bullet[max_bullet];
 	struct knife knife[max_knife];
 	struct occation_effect occation[max_occation];
+	struct after_image after_images[max_after_images];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
@@ -181,6 +194,9 @@ private:
 	const Audio break_guard_se{ U"../audioes/break_guard.wav" };
 	const Audio gun_se{ U"../audioes/gun.mp3" };
 	const Audio bomber_se{ U"../audioes/bomber.mp3" };
+	const Audio gun_reflect1_se{ U"../audioes/gun_reflect1.mp3" };
+	const Audio gun_reflect2_se{ U"../audioes/gun_reflect2.mp3" };
+	const Audio gun_reflect3_se{ U"../audioes/gun_reflect3.mp3" };
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
@@ -233,6 +249,7 @@ private:
 	void draw_bullet() const;
 	void draw_knife() const;
 	void draw_effects() const;
+	void draw_after_images() const;
 	void draw_HP_bar() const;
 	void draw_AP_bar() const;
 	void draw_ping() const;
