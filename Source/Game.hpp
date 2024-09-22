@@ -58,6 +58,15 @@ struct bullet {
 	int type = 0;
 };
 
+struct tordedo {
+	Vec2 pos;
+	Vec2 old_pos;
+	double angle;
+	double old_angle;
+	bool exist = false;
+	int timer;
+};
+
 struct knife {
 	Vec2 pos;
 	Vec2 old_pos;
@@ -76,6 +85,7 @@ struct knife {
 struct occation_effect {
 	Vec2 pos;
 	int timer;
+	int type = 0;
 	bool exist = false;
 	double alpha = 1.0;
 	double scale = 3.0;
@@ -100,10 +110,12 @@ private:
 	const static int rei_strong_attack = 6;
 	const static int rei_special_attack = 100;
 	const static int rei_strong_attack_bomb = 10;
+	const static int rei_uniqe_attack = 5;
 	//AP回復量
 	const static int rei_weak_atttack_ap = 5;
 	const static int rei_strong_attack_ap = 12;
 	const static int rei_special_attack_ap = 16;
+	const static int rei_uniqe_attack_ap = 8;
 
 	//ユウカ
 	//ダメージ量
@@ -147,12 +159,15 @@ private:
 	const static int max_occation = 10;
 	//最大同時存在残像数は20
 	const static int max_after_images = 20;
+	//最大同時存在魚雷数は2
+	const static int max_torpedo = 2;
 	//構造体////////////////////////////////////////////////////////////
 	struct Player player[player_sum];
 	struct bullet bullet[max_bullet];
 	struct knife knife[max_knife];
 	struct occation_effect occation[max_occation];
 	struct after_image after_images[max_after_images];
+	struct tordedo torpedo[max_torpedo];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
@@ -177,6 +192,7 @@ private:
 	const Texture guns_img{ U"../images/game/system/guns.png" };
 	const Texture knives_img{ U"../images/game/system/knives.png" };
 	const Texture occation_img{ U"../images/game/system/occation.png" };
+	const Texture torpedo_img{ U"../images/game/system/torpedo.png" };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	std::vector<Texture> command_img;
@@ -197,6 +213,7 @@ private:
 	const Audio gun_reflect1_se{ U"../audioes/gun_reflect1.mp3" };
 	const Audio gun_reflect2_se{ U"../audioes/gun_reflect2.mp3" };
 	const Audio gun_reflect3_se{ U"../audioes/gun_reflect3.mp3" };
+	const Audio torpedo_se{ U"../audioes/torpedo.mp3" };
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
