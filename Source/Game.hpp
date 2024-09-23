@@ -58,13 +58,13 @@ struct bullet {
 	int type = 0;
 };
 
-struct tordedo {
+struct torpedo {
 	Vec2 pos;
 	Vec2 old_pos;
 	double angle;
-	double old_angle;
 	bool exist = false;
 	int timer;
+	int mode = 0;
 };
 
 struct knife {
@@ -110,7 +110,7 @@ private:
 	const static int rei_strong_attack = 6;
 	const static int rei_special_attack = 100;
 	const static int rei_strong_attack_bomb = 10;
-	const static int rei_uniqe_attack = 5;
+	const static int rei_uniqe_attack = 8;
 	//AP回復量
 	const static int rei_weak_atttack_ap = 5;
 	const static int rei_strong_attack_ap = 12;
@@ -119,8 +119,8 @@ private:
 
 	//ユウカ
 	//ダメージ量
-	const static int yuuka_weak_atttack = 3;
-	const static int yuuka_strong_attack = 5;
+	const static int yuuka_weak_atttack = 5;
+	const static int yuuka_strong_attack = 7;
 	const static int yuuka_special_attack = 15;
 	//AP回復量
 	const static int yuuka_weak_atttack_ap = 1;
@@ -167,7 +167,7 @@ private:
 	struct knife knife[max_knife];
 	struct occation_effect occation[max_occation];
 	struct after_image after_images[max_after_images];
-	struct tordedo torpedo[max_torpedo];
+	struct torpedo torpedo[max_torpedo];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
@@ -265,6 +265,7 @@ private:
 	void draw_player() const;
 	void draw_bullet() const;
 	void draw_knife() const;
+	void draw_torpedo() const;
 	void draw_effects() const;
 	void draw_after_images() const;
 	void draw_HP_bar() const;

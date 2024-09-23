@@ -513,7 +513,6 @@ void Game::update_player() {
 		//特殊攻撃
 		}elif(got_voice == 6) {
 			if ((player[player_number].status & 500) == 0) {
-				bom_se.playOneShot();
 				player[player_number].se[7] = true;
 				player[player_number].status |= 256;
 				player[player_number].timer[14] = now_time;
@@ -619,7 +618,7 @@ void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int typ
 			//銃弾の発生
 			search(bullet);
 			if (bullet_number != -1) {
-				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 120+((type==1)?75:0),what<int>(type,-120,-66,-90)};
+				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 140+((type==1)?55:0),what<int>(type,-115,-66,-90)};
 				bullet[bullet_number].old_pos = bullet[bullet_number].pos;
 				bullet[bullet_number].direction = !player[cnt].direction;
 				bullet[bullet_number].angle = (bullet[bullet_number].direction ? 0.0 : M_PI);
@@ -821,21 +820,49 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	for (int i = 0; i < max_torpedo; i++) {
 		if (!torpedo[i].exist)continue;
 		//魚雷の移動
-		//TODO
+		if (torpedo[i].mode == 0) {
+			int t = now_time - torpedo[i].timer;
+			if (t < 200) {
+				torpedo[i].pos.x = torpedo[i].old_pos.x + 0.8 * sign(torpedo[i].angle == 0.0) * t;
+				torpedo[i].pos.y = torpedo[i].old_pos.y - 0.44 * t + 0.008 * t * t;
+			}else {
+				torpedo[i].mode = 1;
+				torpedo[i].timer = now_time;
+				torpedo[i].pos = Vec2{ torpedo[i].old_pos.x + sign(torpedo[i].angle == 0.0) * 160,torpedo[i].old_pos.y + 232 };
+				torpedo[i].old_pos = torpedo[i].pos;
+				torpedo[i].angle = (torpedo[i].angle == 0.0) ? atan2(-0.07, 4.0) : M_PI - atan2(-0.07, 4.0);
+			}
+		}else {
+			torpedo[i].pos.x = torpedo[i].old_pos.x + sign(!player[cnt].direction) * 4.0 * (now_time - torpedo[i].timer);
+			torpedo[i].pos.y = torpedo[i].old_pos.y - 0.07 * (now_time - torpedo[i].timer);
+			//場外退場
+			if ((torpedo[i].pos.x < -80) || (torpedo[i].pos.x > 2000))torpedo[i].exist = false;
+		}
 		//当たり判定
 		for (int j = 0; j < player_sum; j++) {
 			if (j == cnt)continue;
-			if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && (abs(player_reserved_pos[j].y - bullet[i].pos.y) < 195.0)) {
+			if ((abs(player_reserved_pos[j].x - torpedo[i].pos.x) < 60.0) && ((player[j].status&4) == 0)) {
 				if (player[j].status & 8) {
 					void_damage_se.playOneShot();
-				}
-				else {
+				}else {
 #ifndef debug_mode
 					if (cnt == player_number)
 						getData().client->sendAction(U"UniqueAttack", j);
 #endif
 					player[j].hp[1] -= rei_uniqe_attack;
 					player[cnt].ap += rei_uniqe_attack_ap;
+
+					//爆発
+					bomber_se.playOneShot();
+					//エフェクトの発生
+					search(occation);
+					if (occation_number != -1) {
+						occation[occation_number].pos = torpedo[i].pos;
+						occation[occation_number].timer = now_time;
+						occation[occation_number].alpha = 1.0;
+						occation[occation_number].scale = 3.0;
+						occation[occation_number].type = 2;
+					}
 				}
 				torpedo[i].exist = false;
 				break;
@@ -866,16 +893,16 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	if (player[cnt].status & 256) {
 		player[cnt].timer[15] = now_time - player[cnt].timer[14];
 		if ((180 < player[cnt].timer[15]) && player[cnt].se[7]) {
-			player[cnt].se[6] = false;
+			player[cnt].se[7] = false;
 			torpedo_se.playOneShot();
 			//魚雷の発生
 			search(torpedo);
 			if (torpedo_number != -1) {
-				bullet[torpedo_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 120,-120 };
-				bullet[torpedo_number].old_pos = bullet[torpedo_number].pos;
-				bullet[torpedo_number].direction = !player[cnt].direction;
-				bullet[torpedo_number].angle = (bullet[torpedo_number].direction ? 0.0 : M_PI);
-				bullet[torpedo_number].timer = now_time;
+				torpedo[torpedo_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 130,-75 };
+				torpedo[torpedo_number].old_pos = torpedo[torpedo_number].pos;
+				torpedo[torpedo_number].angle = (player[cnt].direction ? M_PI:0.0);
+				torpedo[torpedo_number].timer = now_time;
+				torpedo[torpedo_number].mode = 0;
 			}
 		}
 	}
@@ -1421,18 +1448,33 @@ void Game::update_player_animation() {
 			continue;
 		//特殊攻撃のアニメーション
 		}elif (player[i].status & 256){
-			if (now_time - player[i].timer[14] < 130) {
-				player[i].img_number = 0;
-			}elif(now_time - player[i].timer[14] < 1530) {
-				player[i].img_number = 2;
-			}elif(now_time - player[i].timer[14] < 1560) {
-				player[i].img_number = 0;
+			//玲
+			if (player[i].number == 0) {
+				if (now_time - player[i].timer[14] < 150) {
+					player[i].img_number = 0;
+				}elif(now_time - player[i].timer[14] < 400) {
+					player[i].img_number = 2;
+				}elif(now_time - player[i].timer[14] < 550) {
+					player[i].img_number = 0;
+				}else {
+					player[i].status ^= 256;
+					player[i].img_number = 0;
+				}
+			//アイリ
+			}elif(player[i].number == 2) {
+				if (now_time - player[i].timer[14] < 130) {
+					player[i].img_number = 0;
+				}elif(now_time - player[i].timer[14] < 1530) {
+					player[i].img_number = 2;
+				}elif(now_time - player[i].timer[14] < 1560) {
+					player[i].img_number = 0;
+				}
+				else {
+					player[i].status ^= 256;
+					player[i].img_number = 0;
+				}
+				player[i].wave_pos = 3.0 * sin(0.1 * GameTimer());
 			}
-			else {
-				player[i].status ^= 256;
-				player[i].img_number = 0;
-			}
-			player[i].wave_pos = 3.0 * sin(0.1*GameTimer());
 			continue;
 		//ジャンプアニメーション
 		}elif(player[i].status & 4) {
@@ -1463,6 +1505,7 @@ void Game::draw() const {
 
 		draw_bullet();
 		draw_knife();
+		draw_torpedo();
 		draw_player();
 		draw_after_images();
 		draw_effects();
@@ -1543,6 +1586,14 @@ void Game::draw_knife() const {
 	for (int i = 0; i < max_knife; i++) {
 		if (!knife[i].exist)continue;
 		knives_img(0,28*knife[i].img_number,54,28).rotated(knife[i].angle[0]).drawAt(knife[i].pos);
+	}
+}
+
+//魚雷の描画
+void Game::draw_torpedo() const {
+	for (int i = 0; i < max_torpedo; i++) {
+		if (!torpedo[i].exist)continue;
+		torpedo_img.rotated(torpedo[i].angle).drawAt(torpedo[i].pos);
 	}
 }
 
