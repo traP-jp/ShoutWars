@@ -1187,7 +1187,67 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[],int n
 
 
 void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
-	yuuka_attack(cnt, now_time, player_reserved_pos);
+	//弱攻撃
+	if (player[cnt].status & 16) {
+		player[cnt].timer[9] = now_time - player[cnt].timer[4];
+		if ((100 < player[cnt].timer[9]) && (player[cnt].timer[9] < 250)) {
+			for (int i = 0; i < player_sum; i++) {
+				if (i == cnt) continue;
+				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+					if ((player[i].event & 1) == 0) {
+						if (player[cnt].se[2]) {
+							player[cnt].se[2] = false;
+							dos_se.playOneShot();
+						}
+						player[i].event |= 1;
+						if (player[i].status & 8) {
+							void_damage_se.playOneShot();
+						}
+						else {
+#ifndef debug_mode
+							if (cnt == player_number)
+								getData().client->sendAction(U"WeakAttack", i);
+#endif
+							player[i].hp[1] -= no0_weak_atttack;
+						}
+						player[cnt].ap += no0_weak_atttack_ap;
+					}
+				}
+			}
+		}
+	}
+
+	//狂攻撃
+	if (player[cnt].status & 32) {
+		player[cnt].timer[10] = now_time - player[cnt].timer[5];
+		if ((200 < player[cnt].timer[10]) && (player[cnt].timer[10] < 400)) {
+			for (int i = 0; i < player_sum; i++) {
+				if (i == cnt) continue;
+				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 130.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+					if ((player[i].event & 2) == 0) {
+						if (player[cnt].se[3]) {
+							player[cnt].se[3] = false;
+							dos_se.playOneShot();
+						}
+						player[i].event |= 2;
+						if (player[i].status & 8) {
+							void_damage_se.playOneShot();
+						}
+						else {
+#ifndef debug_mode
+							if (cnt == player_number)
+								getData().client->sendAction(U"StrongAttack", i);
+#endif
+							player[i].hp[1] -= no0_strong_attack;
+						}
+						player[cnt].ap += no0_strong_attack_ap;
+					}
+				}
+			}
+		}
+	}
 }
 
 //APバーのアニメーションを更新
@@ -1268,6 +1328,19 @@ void Game::synchronizate_data() {
 					}else {
 						//実質HPを確定
 						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 1);
+					}
+				}
+			//玲限定技
+			}elif (event ->type == U"StrongAttackBomb") {
+				if (event->data.get<int32>() != player_number) {
+					//ガード中
+					if (void_attack[event->data.get<int32>()]) {
+						//暫定HPを元に戻す
+						player[event->data.get<int32>()].hp[1] += rei_strong_attack_bomb;
+						//ガードしていない
+					}else {
+						//実質HPを確定
+						player[event->data.get<int32>()].hp[0] -= rei_strong_attack_bomb;
 					}
 				}
 			}elif(event->type == U"SpecialAttack") {
@@ -1685,6 +1758,8 @@ int Game::get_character_power(int character_number, int attack_sort) {
 			return rei_strong_attack;
 		case 2:
 			return rei_special_attack;
+		case 3:
+			return rei_uniqe_attack;
 		default:
 			return 0;
 		}
