@@ -7,17 +7,19 @@
 //「ガード」
 #define ガード1 U"AO"
 //「守れ」
-#define ガード2 U"AOE"
+#define ガード2 U"AOE" // ガードに吸われる
 //「壊せ」
 #define ガード破壊共通 U"OAE"
 //玲////////////////////////////////////////
 
 //「殴れ」
 #define 玲_弱攻撃 U"AUE"
-//「蹴れ」
-#define 玲_狂攻撃 U"EE"
+//「キック」
+#define 玲_狂攻撃 U"IU"
+//「魚雷」
+#define 玲_特殊攻撃 U"OAI"
 //「龍虎水雷撃」
-#define 玲_必殺技 U"UOUIAIEI"
+#define 玲_必殺技 U"AIEI" //U"UOUIAIEI"
 //「刺せ」
 #define 玲_ガード破壊 U"AE"
 
@@ -28,7 +30,7 @@
 //「キック」
 #define ユウカ_狂攻撃 U"IU"
 //「龍虎水雷撃」
-#define ユウカ_必殺技 U"UOUIAIEI"
+#define ユウカ_必殺技 U"AIEI" //U"UOUIAIEI"
 //「刺せ」
 #define ユウカ_ガード破壊 U"AE"
 //アイリ////////////////////////////////////
@@ -38,7 +40,7 @@
 //「斬れ」
 #define アイリ_狂攻撃 U"IE"
 //「デッドリーアサルト」
-#define アイリ_必殺技 U"EOIAAUO"
+#define アイリ_必殺技 U"IAUO" //U"EOIAUO"
 //「連射」
 #define アイリ_特殊攻撃 U"EIA"
 //「刺せ」
@@ -47,14 +49,19 @@
 
 //「殴れ」
 #define No0_弱攻撃 U"AUE"
-//「蹴れ」
-#define No0_狂攻撃 U"EE"
+//「キック」
+#define No0_狂攻撃 U"IU"
 //「龍虎水雷撃」
-#define No0_必殺技 U"UOUIAIEI"
+#define No0_必殺技 U"AIEI" //U"UOUIAIEI"
 //「刺せ」
 #define No0_ガード破壊 U"AE"
 
 using namespace std;
+
+//マクロ
+#define search(p1) int p1##_number = -1; for (int iter = 0; iter < max_##p1; iter++) { if (!p1[iter].exist) { p1[iter].exist = true; p1##_number = iter;break; } };
+
+
 
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
@@ -142,12 +149,18 @@ int Game::getkey() {
 
 int Game::voice_command() {
 #ifndef debug_voice
-	wordDetector.addVowel(getData().vowels[getData().phoneme.estimate()]);
+	HashTable<char32, double> scores;
+	for (const auto& [id, score] : getData().phoneme.estimate() | views::enumerate) {
+		const auto vowel = getData().vowels[id];
+		if (vowel != U' ') scores[vowel] = max(scores[vowel], pow(score, 2) * (score >= 0.0 ? 1.0 : -1.0));
+	}
+	wordDetector.addScores(scores);
 	if (getData().player[player_number] == 0) {
 		if (wordDetector.detect(玲_弱攻撃))return 1;
 		if (wordDetector.detect(玲_狂攻撃))return 2;
 		if (wordDetector.detect(玲_必殺技))return 3;
 		if (wordDetector.detect(玲_ガード破壊))return 5;
+		if (wordDetector.detect(玲_特殊攻撃))return 6;
 	}elif(getData().player[player_number] == 1) {
 		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
 		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
@@ -297,11 +310,28 @@ void Game::update() {
 		update_AP_bar_animation();
 		//プレイヤーのアニメーションを更新
 		update_player_animation();
+		//各種エフェクトの更新
+		update_effects();
 		//決着！
 		if (is_game_finished)update_settle();
 #ifndef debug_mode
 	}
 #endif
+}
+
+void Game::update_effects() {
+	int now_time = GameTimer();
+	//エフェクトの更新
+	for (int i = 0; i < max_occation; i++) {
+		if (!occation[i].exist)continue;
+		int t = now_time - occation[i].timer;
+		if (t > 500) {
+			occation[i].exist = false;
+		}else {
+			occation[i].alpha = 1.0 - EaseOutExpo((double)t / 500.0);
+			occation[i].scale = 3.0 + 7.0 * EaseOutExpo((double)t / 500.0);
+		}
+	}
 }
 
 void Game::update_settle() {
@@ -486,7 +516,6 @@ void Game::update_player() {
 		//特殊攻撃
 		}elif(got_voice == 6) {
 			if ((player[player_number].status & 500) == 0) {
-				bom_se.playOneShot();
 				player[player_number].se[7] = true;
 				player[player_number].status |= 256;
 				player[player_number].timer[14] = now_time;
@@ -573,7 +602,7 @@ void Game::update_player() {
 		}
 	}
 
-	
+
 	for (int i = 0; i < player_sum; i++) {
 		//移動範囲制限
 		player_reserved_pos[i].x = Clamp(player_reserved_pos[i].x, 50.0, 1850.0);
@@ -582,54 +611,304 @@ void Game::update_player() {
 	}
 }
 
-int Game::search_bullet() {
-    for (int i = 0; i < max_bullet; i++) {
-		if (!bullet[i].exist) {
-			bullet[i].exist = true;
-			return i;
-		}
-	}
-	return -1;
-}
-
-int Game::search_knife() {
-	for (int i = 0; i < max_knives; i++) {
-		if (!knife[i].exist) {
-			knife[i].exist = true;
-			return i;
-		}
-	}
-	return -1;
-}
-
-void Game::weak_bullet(int cnt, int now_time, Vec2 player_reserved_pos[]) {
-	//弱攻撃(銃)
-	if (player[cnt].status & 16) {
-		player[cnt].timer[9] = now_time - player[cnt].timer[4];
-		if ((180 < player[cnt].timer[9]) && player[cnt].se[2]) {
-			player[cnt].se[2] = false;
-			shot_se.playOneShot();
+void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int type) {
+	//銃攻撃
+	if (player[cnt].status & (16*(int)pow(2,type))) {
+		player[cnt].timer[9+type] = now_time - player[cnt].timer[4+type];
+		if ((180 < player[cnt].timer[9+type]) && player[cnt].se[2+type]) {
+			player[cnt].se[2+type] = false;
+			gun_se.playOneShot();
 			//銃弾の発生
-			int bullet_number = search_bullet();
+			search(bullet);
 			if (bullet_number != -1) {
-				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 120,-120 };
+				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 140+((type==1)?55:0),what<int>(type,-115,-66,-90)};
 				bullet[bullet_number].old_pos = bullet[bullet_number].pos;
 				bullet[bullet_number].direction = !player[cnt].direction;
+				bullet[bullet_number].angle = (bullet[bullet_number].direction ? 0.0 : M_PI);
 				bullet[bullet_number].timer = now_time;
 				bullet[bullet_number].mode = 0;
+				bullet[bullet_number].type = (type == 2)?3:type;
 				bullet[bullet_number].character = player[cnt].number;
+				bullet[bullet_number].disable_disappear = (type == 2);
 			}
 		}
 	}
 }
 
 void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
+	//銃弾の移動+当たり判定
+	for (int i = 0; i < max_bullet; i++) {
+		if (!bullet[i].exist)continue;
+		if (bullet[i].character != player[cnt].number)continue;
+		//銃弾の移動
+		//弱
+		if (bullet[i].type == 0) {
+			bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 3.0;
+		//狂
+		}elif(bullet[i].type == 1) {
+			if (now_time - bullet[i].timer < 250) {
+				bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 1.5;
+			}else {
+				//爆発
+				bomber_se.playOneShot();
+				//エフェクトの発生
+				search(occation);
+				if (occation_number != -1) {
+					occation[occation_number].pos = bullet[i].pos;
+					occation[occation_number].timer = now_time;
+					occation[occation_number].alpha = 1.0;
+					occation[occation_number].scale = 3.0;
+					occation[occation_number].type = 0;
+				}
 
+				//当たり判定
+				if (abs(player_reserved_pos[another_player_number].x - bullet[i].pos.x) < 60.0) {
+					if (player[another_player_number].status & 8) {
+						void_damage_se.playOneShot();
+					}else {
+#ifndef debug_mode
+						if (cnt == player_number)
+							getData().client->sendAction(U"StrongAttackBomb", another_player_number);
+#endif
+						player[another_player_number].hp[1] -= rei_strong_attack_bomb;
+						player[cnt].ap += rei_strong_attack_ap;
+					}
+				}else {
+					for (int j = 0; j < 6; j++) {
+						search(bullet);
+						if (bullet_number == -1)break;
+						bullet[bullet_number].pos = bullet[i].pos;
+						bullet[bullet_number].old_pos = bullet[bullet_number].pos;
+						bullet[bullet_number].angle = (M_PI / 3.0) * j;
+						bullet[bullet_number].old_angle = bullet[bullet_number].angle;
+						bullet[bullet_number].direction = bullet[i].direction;
+						bullet[bullet_number].timer = now_time;
+						bullet[bullet_number].mode = 0;
+						bullet[bullet_number].type = 2;
+						bullet[bullet_number].character = player[cnt].number;
+					}
+				}
+				bullet[i].exist = false;
+			}
+		//狂(爆発後)
+		}elif(bullet[i].type == 2) {
+			bullet[i].pos.x = bullet[i].old_pos.x + cos(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
+			bullet[i].pos.y = bullet[i].old_pos.y + sin(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
+			bullet[i].angle = bullet[i].old_angle - (bullet[i].direction?-1.0:1.0)*(now_time - bullet[i].timer) * (M_PI/3000);
+		//必殺(第一段階)
+		}elif(bullet[i].type == 3) {
+			bullet[i].angle = -(bullet[i].direction ? M_PI / 15.0:M_PI*14.0/15.0);
+			bullet[i].pos.x = bullet[i].old_pos.x + 2.5 * (now_time - bullet[i].timer) * cos(bullet[i].angle);
+			bullet[i].pos.y = bullet[i].old_pos.y + 2.5 * (now_time - bullet[i].timer) * sin(bullet[i].angle);
+			//第二段階(反射)
+			if ((bullet[i].pos.x < 10) || (bullet[i].pos.x > 1910)) {
+				gun_reflect1_se.playOneShot();
+				bullet[i].type = 4;
+				bullet[i].angle = M_PI-bullet[i].angle;
+				bullet[i].old_pos = bullet[i].pos;
+				bullet[i].timer = now_time;
+			}
+		//必殺(第二、三段階)
+		}elif ((bullet[i].type == 4) || (bullet[i].type == 5)) {
+			bullet[i].pos.x = bullet[i].old_pos.x + 4.2 * (now_time - bullet[i].timer) * cos(bullet[i].angle);
+			bullet[i].pos.y = bullet[i].old_pos.y + 4.2 * (now_time - bullet[i].timer) * sin(bullet[i].angle);
+			//反射
+			if ((bullet[i].pos.y < 0) || (bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920)) {
+				if (bullet[i].type == 4) {
+					gun_reflect2_se.playOneShot();
+					bullet[i].angle = 2.0*M_PI - bullet[i].angle;
+					bullet[i].old_pos = bullet[i].pos;
+					bullet[i].timer = now_time;
+				//第三段階(反射して相手へ)
+				}else {
+					gun_reflect3_se.playOneShot();
+					bullet[i].angle = atan2(player_reserved_pos[another_player_number].y-80.0 - bullet[i].pos.y, player_reserved_pos[another_player_number].x - bullet[i].pos.x);
+					bullet[i].old_pos = bullet[i].pos;
+					bullet[i].timer = now_time;
+				}
+				bullet[i].type++;
+			}
+		//必殺(最終段階:高速で相手へ)
+		}elif(bullet[i].type == 6) {
+			bullet[i].pos.x = bullet[i].old_pos.x + 6.0 * (now_time - bullet[i].timer)  * cos(bullet[i].angle);
+			bullet[i].pos.y = bullet[i].old_pos.y + 6.0 * (now_time - bullet[i].timer)  * sin(bullet[i].angle);
+		}
+
+		//残像の発生
+		if ((3 <= bullet[i].type) && (bullet[i].type <= 6)) {
+			search(after_images);
+			if (after_images_number != -1) {
+				after_images[after_images_number].pos = bullet[i].pos;
+				after_images[after_images_number].timer = now_time;
+				after_images[after_images_number].alpha = 1.0;
+				after_images[after_images_number].angle = bullet[i].angle;
+			}
+		}
+
+		//場外退場
+		if ((!bullet[i].disable_disappear) && ((bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920) || (bullet[i].pos.y < 0) || (bullet[i].pos.y > 1080)))
+			bullet[i].exist = false;
+
+		//当たり判定
+		for (int j = 0; j < player_sum; j++) {
+			if (j == cnt)continue;
+			//弱攻撃
+			if (bullet[i].type <= 1) {
+				//頭を下げればぶつかりません～♪
+				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && ((player[j].status & 3) == 0)) {
+					if ((player[j].event & 1) == 0) {
+						player[j].event |= 1;
+						if (player[j].status & 8) {
+							void_damage_se.playOneShot();
+						}else {
+#ifndef debug_mode
+							if (cnt == player_number)
+								getData().client->sendAction(U"WeakAttack", j);
+#endif
+							player[j].hp[1] -= rei_weak_atttack;
+							player[cnt].ap += rei_weak_atttack_ap;
+						}
+						bullet[i].exist = false;
+						break;
+					}
+				}
+			}elif(bullet[i].type == 2) {
+				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && (abs(player_reserved_pos[j].y - bullet[i].pos.y) < 195.0)) {
+					if (player[j].status & 8) {
+						void_damage_se.playOneShot();
+					}else {
+#ifndef debug_mode
+						if (cnt == player_number)
+							getData().client->sendAction(U"StrongAttack", j);
+#endif
+						player[j].hp[1] -= rei_strong_attack;
+						player[cnt].ap += rei_strong_attack_ap;
+					}
+					bullet[i].exist = false;
+					break;
+				}
+			//必殺技(最終段階)
+			}elif(bullet[i].type == 6) {
+				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 50.0) && (abs(player_reserved_pos[j].y - bullet[i].pos.y) < 195.0)) {
+					//爆発
+					bomber_se.playOneShot();
+					//エフェクトの発生
+					search(occation);
+					if (occation_number != -1) {
+						occation[occation_number].pos = bullet[i].pos;
+						occation[occation_number].timer = now_time;
+						occation[occation_number].alpha = 1.0;
+						occation[occation_number].scale = 3.0;
+						occation[occation_number].type = 1;
+					}
+
+					if (player[j].status & 64) {
+						void_damage_se.playOneShot();
+					}else {
+#ifndef debug_mode
+						if (cnt == player_number)
+							getData().client->sendAction(U"SpecialAttack", j);
+#endif
+						player[j].hp[1] -= rei_special_attack;
+						player[cnt].ap += rei_special_attack_ap;
+					}
+					bullet[i].exist = false;
+					break;
+				}
+			}
+		}
+	}
+
+	//魚雷の移動+当たり判定
+	for (int i = 0; i < max_torpedo; i++) {
+		if (!torpedo[i].exist)continue;
+		//魚雷の移動
+		if (torpedo[i].mode == 0) {
+			int t = now_time - torpedo[i].timer;
+			if (t < 200) {
+				torpedo[i].pos.x = torpedo[i].old_pos.x + 0.8 * sign(torpedo[i].angle == 0.0) * t;
+				torpedo[i].pos.y = torpedo[i].old_pos.y - 0.44 * t + 0.008 * t * t;
+			}else {
+				torpedo[i].mode = 1;
+				torpedo[i].timer = now_time;
+				torpedo[i].pos = Vec2{ torpedo[i].old_pos.x + sign(torpedo[i].angle == 0.0) * 160,torpedo[i].old_pos.y + 232 };
+				torpedo[i].old_pos = torpedo[i].pos;
+				torpedo[i].angle = (torpedo[i].angle == 0.0) ? atan2(-0.07, 4.0) : M_PI - atan2(-0.07, 4.0);
+			}
+		}else {
+			torpedo[i].pos.x = torpedo[i].old_pos.x + sign(!player[cnt].direction) * 4.0 * (now_time - torpedo[i].timer);
+			torpedo[i].pos.y = torpedo[i].old_pos.y - 0.07 * (now_time - torpedo[i].timer);
+			//場外退場
+			if ((torpedo[i].pos.x < -80) || (torpedo[i].pos.x > 2000))torpedo[i].exist = false;
+		}
+		//当たり判定
+		for (int j = 0; j < player_sum; j++) {
+			if (j == cnt)continue;
+			if ((abs(player_reserved_pos[j].x - torpedo[i].pos.x) < 60.0) && ((player[j].status&4) == 0)) {
+				if (player[j].status & 8) {
+					void_damage_se.playOneShot();
+				}else {
+#ifndef debug_mode
+					if (cnt == player_number)
+						getData().client->sendAction(U"UniqueAttack", j);
+#endif
+					player[j].hp[1] -= rei_uniqe_attack;
+					player[cnt].ap += rei_uniqe_attack_ap;
+
+					//爆発
+					bomber_se.playOneShot();
+					//エフェクトの発生
+					search(occation);
+					if (occation_number != -1) {
+						occation[occation_number].pos = torpedo[i].pos;
+						occation[occation_number].timer = now_time;
+						occation[occation_number].alpha = 1.0;
+						occation[occation_number].scale = 3.0;
+						occation[occation_number].type = 2;
+					}
+				}
+				torpedo[i].exist = false;
+				break;
+			}
+		}
+	}
+
+
+	//残像の更新
+	for (int i = 0; i < max_after_images; i++) {
+		if (!after_images[i].exist)continue;
+		int t = now_time - after_images[i].timer;
+		if (t > 500) {
+			after_images[i].exist = false;
+		}else {
+			after_images[i].alpha = 1.0 - EaseOutExpo((double)t / 500.0);
+		}
+	}
 
 	//弱攻撃
-	weak_bullet(cnt, now_time, player_reserved_pos);
-	//狂攻撃
+	call_bullet(cnt, now_time, player_reserved_pos,0);
+	//狂攻撃(爆発する銃)
+	call_bullet(cnt, now_time, player_reserved_pos, 1);
+	//必殺技(反射する銃)
+	call_bullet(cnt, now_time, player_reserved_pos, 2);
 
+	//独自技(魚雷)
+	if (player[cnt].status & 256) {
+		player[cnt].timer[15] = now_time - player[cnt].timer[14];
+		if ((180 < player[cnt].timer[15]) && player[cnt].se[7]) {
+			player[cnt].se[7] = false;
+			torpedo_se.playOneShot();
+			//魚雷の発生
+			search(torpedo);
+			if (torpedo_number != -1) {
+				torpedo[torpedo_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 130,-75 };
+				torpedo[torpedo_number].old_pos = torpedo[torpedo_number].pos;
+				torpedo[torpedo_number].angle = (player[cnt].direction ? M_PI:0.0);
+				torpedo[torpedo_number].timer = now_time;
+				torpedo[torpedo_number].mode = 0;
+			}
+		}
+	}
 }
 
 void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
@@ -747,7 +1026,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							player[j].hp[1] -= airi_uniqe_attack;
 							player[cnt].ap += airi_uniqe_attack_ap;
 						}
-						
+
 					}
 					bullet[i].exist = false;
 					break;
@@ -756,7 +1035,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		}
 	}
 	//ナイフの移動・当たり判定処理
-	for (int i = 0; i < max_knives; i++) {
+	for (int i = 0; i < max_knife; i++) {
 		if (!knife[i].exist)continue;
 		//待機
 		if (knife[i].mode == 0) {
@@ -790,7 +1069,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			//当たり判定処理
 			int distance_x = abs(player_reserved_pos[another_player_number].x - knife[i].pos.x);
 			int distance_y = abs(player_reserved_pos[another_player_number].y - knife[i].pos.y);
-			if ((distance_x < 20.0) && (distance_y < ((player[another_player_number].status & 3) == 0)? 180.0:90.0)) {
+			if ((distance_x < 20.0) && (distance_y < (((player[another_player_number].status & 3) == 0)? 180.0:90.0))) {
 				if (player[another_player_number].status & 8) {
 					void_damage_se.playOneShot();
 				}else {
@@ -808,7 +1087,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	}
 
 	//弱攻撃(銃)
-	weak_bullet(cnt, now_time, player_reserved_pos);
+	call_bullet(cnt, now_time, player_reserved_pos,0);
 
 	//狂攻撃(ナイフ)
 	if (player[cnt].status & 32) {
@@ -868,13 +1147,15 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			if (tmp > 20) {
 				player[cnt].airi_old_timer = now_time;
 				//銃弾の発生
-				int bullet_number = search_bullet();
+				search(bullet);
 				if (bullet_number != -1) {
 					bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 60,-50 };
 					bullet[bullet_number].old_pos = bullet[bullet_number].pos;
 					bullet[bullet_number].direction = !player[cnt].direction;
+					bullet[bullet_number].angle = (bullet[bullet_number].direction ? 0.0 : M_PI);
 					bullet[bullet_number].timer = now_time;
 					bullet[bullet_number].mode = 1;
+					bullet[bullet_number].character = player[cnt].number;
 				}
 			}
 		}
@@ -888,7 +1169,7 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[],int n
 	double knife_angle = (M_PI * 2.0 / 5.0) * now_number;
 	//ナイフ召喚x5
 	for (int i = 0; i < 5; i++) {
-		int knife_number = search_knife();
+		search(knife);
 		if (knife_number == -1) break;
 		knife[knife_number].pos = player_reserved_pos[cnt] + Vec2{ cos(set_angle) * 180.0, sin(set_angle) * 180.0 };
 		knife[knife_number].old_pos = knife[knife_number].pos;
@@ -910,7 +1191,67 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[],int n
 
 
 void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
-	yuuka_attack(cnt, now_time, player_reserved_pos);
+	//弱攻撃
+	if (player[cnt].status & 16) {
+		player[cnt].timer[9] = now_time - player[cnt].timer[4];
+		if ((100 < player[cnt].timer[9]) && (player[cnt].timer[9] < 250)) {
+			for (int i = 0; i < player_sum; i++) {
+				if (i == cnt) continue;
+				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+					if ((player[i].event & 1) == 0) {
+						if (player[cnt].se[2]) {
+							player[cnt].se[2] = false;
+							dos_se.playOneShot();
+						}
+						player[i].event |= 1;
+						if (player[i].status & 8) {
+							void_damage_se.playOneShot();
+						}
+						else {
+#ifndef debug_mode
+							if (cnt == player_number)
+								getData().client->sendAction(U"WeakAttack", i);
+#endif
+							player[i].hp[1] -= no0_weak_atttack;
+						}
+						player[cnt].ap += no0_weak_atttack_ap;
+					}
+				}
+			}
+		}
+	}
+
+	//狂攻撃
+	if (player[cnt].status & 32) {
+		player[cnt].timer[10] = now_time - player[cnt].timer[5];
+		if ((200 < player[cnt].timer[10]) && (player[cnt].timer[10] < 400)) {
+			for (int i = 0; i < player_sum; i++) {
+				if (i == cnt) continue;
+				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 130.0) && (abs(player_reserved_pos[cnt].y - player_reserved_pos[i].y) < 242.0)) {
+					if ((player[i].event & 2) == 0) {
+						if (player[cnt].se[3]) {
+							player[cnt].se[3] = false;
+							dos_se.playOneShot();
+						}
+						player[i].event |= 2;
+						if (player[i].status & 8) {
+							void_damage_se.playOneShot();
+						}
+						else {
+#ifndef debug_mode
+							if (cnt == player_number)
+								getData().client->sendAction(U"StrongAttack", i);
+#endif
+							player[i].hp[1] -= no0_strong_attack;
+						}
+						player[cnt].ap += no0_strong_attack_ap;
+					}
+				}
+			}
+		}
+	}
 }
 
 //APバーのアニメーションを更新
@@ -949,6 +1290,31 @@ void Game::synchronizate_data() {
 			}
 			if (event->type == U"PlayerStatus") {
 				player[another_player_number].status = (event->data).get<int32>();
+				//各種効果音の設定
+				if (player[another_player_number].status & 3) {
+					player[another_player_number].se[0] = true;
+				}
+				if (player[another_player_number].status & 4) {
+					player[another_player_number].se[1] = true;
+				}
+				if (player[another_player_number].status & 8) {
+					player[another_player_number].se[5] = true;
+				}
+				if (player[another_player_number].status & 16) {
+					player[another_player_number].se[2] = true;
+				}
+				if (player[another_player_number].status & 32) {
+					player[another_player_number].se[3] = true;
+				}
+				if (player[another_player_number].status & 64) {
+					player[another_player_number].se[4] = true;
+				}
+				if (player[another_player_number].status & 128) {
+					player[another_player_number].se[6] = true;
+				}
+				if (player[another_player_number].status & 256) {
+					player[another_player_number].se[7] = true;
+				}
 			}
 			if (event->type == U"PlayerInfoTimer") {
 				Json2ArrayTimer((event->data).getString(), player[another_player_number].timer);
@@ -991,6 +1357,19 @@ void Game::synchronizate_data() {
 					}else {
 						//実質HPを確定
 						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 1);
+					}
+				}
+			//玲限定技
+			}elif (event ->type == U"StrongAttackBomb") {
+				if (event->data.get<int32>() != player_number) {
+					//ガード中
+					if (void_attack[event->data.get<int32>()]) {
+						//暫定HPを元に戻す
+						player[event->data.get<int32>()].hp[1] += rei_strong_attack_bomb;
+						//ガードしていない
+					}else {
+						//実質HPを確定
+						player[event->data.get<int32>()].hp[0] -= rei_strong_attack_bomb;
 					}
 				}
 			}elif(event->type == U"SpecialAttack") {
@@ -1171,18 +1550,33 @@ void Game::update_player_animation() {
 			continue;
 		//特殊攻撃のアニメーション
 		}elif (player[i].status & 256){
-			if (now_time - player[i].timer[14] < 130) {
-				player[i].img_number = 0;
-			}elif(now_time - player[i].timer[14] < 1530) {
-				player[i].img_number = 2;
-			}elif(now_time - player[i].timer[14] < 1560) {
-				player[i].img_number = 0;
+			//玲
+			if (player[i].number == 0) {
+				if (now_time - player[i].timer[14] < 150) {
+					player[i].img_number = 0;
+				}elif(now_time - player[i].timer[14] < 400) {
+					player[i].img_number = 2;
+				}elif(now_time - player[i].timer[14] < 550) {
+					player[i].img_number = 0;
+				}else {
+					player[i].status ^= 256;
+					player[i].img_number = 0;
+				}
+			//アイリ
+			}elif(player[i].number == 2) {
+				if (now_time - player[i].timer[14] < 130) {
+					player[i].img_number = 0;
+				}elif(now_time - player[i].timer[14] < 1530) {
+					player[i].img_number = 2;
+				}elif(now_time - player[i].timer[14] < 1560) {
+					player[i].img_number = 0;
+				}
+				else {
+					player[i].status ^= 256;
+					player[i].img_number = 0;
+				}
+				player[i].wave_pos = 3.0 * sin(0.1 * GameTimer());
 			}
-			else {
-				player[i].status ^= 256;
-				player[i].img_number = 0;
-			}
-			player[i].wave_pos = 3.0 * sin(0.1*GameTimer());
 			continue;
 		//ジャンプアニメーション
 		}elif(player[i].status & 4) {
@@ -1213,20 +1607,25 @@ void Game::draw() const {
 
 		draw_bullet();
 		draw_knife();
+		draw_torpedo();
 		draw_player();
+		draw_after_images();
+		draw_effects();
 
-		String inputVowels = U"";
-		for (const auto& vowel : wordDetector.getVowelBuffer(10)) {
-			if (vowel == U'A') inputVowels += U"ア";
-			if (vowel == U'I') inputVowels += U"イ";
-			if (vowel == U'U') inputVowels += U"ウ";
-			if (vowel == U'E') inputVowels += U"エ";
-			if (vowel == U'O') inputVowels += U"オ";
-		}
-		font(U"入力: {}"_fmt(inputVowels)).draw(60, 10, 10, Palette::Lightgray);
-		//double vowelHistoryLife = wordDetector.vowelHistoryLife;
-		//SimpleGUI::Slider(U"vowelHistoryLife={}us"_fmt(vowelHistoryLife), vowelHistoryLife, 0.0, 1000000.0, Vec2(600, 30), 300, 500);
-		//wordDetector.vowelHistoryLife = vowelHistoryLife;
+		// WordDetector のパラメータ調整用
+		//double coolTime = wordDetector.coolTime;
+		//SimpleGUI::Slider(U"coolTime={}us"_fmt(coolTime), coolTime, 0.0, 1'000'000.0, Vec2(600, 20), 300, 500);
+		//wordDetector.coolTime = coolTime;
+		//double wordTimeout = wordDetector.wordTimeout;
+		//SimpleGUI::Slider(U"wordTimeout={}us"_fmt(wordTimeout), wordTimeout, 0.0, 1'000'000.0, Vec2(600, 60), 300, 500);
+		//wordDetector.wordTimeout = wordTimeout;
+		//double wordTimeLimit = wordDetector.wordTimeLimit;
+		//SimpleGUI::Slider(U"wordTimeLimit={}us"_fmt(wordTimeLimit), wordTimeLimit, 0.0, 10'000'000.0, Vec2(600, 100), 300, 500);
+		//wordDetector.wordTimeLimit = wordTimeLimit;
+		//double scoresHistoryLife = wordDetector.scoresHistoryLife;
+		//SimpleGUI::Slider(U"scoresHistoryLife={}us"_fmt(scoresHistoryLife), scoresHistoryLife, 0.0, 1'000'000.0, Vec2(600, 140), 300, 500);
+		//wordDetector.scoresHistoryLife = scoresHistoryLife;
+		//SimpleGUI::Slider(U"scoreThreshold={}"_fmt(wordDetector.scoreThreshold), wordDetector.scoreThreshold, -1.0, 1.0, Vec2(600, 180), 300, 500);
 
 		draw_settle();
 
@@ -1280,15 +1679,41 @@ void Game::draw_ping() const {
 void Game::draw_bullet() const {
 	for (int i = 0; i < max_bullet; i++) {
 		if (!bullet[i].exist)continue;
-		guns_img(0,0,14,7).mirrored(bullet[i].direction).drawAt(bullet[i].pos);
+		guns_img(0,7*min(bullet[i].type,3), 14, 7).rotated(bullet[i].angle).drawAt(bullet[i].pos);
 	}
 }
 
 //ナイフの描画
 void Game::draw_knife() const {
-	for (int i = 0; i < max_knives; i++) {
+	for (int i = 0; i < max_knife; i++) {
 		if (!knife[i].exist)continue;
 		knives_img(0,28*knife[i].img_number,54,28).rotated(knife[i].angle[0]).drawAt(knife[i].pos);
+	}
+}
+
+//魚雷の描画
+void Game::draw_torpedo() const {
+	for (int i = 0; i < max_torpedo; i++) {
+		if (!torpedo[i].exist)continue;
+		torpedo_img.rotated(torpedo[i].angle).drawAt(torpedo[i].pos);
+	}
+}
+
+//エフェクトの描画
+void Game::draw_effects() const {
+	for (int i = 0; i < max_occation; i++) {
+		if (!occation[i].exist)continue;
+		const ScopedRenderStates2D blend{ BlendState::Additive };
+		occation_img(occation[i].type*20,0,20,20).scaled(occation[i].scale).drawAt(occation[i].pos, ColorF{1.0,occation[i].alpha});
+	}
+}
+
+//銃弾の残像の描画
+void Game::draw_after_images() const {
+	for (int i = 0; i < max_after_images; i++) {
+		if (!after_images[i].exist)continue;
+		const ScopedRenderStates2D blend{ BlendState::Additive };
+		guns_img(0, 21, 14, 7).rotated(after_images[i].angle).drawAt(after_images[i].pos, ColorF{ 1.0,after_images[i].alpha });
 	}
 }
 
@@ -1362,6 +1787,8 @@ int Game::get_character_power(int character_number, int attack_sort) {
 			return rei_strong_attack;
 		case 2:
 			return rei_special_attack;
+		case 3:
+			return rei_uniqe_attack;
 		default:
 			return 0;
 		}
