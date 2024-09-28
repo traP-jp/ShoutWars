@@ -16,7 +16,7 @@ void Main() {
 	//フルスクリーン
 	//Window::SetFullscreen(true);
 	//タイトル
-	Window::SetTitle(U"ShoutWars");
+	Window::SetTitle(U"Shout Wars v0.2");
 
 	App manager;
 	manager.add<logo>(State::logo);

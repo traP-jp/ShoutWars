@@ -19,7 +19,7 @@ class Calibration : public App::Scene {
 
 public:
 	Calibration(const InitData& init);
-	~Calibration();
+	~Calibration() override;
 
 	void update() override;
 	void draw() const override;

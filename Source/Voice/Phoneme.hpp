@@ -35,7 +35,7 @@ public:
 	/// @return mfccList が全て埋まっていないかどうか
 	bool isMFCCUnset() const;
 
-	/// @brief 現在の MFCC で音素を登録する
+	/// @brief 0.5 秒前から現在の MFCC の平均で音素を登録する
 	/// @param id 登録する音素の ID (インデックス)
 	/// @throw Error 録音中でないか MFCC の履歴が空
 	void setMFCC(uint64 id);

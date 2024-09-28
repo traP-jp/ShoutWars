@@ -17,7 +17,7 @@ Matching::Matching(const InitData& init) : IScene(init)
 	if (getData().before_scene != State::Calibration) {
 		//鯖との接続を確立する
 		//todo:urlとかはテキストに書く
-		const auto api = std::make_shared<APIClient>(U"0.1", U"https://shoutwars.trap.games/api/v2");
+		const auto api = std::make_shared<APIClient>(U"0.2", U"https://shoutwars.trap.games/api/v2");
 		const auto status = api->fetchServerStatus().get();
 
 		try {
