@@ -18,7 +18,7 @@ public:
 	/// @param scoreThreshold これに scoreHistoryLife を掛けた値よりも母音スコアの面積が大きい場合にその母音の可能性があるとする
 	[[nodiscard]] explicit WordDetector(
 		uint64 coolTime = 500'000uLL, uint64 wordTimeout = 400'000uLL, uint64 wordTimeLimit = 5'000'000uLL,
-		uint64 scoresHistoryLife = 150'000uLL, double scoreThreshold = 0.6
+		uint64 scoresHistoryLife = 150'000uLL, double scoreThreshold = 0.7
 	);
 
 	/// @brief 現在の母音スコアを履歴に追加し、各母音の可能性をバッファーに追加する

@@ -60,7 +60,15 @@ bool Phoneme::isMFCCUnset() const {
 
 void Phoneme::setMFCC(uint64 id) {
 	if (getMFCCHistory()->empty()) throw Error{ U"MFCC history is empty" };
-	mfccList[id] = (*mfccAnalyzer->getMFCCHistory()->rbegin()).second;
+	mfccList[id] = MFCC{ Array<double>(mfccOrder, 0.0) };
+	size_t count = 0;
+	for (const auto [timeUs, mfcc] : *mfccAnalyzer->getMFCCHistory()) {
+		if (timeUs >= Time::GetMicrosec() - 500'000) {
+			for (size_t i : step(mfccOrder)) mfccList[id].feature[i] += mfcc.feature[i];
+			++count;
+		}
+	}
+	for (size_t i : step(mfccOrder)) mfccList[id].feature[i] /= count;
 }
 
 bool Phoneme::save() const {

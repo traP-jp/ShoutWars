@@ -26,7 +26,7 @@ void Calibration::update() {
 		if (phonemeRects[id].mouseOver()) {
 			Cursor::RequestStyle(CursorStyle::Hand);
 			if (MouseL.down()) isWaitingToSet = true;
-			if (isWaitingToSet && MouseL.pressedDuration() >= 0.4s) {
+			if (isWaitingToSet && MouseL.pressedDuration() >= 0.8s) {
 				isWaitingToSet = false;
 				phoneme.setMFCC(id);
 			}
@@ -92,7 +92,7 @@ void Calibration::draw() const {
 		}
 		if (!rect.mouseOver()) rect.drawFrame(4, Palette::White);
 		else if (!MouseL.pressed()) rect.drawFrame(12, Palette::White);
-		else if (MouseL.pressedDuration() < 0.5s) rect.drawFrame(12, Palette::Orange);
+		else if (MouseL.pressedDuration() < 1.0s) rect.drawFrame(12, Palette::Orange);
 		else rect.drawFrame(10, Palette::Limegreen);
 		font(phonemeNames[id]).draw(
 			30,
@@ -100,7 +100,7 @@ void Calibration::draw() const {
 			phonemeScores[id] >= 0.75 ? Palette::Limegreen : Palette::Orange
 		);
 	}
-	font(U"登録したい音素を発音しながら緑に光るまで長押ししてください。").draw(40, 120, 540);
+	font(U"登録したい音素を雑音が入らないように気を付けて発音しながら緑に光るまで長押ししてください。").draw(30, 120, 545);
 
 	// 入力感度
 	double rootThreshold = sqrt(phoneme.volumeThreshold);
