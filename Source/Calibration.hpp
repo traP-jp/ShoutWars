@@ -4,7 +4,7 @@
 
 class Calibration : public App::Scene {
 	FFTResult fftResult;
-	size_t phonemeId = 0;
+	Array<double> phonemeScores = Array<double>(12, 0.0);
 	bool isWaitingToSet = false;
 
 	Font font{ FontMethod::MSDF, 80 };
@@ -19,7 +19,7 @@ class Calibration : public App::Scene {
 
 public:
 	Calibration(const InitData& init);
-	~Calibration();
+	~Calibration() override;
 
 	void update() override;
 	void draw() const override;
