@@ -665,7 +665,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					}else {
 #ifndef debug_mode
 						if (cnt == player_number)
-							getData().client->sendAction(U"StrongAttackBomb", j);
+							getData().client->sendAction(U"StrongAttackBomb", another_player_number);
 #endif
 						player[another_player_number].hp[1] -= rei_strong_attack_bomb;
 						player[cnt].ap += rei_strong_attack_ap;
@@ -1152,6 +1152,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					bullet[bullet_number].angle = (bullet[bullet_number].direction ? 0.0 : M_PI);
 					bullet[bullet_number].timer = now_time;
 					bullet[bullet_number].mode = 1;
+					bullet[bullet_number].character = player[cnt].number;
 				}
 			}
 		}
@@ -1286,6 +1287,31 @@ void Game::synchronizate_data() {
 			}
 			if (event->type == U"PlayerStatus") {
 				player[another_player_number].status = (event->data).get<int32>();
+				//各種効果音の設定
+				if (player[another_player_number].status & 3) {
+					player[another_player_number].se[0] = true;
+				}
+				if (player[another_player_number].status & 4) {
+					player[another_player_number].se[1] = true;
+				}
+				if (player[another_player_number].status & 8) {
+					player[another_player_number].se[5] = true;
+				}
+				if (player[another_player_number].status & 16) {
+					player[another_player_number].se[2] = true;
+				}
+				if (player[another_player_number].status & 32) {
+					player[another_player_number].se[3] = true;
+				}
+				if (player[another_player_number].status & 64) {
+					player[another_player_number].se[4] = true;
+				}
+				if (player[another_player_number].status & 128) {
+					player[another_player_number].se[6] = true;
+				}
+				if (player[another_player_number].status & 256) {
+					player[another_player_number].se[7] = true;
+				}
 			}
 			if (event->type == U"PlayerInfoTimer") {
 				Json2ArrayTimer((event->data).getString(), player[another_player_number].timer);
