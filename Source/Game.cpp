@@ -16,6 +16,8 @@
 #define 玲_弱攻撃 U"AUE"
 //「キック」
 #define 玲_狂攻撃 U"IU"
+//「魚雷」
+#define 玲_特殊攻撃 U"OAI"
 //「龍虎水雷撃」
 #define 玲_必殺技 U"AIEI" //U"UOUIAIEI"
 //「刺せ」
@@ -158,6 +160,7 @@ int Game::voice_command() {
 		if (wordDetector.detect(玲_狂攻撃))return 2;
 		if (wordDetector.detect(玲_必殺技))return 3;
 		if (wordDetector.detect(玲_ガード破壊))return 5;
+		if (wordDetector.detect(玲_特殊攻撃))return 6;
 	}elif(getData().player[player_number] == 1) {
 		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
 		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
