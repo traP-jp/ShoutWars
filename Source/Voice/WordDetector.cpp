@@ -1,5 +1,8 @@
 ﻿# include "WordDetector.hpp"
 
+# include <algorithm>
+# include <ranges>
+
 using namespace std;
 
 WordDetector::WordDetector(

@@ -1,6 +1,8 @@
 ﻿# include "MFCCAnalyzer.hpp"
 
+# include <algorithm>
 # include <complex>
+# include <ranges>
 
 using namespace std;
 
