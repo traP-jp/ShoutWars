@@ -1,4 +1,5 @@
 ﻿#include "common.hpp"
+#include "Credits.hpp"
 #include "logo.hpp"
 #include "Title.hpp"
 #include "Matching.hpp"
@@ -6,6 +7,8 @@
 #include "Calibration.hpp"
 
 void Main() {
+	Credits::Register(U"credits.ini");
+
 	// 背景の色を設定する | Set the background color
 	Scene::SetBackground(ColorF{ 0.0, 0.0, 0.0 });
 	//windowsサイズ

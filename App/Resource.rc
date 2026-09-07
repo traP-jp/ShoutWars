@@ -127,6 +127,9 @@ Resource(engine/soundfont/GMGSx.sf2.zstdcmp)
 //
 //////////////////////////////////////////////////////
 
+Resource(credits.ini)
+Resource(licenses/mit-siv3d.txt)
+
 
 
 /* examples 
