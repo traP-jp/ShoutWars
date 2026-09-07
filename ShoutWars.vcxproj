@@ -119,6 +119,7 @@
     <ClCompile Include="Source\Calibration.cpp" />
     <ClCompile Include="Source\common_function.cpp" />
     <ClCompile Include="Source\Config.cpp" />
+    <ClCompile Include="Source\Credits.cpp" />
     <ClCompile Include="Source\Game.cpp" />
     <ClCompile Include="Source\logo.cpp" />
     <ClCompile Include="Source\Main.cpp" />
@@ -245,6 +246,7 @@
     <ClInclude Include="Source\common.hpp" />
     <ClInclude Include="Source\common_function.hpp" />
     <ClInclude Include="Source\Config.hpp" />
+    <ClInclude Include="Source\Credits.hpp" />
     <ClInclude Include="Source\Game.hpp" />
     <ClInclude Include="Source\logo.hpp" />
     <ClInclude Include="Source\Matching.hpp" />
