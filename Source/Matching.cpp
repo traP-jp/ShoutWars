@@ -56,6 +56,9 @@ Matching::Matching(const InitData& init) : IScene(init)
 		for (auto&& [img, glow] : std::views::zip(stand_char_img, character_glow)) {
 			glow.init(img);
 		}
+		decide_button_glow.init(decide_img);
+		setting_glow.init(setting_img);
+		return_glow.init(return_img);
 	}
 	room_ID = getData().room_ID;
 }
@@ -239,8 +242,10 @@ void Matching::update()
 		if (select_char_shape3.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (random_select_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
-		if (decide_button_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
-		if (setting_shape.mouseOver())      Cursor::RequestStyle(CursorStyle::Hand);
+		if (isSettingImageHovered = setting_shape.mouseOver())
+			Cursor::RequestStyle(CursorStyle::Hand);
+		if (isDecideImageHovered = decide_button_shape.mouseOver())
+			Cursor::RequestStyle(CursorStyle::Hand);
 
 		//設定
 		if (setting_shape.leftClicked()) {
@@ -277,8 +282,30 @@ void Matching::update()
 				character_changed = true;
 			}
 		}
+		// キーボード入力でも選択できるように
+		if (KeyLeft.down()) {
+			click_sound.playOneShot();
+			if (character_number > 0) {
+				character_number--;
+			}
+			else {
+				character_number = 3;
+			}
+			character_changed = true;
+		}
+		if (KeyRight.down()) {
+			click_sound.playOneShot();
+			if (character_number < 3) {
+				character_number++;
+			}
+			else {
+				character_number = 0;
+			}
+			character_changed = true;
+		}
+
 		//キャラ確定
-		if (decide_button_shape.leftClicked()) {
+		if (decide_button_shape.leftClicked() || KeyEnter.down()) {
 			decision_sound.playOneShot();
 			getData().decided_character = true;
 			getData().client->sendReport(U"decided", character_number);
@@ -292,7 +319,7 @@ void Matching::update()
 
 	//ホバーしたらカーソルを変える
 	if (RoomID_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-	if (return_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	if (isReturnImageHovered = return_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 
 	//戻る
 	if (return_shape.leftClicked()) {
@@ -353,12 +380,12 @@ void Matching::draw() const
 	//キャラの立ち絵の表示
 	if (is_owner) {
 		you_img.drawAt(360, 60);
-		character_glow[character_number].drawAt({ 360, 540 }, Palette::Silver);
+		character_glow[character_number].drawAt(true, { 360, 540 }, Palette::Silver);
 		stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
 	}
 	else {
 		you_img.drawAt(1560, 60);
-		character_glow[character_number].drawAt({ 1560, 540 }, Palette::Silver);
+		character_glow[character_number].drawAt(true, { 1560, 540 }, Palette::Silver);
 		stand_char_img[opponent_character_number].drawAt(360, 540);
 	}
 	//キミに決めた！
@@ -366,7 +393,7 @@ void Matching::draw() const
 		fixed_img.drawAt(960, 540);
 	}
 	else {
-		decide_img.scaled(decide_button_size).drawAt(960, 540);
+		decide_button_glow.drawAt(isDecideImageHovered, { 960, 540 }, Palette::White, decide_button_size);
 	}
 	//相手が確定したら表示
 	if (opponent_decided) {
@@ -374,12 +401,9 @@ void Matching::draw() const
 	}
 
 	//各種ボタンの表示
-	return_img.draw(20, 20);
-# define draw_select_char_img(i,x,y,color) if (character_number == i-1) {\
-	select_char_glow[i-1].draw({x,y}, color); \
-	} else {\
-	select_char_img##i.draw(x,y); \
-	}
+	return_glow.draw(isReturnImageHovered, { 20, 20 });
+# define draw_select_char_img(i,x,y,color) \
+	select_char_glow[i-1].draw((character_number == i-1),{x,y}, color);
 
 	draw_select_char_img(1, 230, 720, Palette::Blueviolet);
 	draw_select_char_img(2, 540, 720, Palette::Orangered);
@@ -391,7 +415,7 @@ void Matching::draw() const
 		disabled_setting_img.drawAt(1852, 68);
 	}
 	else {
-		setting_img.drawAt(1852, 68);
+		setting_glow.drawAt(isSettingImageHovered, { 1852, 68 });
 	}
 
 	//ルームIDを表示

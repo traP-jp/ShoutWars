@@ -58,6 +58,12 @@ class Matching : public App::Scene
 	//キャラ選択ハイライト/////////////////////////////////////////////
 	GlowBorder select_char_glow[4];
 	GlowBorder character_glow[4];
+	GlowBorder decide_button_glow;
+	GlowBorder setting_glow;
+	GlowBorder return_glow;
+	bool isDecideImageHovered = false;
+	bool isSettingImageHovered = false;
+	bool isReturnImageHovered = false;
 
 	//キャラ選択関連
 	int character_number = 0;
