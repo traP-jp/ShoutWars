@@ -34,20 +34,20 @@ void GlowBorder::init(const Texture& from_texture)
 
 }
 
-void GlowBorder::draw(const Vec2& pos, const ColorF& color) const
+void GlowBorder::draw(bool drawBorder, const Vec2& pos, const ColorF& color, const double scale) const
 {
-	{
+	if (drawBorder) {
 		const ScopedRenderStates2D blend{ BlendState::Additive };
-		outline.draw(pos - Vec2{ 20, 20 }, color);
+		outline.scaled(scale).draw(pos - Vec2{ 20, 20 }, color);
 	}
-	texture.draw(pos);
+	texture.scaled(scale).draw(pos);
 }
 
-void GlowBorder::drawAt(const Vec2& pos, const ColorF& color) const
+void GlowBorder::drawAt(bool drawBorder, const Vec2& pos, const ColorF& color, const double scale) const
 {
-	{
+	if (drawBorder) {
 		const ScopedRenderStates2D blend{ BlendState::Additive };
-		outline.drawAt(pos, color);
+		outline.scaled(scale).drawAt(pos, color);
 	}
-	texture.drawAt(pos);
+	texture.scaled(scale).drawAt(pos);
 }
