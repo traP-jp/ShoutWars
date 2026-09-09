@@ -121,6 +121,7 @@
     <ClCompile Include="Source\Config.cpp" />
     <ClCompile Include="Source\Credits.cpp" />
     <ClCompile Include="Source\Game.cpp" />
+    <ClCompile Include="Source\GlowBorder.cpp" />
     <ClCompile Include="Source\logo.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matching.cpp" />
@@ -248,6 +249,7 @@
     <ClInclude Include="Source\Config.hpp" />
     <ClInclude Include="Source\Credits.hpp" />
     <ClInclude Include="Source\Game.hpp" />
+    <ClInclude Include="Source\GlowBorder.hpp" />
     <ClInclude Include="Source\logo.hpp" />
     <ClInclude Include="Source\Matching.hpp" />
     <ClInclude Include="Source\Multiplay\RoomInfo.hpp" />
