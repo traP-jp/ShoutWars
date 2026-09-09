@@ -1,5 +1,6 @@
 ﻿# pragma once
 # include "common.hpp"
+# include "GlowBorder.hpp"
 
 class Matching : public App::Scene
 {
@@ -36,24 +37,27 @@ class Matching : public App::Scene
 	const Texture calibration_img{ U"../images/matching/calibration.png" };
 	Texture stand_char_img[4] = { stand_char_img1,stand_char_img2,stand_char_img3,stand_char_img4 };
 	//shape////////////////////////////////////////////////////////////
-	const Quad select_char_shape1 { Vec2{280,720},Vec2{577,720},Vec2{527,957},Vec2{230,957} };
-	const Quad select_char_shape2 { Vec2{590,720},Vec2{887,720},Vec2{837,957},Vec2{540,957} };
-	const Quad select_char_shape3 { Vec2{1035,720},Vec2{1332,720},Vec2{1382,957},Vec2{1085,957} };
-	const Quad select_char_shape4 { Vec2{1345,720},Vec2{1642,720},Vec2{1692,957},Vec2{1395,957} };
-	const Quad random_select_shape{ Vec2{905,720},Vec2{1021,720},Vec2{1076,957},Vec2{850,957} };
+	const Quad select_char_shape1{ Vec2{ 280,720 },Vec2{ 577,720 },Vec2{ 527,957 },Vec2{ 230,957 } };
+	const Quad select_char_shape2{ Vec2{ 590,720 },Vec2{ 887,720 },Vec2{ 837,957 },Vec2{ 540,957 } };
+	const Quad select_char_shape3{ Vec2{ 1035,720 },Vec2{ 1332,720 },Vec2{ 1382,957 },Vec2{ 1085,957 } };
+	const Quad select_char_shape4{ Vec2{ 1345,720 },Vec2{ 1642,720 },Vec2{ 1692,957 },Vec2{ 1395,957 } };
+	const Quad random_select_shape{ Vec2{ 905,720 },Vec2{ 1021,720 },Vec2{ 1076,957 },Vec2{ 850,957 } };
 	const Rect return_shape{ 20,20,80,80 };
 	const Circle setting_shape{ 1852,68,48 };
-	const RectF RoomID_shape = font(U"888888").regionAt(Vec2{960,70});
+	const RectF RoomID_shape = font(U"888888").regionAt(Vec2{ 960,70 });
 	const RectF timer_shape = font2(U"10:00").regionAt(Vec2{ 960,1000 });
-	const Rect OK_shape {  680,464,240,105 };
+	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
-	const Rect decide_button_shape{ 960-300, 540-75, 600, 150};
+	const Rect decide_button_shape{ 960 - 300, 540 - 75, 600, 150 };
 	//音声素材////////////////////////////////////////////////////////
 	const Audio bgm{ U"../audioes/th3_05.mp3" , Loop::Yes };
 	const Audio cancel_sound{ U"../audioes/cancel.wav" };
 	const Audio copied_se{ U"../audioes/copied.mp3" };
 	const Audio click_sound{ U"../audioes/click.wav" };
 	const Audio decision_sound{ U"../audioes/decided_char.mp3" };
+	//キャラ選択ハイライト/////////////////////////////////////////////
+	GlowBorder select_char_glow[4];
+	GlowBorder character_glow[4];
 
 	//キャラ選択関連
 	int character_number = 0;

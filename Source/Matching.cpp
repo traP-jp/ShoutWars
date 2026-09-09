@@ -1,6 +1,7 @@
 ﻿//FIXME:ユーザが途中退室すると確実にバグる
 #include "Matching.hpp"
 # include "common_function.hpp"
+# include <ranges>
 using namespace std;
 
 Matching::Matching(const InitData& init) : IScene(init)
@@ -12,7 +13,7 @@ Matching::Matching(const InitData& init) : IScene(init)
 		error_mode = 1;
 	}
 #endif
-	
+
 	//通信関連の処理
 	if (getData().before_scene != State::Calibration) {
 		//鯖との接続を確立する
@@ -24,12 +25,13 @@ Matching::Matching(const InitData& init) : IScene(init)
 			//部屋を作る
 			if (getData().room_mode == 0) {
 				getData().client = SyncClient::createRoom(api, U"Owner").get();
-				getData().room_ID =(Parse<String>(getData().client->roomName.str())).narrow();
+				getData().room_ID = (Parse<String>(getData().client->roomName.str())).narrow();
 				getData().timer = (int)Time::GetSec() - 1;
 				is_owner = true;
 				//部屋に入る
-			}else {
-                getData().client = SyncClient::joinRoom(api, Unicode::Widen(getData().room_ID), U"Guest").get();
+			}
+			else {
+				getData().client = SyncClient::joinRoom(api, Unicode::Widen(getData().room_ID), U"Guest").get();
 				//既に決定している場合、反映する
 				//ただし、現時点では２人プレイのみを想定
 				if ((getData().client)->roomInfo.player.size()) {
@@ -44,13 +46,21 @@ Matching::Matching(const InitData& init) : IScene(init)
 		//TODO:エラーダイアログに変える
 		catch (const Error& error) {
 			Print << U"INTERNAL ERROR:" << error.what();
-			OutputLogFile("(INTERNAL ERROR)\n"+error.what().narrow());
+			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
+		}
+		// 光らせるやつの初期化
+		for (const auto chars = { select_char_img1, select_char_img2, select_char_img3, select_char_img4 };
+			auto& charactors : chars) {
+			select_char_glow[&charactors - chars.begin()].init(charactors);
+		}
+		for (auto&& [img, glow] : std::views::zip(stand_char_img, character_glow)) {
+			glow.init(img);
 		}
 	}
 	room_ID = getData().room_ID;
 }
 
-void Matching::setErrorMessage(int error_code,String message)
+void Matching::setErrorMessage(int error_code, String message)
 {
 	if (error_code == 404) {
 		string error_message = message.narrow();
@@ -70,10 +80,11 @@ void Matching::setErrorMessage(int error_code,String message)
 	}elif(error_code == 500) {
 		error_ID = 4;
 		error_mode = 1;
-	//TODO:完全なエラーダイアログに変える
-	}else {
+		//TODO:完全なエラーダイアログに変える
+	}
+	else {
 		Print << U"[SERVER ERROR:" << error_code << U"] " << message;
-		OutputLogFile("(SERVER ERROR:CODE [" +to_string(error_code) + "])\n" + message.narrow());
+		OutputLogFile("(SERVER ERROR:CODE [" + to_string(error_code) + "])\n" + message.narrow());
 	}
 	return;
 }
@@ -87,7 +98,7 @@ void Matching::syncRoomInfo()
 			character_changed = false;
 		}
 		//(鯖主の場合)残り時間を伝える
-		if (is_owner&&(old_remaining_time != remaining_time)&&(member_sum != (getData().client->getUsers()).size())) {
+		if (is_owner && (old_remaining_time != remaining_time) && (member_sum != (getData().client->getUsers()).size())) {
 			getData().client->sendReport(U"ElapsedTime", ((int)Time::GetSec() - getData().timer));
 			member_sum = (getData().client->getUsers()).size();
 		}
@@ -107,7 +118,7 @@ void Matching::syncRoomInfo()
 				opponent_character_number = event->data.get<int>();
 			}
 			//(鯖主じゃない場合)鯖主の待機時間を取得
-			if ((!is_owner) &&(!recieved_time)&& (event->type == U"ElapsedTime")) {
+			if ((!is_owner) && (!recieved_time) && (event->type == U"ElapsedTime")) {
 				getData().timer = (int)Time::GetSec() - (event->data.get<int>());
 				recieved_time = true;
 			}
@@ -123,13 +134,14 @@ void Matching::syncRoomInfo()
 				//整合性の確認が取れたらそのことを伝える
 				if (event->data.get<int>() == confirm_num) {
 					//問題なければゲーム画面への移行許可を発報してゲーム画面へ
-					getData().client->sendReport(U"IsOK",true);
-				}else {
+					getData().client->sendReport(U"IsOK", true);
+				}
+				else {
 					//整合性に問題があれば鯖側で勝手に予測して押し付けてゲーム画面へ
 					getData().client->sendReport(U"IsOK", false);
 					opponent_character_number = event->data.get<int>() % 10;
 					getData().client->sendReport(U"AcuurateData", character_number);
-					OutputLogFile("整合性の確認が取れませんでした。\n鯖:" + to_string(confirm_num) + ",ユーザー:"+to_string(event->data.get<int>()));
+					OutputLogFile("整合性の確認が取れませんでした。\n鯖:" + to_string(confirm_num) + ",ユーザー:" + to_string(event->data.get<int>()));
 				}
 				//ガラガラ閉店
 				getData().client->sendStart();
@@ -165,7 +177,7 @@ void Matching::syncRoomInfo()
 		setErrorMessage(FromEnum(error.statusCode), error.what());
 	}
 	catch (const Error& error) {
-		Print <<  error.what();
+		Print << error.what();
 		OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
 	}
 }
@@ -173,7 +185,7 @@ void Matching::syncRoomInfo()
 String Matching::CalcRemainingTime()
 {
 	//制限時間は10分
-	int remaining_int_time = 600-((int)Time::GetSec() - getData().timer);
+	int remaining_int_time = 600 - ((int)Time::GetSec() - getData().timer);
 	//時間切れ☆
 	if (remaining_int_time < 1) {
 		remaining_int_time = 0;
@@ -185,7 +197,7 @@ String Matching::CalcRemainingTime()
 	//0埋め
 	minute.insert(minute.begin(), 2 - minute.size(), '0');
 	second.insert(second.begin(), 2 - second.size(), '0');
-    return Unicode::Widen(minute+":"+second);
+	return Unicode::Widen(minute + ":" + second);
 }
 
 void Matching::update()
@@ -195,12 +207,13 @@ void Matching::update()
 		error_timer = (int)Time::GetMillisec();
 		error_mode = 2;
 		return;
-	}elif (error_mode == 2) {
+	}elif(error_mode == 2) {
 		int now_time = (int)Time::GetMillisec();
 		if (now_time - error_timer <= 200) {
 			error_pos_y = 1400 - 1040 * (now_time - error_timer) / 200;
 			back_alpha = 0.8 * (now_time - error_timer) / 200;
-		}else {
+		}
+		else {
 			error_pos_y = 360;
 			back_alpha = 0.8;
 			error_mode = 3;
@@ -210,7 +223,7 @@ void Matching::update()
 		if (OK_shape.mouseOver())  Cursor::RequestStyle(CursorStyle::Hand);
 		if (Yes_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		//タイトルに戻る
-		if (OK_shape.leftClicked()|| Yes_shape.leftClicked()) {
+		if (OK_shape.leftClicked() || Yes_shape.leftClicked()) {
 			cancel_sound.playOneShot();
 			getData().before_scene = State::Matching;
 			changeScene(State::Title, 0.8s);
@@ -315,7 +328,7 @@ void Matching::update()
 			copy_mode = 2;
 			copy_timer = now_time;
 		}
-		copy_pos_y = (int)(- 30.0 + EaseOutExpo(now_rate) * 80.0);
+		copy_pos_y = (int)(-30.0 + EaseOutExpo(now_rate) * 80.0);
 	}elif(copy_mode == 2) {
 		if (now_time - copy_timer > 1500) {
 			copy_mode = 3;
@@ -340,34 +353,44 @@ void Matching::draw() const
 	//キャラの立ち絵の表示
 	if (is_owner) {
 		you_img.drawAt(360, 60);
-		stand_char_img[character_number].drawAt(360, 540);
+		character_glow[character_number].drawAt({ 360, 540 }, Palette::Silver);
 		stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
-	}else {
+	}
+	else {
 		you_img.drawAt(1560, 60);
-		stand_char_img[character_number].mirrored().drawAt(1560, 540);
+		character_glow[character_number].drawAt({ 1560, 540 }, Palette::Silver);
 		stand_char_img[opponent_character_number].drawAt(360, 540);
 	}
 	//キミに決めた！
 	if (getData().decided_character) {
 		fixed_img.drawAt(960, 540);
-	}else {
+	}
+	else {
 		decide_img.scaled(decide_button_size).drawAt(960, 540);
 	}
 	//相手が確定したら表示
 	if (opponent_decided) {
-		decided_img.drawAt(is_owner?1560:360, 60);
+		decided_img.drawAt(is_owner ? 1560 : 360, 60);
 	}
 
 	//各種ボタンの表示
 	return_img.draw(20, 20);
-	select_char_img1.draw(230, 720);
-	select_char_img2.draw(540, 720);
+# define draw_select_char_img(i,x,y,color) if (character_number == i-1) {\
+	select_char_glow[i-1].draw({x,y}, color); \
+	} else {\
+	select_char_img##i.draw(x,y); \
+	}
+
+	draw_select_char_img(1, 230, 720, Palette::Blueviolet);
+	draw_select_char_img(2, 540, 720, Palette::Orangered);
 	random_select_img.draw(850, 720);
-	select_char_img3.draw(1035, 720);
-	select_char_img4.draw(1345, 720);
+	draw_select_char_img(3, 1035, 720, Palette::Yellowgreen);
+	draw_select_char_img(4, 1345, 720, Palette::Dodgerblue);
+# undef draw_select_char_img
 	if (getData().decided_character) {
 		disabled_setting_img.drawAt(1852, 68);
-	}else {
+	}
+	else {
 		setting_img.drawAt(1852, 68);
 	}
 
@@ -391,7 +414,7 @@ void Matching::drawErrorDialog() const
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, back_alpha });
 	if (error_ID == 0) {
 		error_img.drawAt(960, error_pos_y);
-	}elif (error_ID == 1) {
+	}elif(error_ID == 1) {
 		not_found_img.drawAt(960, error_pos_y);
 	}elif(error_ID == 2) {
 		not_found_img2.drawAt(960, error_pos_y);
@@ -413,14 +436,14 @@ void Matching::drawFadeIn(double t) const
 {
 	if (!bgm.isPlaying()) bgm.play();
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, 1.0 - t});
-	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t});
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, 1.0 - t });
+	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t });
 }
 
 void Matching::drawFadeOut(double t) const
 {
 	if (bgm.isPlaying()) bgm.stop();
 	draw();
-	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, t});
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, t });
 	if (gotoGame)connecting_img.drawAt(1500, 950, ColorF{ 1, t });
 }
