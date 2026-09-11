@@ -385,7 +385,7 @@ void Matching::draw() const
 	}
 	else {
 		you_img.drawAt(1560, 60);
-		character_glow[character_number].drawAt(true, { 1560, 540 }, Palette::Silver);
+		character_glow[character_number].drawAt(true, { 1560, 540 }, Palette::Silver, 1.0, true);
 		stand_char_img[opponent_character_number].drawAt(360, 540);
 	}
 	//キミに決めた！
