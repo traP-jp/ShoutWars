@@ -34,20 +34,20 @@ void GlowBorder::init(const Texture& from_texture)
 
 }
 
-void GlowBorder::draw(bool drawBorder, const Vec2& pos, const ColorF& color, const double scale) const
+void GlowBorder::draw(bool drawBorder, const Vec2& pos, const ColorF& color, const double scale, bool isMirrored) const
 {
 	if (drawBorder) {
 		const ScopedRenderStates2D blend{ BlendState::Additive };
-		outline.scaled(scale).draw(pos - Vec2{ 20, 20 }, color);
+		outline.scaled(scale).mirrored(isMirrored).draw(pos - Vec2{ 20, 20 }, color);
 	}
-	texture.scaled(scale).draw(pos);
+	texture.scaled(scale).mirrored(isMirrored).draw(pos);
 }
 
-void GlowBorder::drawAt(bool drawBorder, const Vec2& pos, const ColorF& color, const double scale) const
+void GlowBorder::drawAt(bool drawBorder, const Vec2& pos, const ColorF& color, const double scale, bool isMirrored) const
 {
 	if (drawBorder) {
 		const ScopedRenderStates2D blend{ BlendState::Additive };
-		outline.scaled(scale).drawAt(pos, color);
+		outline.scaled(scale).mirrored(isMirrored).drawAt(pos, color);
 	}
-	texture.scaled(scale).drawAt(pos);
+	texture.scaled(scale).mirrored(isMirrored).drawAt(pos);
 }

@@ -8,6 +8,6 @@ private:
 	Texture texture;
 public:
 	void init(const Texture& texture);
-	void draw(bool drawBorder, const Vec2& pos, const ColorF& color = Palette::White, const double scale = 1.0) const;
-	void drawAt(bool drawBorder, const Vec2& pos, const ColorF& color = Palette::White, const double scale = 1.0) const;
+	void draw(bool drawBorder, const Vec2& pos, const ColorF& color = Palette::White, const double scale = 1.0, bool isMirrored = false) const;
+	void drawAt(bool drawBorder, const Vec2& pos, const ColorF& color = Palette::White, const double scale = 1.0, bool isMirrored = false) const;
 };

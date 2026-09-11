@@ -62,7 +62,7 @@ using namespace std;
 //マクロ
 #define search(p1) int p1##_number = -1; for (int iter = 0; iter < max_##p1; iter++) { if (!p1[iter].exist) { p1[iter].exist = true; p1##_number = iter;break; } };
 
-
+#define debug_voice
 
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
@@ -1150,7 +1150,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				//銃弾の発生
 				search(bullet);
 				if (bullet_number != -1) {
-					bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 60,-50 };
+					bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 60,-77 };
 					bullet[bullet_number].old_pos = bullet[bullet_number].pos;
 					bullet[bullet_number].direction = !player[cnt].direction;
 					bullet[bullet_number].angle = (bullet[bullet_number].direction ? 0.0 : M_PI);
