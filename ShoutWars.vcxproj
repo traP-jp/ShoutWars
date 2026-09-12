@@ -261,6 +261,15 @@
     <ClInclude Include="Source\Multiplay\APIClient.hpp" />
     <ClInclude Include="Source\Multiplay\SyncClient.hpp" />
   </ItemGroup>
+  <Target Name="GenerateAppResources" BeforeTargets="ResourceCompile">
+    <ItemGroup>
+      <AppResource Include="CREDITS.ini;licenses\**\*" />
+      <AppResourceEntry Include="@(AppResource)">
+        <ResourcePath>$([System.String]::Copy('%(Identity)').Replace('\','/'))</ResourcePath>
+      </AppResourceEntry>
+    </ItemGroup>
+    <WriteLinesToFile File="App\AppResources.rc" Lines="@(AppResourceEntry-&gt;'Resource(%(ResourcePath))')" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

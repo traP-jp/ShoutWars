@@ -1,15 +1,21 @@
 # ShoutWars
 
 **© 2024 traP Community**  
-[MIT License](LICENSE) が適用されるのはソースコードのみです。画像・音声素材は権利関係を整理中で、ライセンスを設定していません。
 
 traP ワンマンソン 2024 レジェンドクリエイターズのゲーム
 
-**[ダウンロードページ](https://shoutwars.trap.games/)**
----
-
 サーバー: [traP-jp/ShoutWars-server](https://github.com/traP-jp/ShoutWars-server)  
 ホームページ: [traP-jp/ShoutWars-web](https://github.com/traP-jp/ShoutWars-web)
+
+## ライセンス
+
+traP Community が制作したアセットには以下のライセンスが適用されます。
+
+- ソースコード: [MIT License](LICENSE)  
+- 画像素材: [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ja)  
+- 音声素材: [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.ja)
+
+第三者が権利を持つ素材は [`CREDITS.ini`](CREDITS.ini) に「収録先」付きで列挙してあり、それぞれのライセンスに従います。
 
 ## 開発メンバー
 

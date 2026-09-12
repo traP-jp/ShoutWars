@@ -7,7 +7,7 @@
 #include "Calibration.hpp"
 
 void Main() {
-	Credits::Register(U"credits.ini");
+	Credits::Load(U"CREDITS.ini").each(LicenseManager::AddLicense);
 
 	// 背景の色を設定する | Set the background color
 	Scene::SetBackground(ColorF{ 0.0, 0.0, 0.0 });
