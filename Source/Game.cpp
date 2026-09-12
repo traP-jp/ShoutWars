@@ -72,7 +72,7 @@ player_flag(player_sum, true)
 {
 	//システムで使用する画像
 	for (int i = 0; i < 5; i++)
-		fire_img.at(i) = Texture{ Unicode::Widen("../images/game/system/fire"+to_string(i)+".png") };
+		fire_img.at(i) = Texture{ Unicode::Widen("../images/game/system/fire" + to_string(i) + ".png") };
 
 	//玲の画像
 	if ((getData().player[0] == 0) || (getData().player[1] == 0)) {
@@ -125,8 +125,8 @@ player_flag(player_sum, true)
 	getData().phoneme.start();
 #endif
 
-	player[0].pos[0] = {600.0,player_min_y};
-	player[1].pos[0] = {1200,player_min_y};
+	player[0].pos[0] = { 600.0,player_min_y };
+	player[1].pos[0] = { 1200,player_min_y };
 	player[1].direction = true;
 	player[0].number = getData().player[0];
 	player[1].number = getData().player[1];
@@ -173,7 +173,8 @@ int Game::voice_command() {
 		if (wordDetector.detect(アイリ_必殺技))return 3;
 		if (wordDetector.detect(アイリ_ガード破壊))return 5;
 		if (wordDetector.detect(アイリ_特殊攻撃))return 6;
-	}else {
+	}
+	else {
 		if (wordDetector.detect(No0_弱攻撃))return 1;
 		if (wordDetector.detect(No0_狂攻撃))return 2;
 		if (wordDetector.detect(No0_必殺技))return 3;
@@ -246,7 +247,7 @@ void Game::update() {
 						player_number = 0;
 						another_player_number = 1;
 						//ゲーム開始時刻
-						connection_timer = (int)Time::GetMillisec()+700;
+						connection_timer = (int)Time::GetMillisec() + 700;
 						ping_time = (getData().client->api->fetchServerStatus().get().ping).count();
 						connection_timer += ping_time;
 						fade_back_timer = GameTimer();
@@ -255,7 +256,8 @@ void Game::update() {
 						bgm.play();
 					}
 				}
-			}else {
+			}
+			else {
 				getData().client->sendReport(U"Start", true);
 				getData().client->update();
 				//Player
@@ -264,14 +266,15 @@ void Game::update() {
 				//時差調整
 				System::Sleep(0.1s);
 				//ゲーム開始時刻
-				connection_timer = (int)Time::GetMillisec() + 700 ;
+				connection_timer = (int)Time::GetMillisec() + 700;
 				is_connected = true;
 				fade_back_timer = GameTimer();
 				fade_back_alpha = 1.0;
 				//BGMを流す
 				bgm.play();
 			}
-		}catch (const APIClient::HTTPError& error) {
+		}
+		catch (const APIClient::HTTPError& error) {
 			if (FromEnum(error.statusCode) == 404) {
 				error_mode = 1;
 				error_ID = 1;
@@ -285,17 +288,19 @@ void Game::update() {
 			if (error.what() == U"Session not found.") {
 				error_mode = 1;
 				error_ID = 2;
-			}else {
+			}
+			else {
 				Print << error.what();
 				OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
 			}
 		}
-	}else {
+	}
+	else {
 		//同期処理
 		if (!is_game_finished)synchronizate_data();
 		//フェードイン
 		if (fade_back_alpha > 0.0) {
-			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer))/ (700-(getData().client->isOwner()) ? ping_time : 0);
+			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer)) / (700 - (getData().client->isOwner()) ? ping_time : 0);
 			if (fade_back_alpha < 0.0)fade_back_alpha = 0.0;
 			return;
 		}
@@ -305,16 +310,16 @@ void Game::update() {
 		player[i].event = 0;
 	}
 #endif
-		//プレイヤー情報を更新
-		if (!is_game_finished)update_player();
-		//APバーの描画情報を更新
-		update_AP_bar_animation();
-		//プレイヤーのアニメーションを更新
-		update_player_animation();
-		//各種エフェクトの更新
-		update_effects();
-		//決着！
-		if (is_game_finished)update_settle();
+	//プレイヤー情報を更新
+	if (!is_game_finished)update_player();
+	//APバーの描画情報を更新
+	update_AP_bar_animation();
+	//プレイヤーのアニメーションを更新
+	update_player_animation();
+	//各種エフェクトの更新
+	update_effects();
+	//決着！
+	if (is_game_finished)update_settle();
 #ifndef debug_mode
 	}
 #endif
@@ -328,7 +333,8 @@ void Game::update_effects() {
 		int t = now_time - occation[i].timer;
 		if (t > 500) {
 			occation[i].exist = false;
-		}else {
+		}
+		else {
 			occation[i].alpha = 1.0 - EaseOutExpo((double)t / 500.0);
 			occation[i].scale = 3.0 + 7.0 * EaseOutExpo((double)t / 500.0);
 		}
@@ -340,18 +346,19 @@ void Game::update_settle() {
 	if (settle_mode == 0) {
 		if (GameTimer() - settle_timer <= 1000) {
 			settle_fade = EaseOutExpo((double)(GameTimer() - settle_timer) / 1000.0);
-		}else {
+		}
+		else {
 			settle_timer = GameTimer();
 			settle_fade = 1.0;
 			settle_mode = 1;
 		}
-	//表示を続ける
+		//表示を続ける
 	}elif(settle_mode == 1) {
 		if (GameTimer() - settle_timer > 500) {
 			settle_mode = 2;
 			settle_timer = GameTimer();
 		}
-	//You Win/Loseの表示
+		//You Win/Loseの表示
 	}elif(settle_mode == 2) {
 		if (GameTimer() - settle_timer <= 1000) {
 			settle_fade = 1.0 - EaseOutExpo((double)(GameTimer() - settle_timer) / 1000.0);
@@ -362,7 +369,7 @@ void Game::update_settle() {
 			settle_timer = GameTimer();
 
 		}
-	//待機
+		//待機
 	}elif(settle_mode == 3) {
 		if (GameTimer() - settle_timer > 2000) {
 			settle_mode = 4;
@@ -370,10 +377,10 @@ void Game::update_settle() {
 			finish_fade_mode = true;
 			bgm.pause(2s);
 		}
-	//フェードアウトしながらタイトル画面へ
+		//フェードアウトしながらタイトル画面へ
 	}elif(settle_mode == 4) {
 		double t = (double)(GameTimer() - settle_timer);
-		finish_fade = Min(t / 2000.0,1.0);
+		finish_fade = Min(t / 2000.0, 1.0);
 		if (t >= 2000.0) {
 			getData().before_scene = State::Game;
 			changeScene(State::Title, 0.8s);
@@ -391,13 +398,14 @@ void Game::update_player() {
 		//左右移動処理
 		if (player[i].status & 3) {
 			player[i].timer[1] = now_time - player[i].timer[0];
-			if (player[i].timer[1]  < 100) {
+			if (player[i].timer[1] < 100) {
 				player_reserved_pos[i].x = player[i].pos[1].x + ((player[i].status & 1) ? -1.0 : 1.0) * player[i].speed * player[i].timer[1] / 100;
 			}
 			else {
 				if (i == player_number) {
 					player[i].status ^= (player[i].status & 1) ? 1 : 2;
-				}else {
+				}
+				else {
 					player[i].timer[0] = now_time;
 					player[i].timer[1] = 0;
 					player[i].pos[1].x = player[i].pos[0].x;
@@ -419,12 +427,14 @@ void Game::update_player() {
 	//プレイヤー(ユーザー操作)のキー入力処理////////////////////////////////////////////////////////////
 	if (int gotkey = getkey()) {
 		//左右移動
-		if ((player[player_number].status & 259) == 0){
+		if ((player[player_number].status & 259) == 0) {
 			if (gotkey & 10) {
-				player[player_number].status |= (gotkey & 2)?1:2;
+				player[player_number].status |= (gotkey & 2) ? 1 : 2;
 				player[player_number].timer[0] = now_time;
 				player[player_number].timer[1] = 0;
 				player[player_number].pos[1].x = player[player_number].pos[0].x;
+				if (player[player_number].number == 2)
+					player[player_number].walking = !player[player_number].walking;
 			}
 		}
 		//ジャンプ
@@ -441,7 +451,7 @@ void Game::update_player() {
 		if (i == player_number) continue;
 		if ((abs(player_reserved_pos[player_number].x - player_reserved_pos[i].x) < 70.0) && (abs(player_reserved_pos[player_number].y - player_reserved_pos[i].y) < 242.0)) {
 			//相手が動いている場合
-			if (player[i].status&3) {
+			if (player[i].status & 3) {
 				if (player[i].status == player[player_number].status) {
 					player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
 				}elif(player[player_number].status == 0) {
@@ -451,8 +461,9 @@ void Game::update_player() {
 					player_reserved_pos[player_number].x = player[player_number].pos[0].x;
 					player_reserved_pos[i].x = player[i].pos[0].x;
 				}
-			//自分だけが動いている場合
-			}else {
+				//自分だけが動いている場合
+			}
+			else {
 				player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
 			}
 		}
@@ -462,7 +473,8 @@ void Game::update_player() {
 	if (player_reserved_pos[player_number].x < player[another_player_number].pos[0].x) {
 		player[player_number].direction = false;
 		player[another_player_number].direction = true;
-	}else {
+	}
+	else {
 		player[player_number].direction = true;
 		player[another_player_number].direction = false;
 	}
@@ -479,7 +491,7 @@ void Game::update_player() {
 				player[player_number].status |= 16;
 				player[player_number].timer[4] = now_time;
 			}
-		//狂攻撃
+			//狂攻撃
 		}elif(got_voice == 2) {
 			if ((player[player_number].status & 500) == 0) {
 				shot_se.playOneShot();
@@ -487,8 +499,8 @@ void Game::update_player() {
 				player[player_number].status |= 32;
 				player[player_number].timer[5] = now_time;
 			}
-		//必殺技
-		}elif ((got_voice == 3)&&(player[player_number].special_attack)) {
+			//必殺技
+		}elif((got_voice == 3) && (player[player_number].special_attack)) {
 			if ((player[player_number].status & 500) == 0) {
 				bom_se.playOneShot();
 				player[player_number].se[4] = true;
@@ -497,7 +509,7 @@ void Game::update_player() {
 				player[player_number].ap = 0;
 				player[player_number].special_attack = false;
 			}
-		//ガード
+			//ガード
 		}elif(got_voice == 4) {
 			guard_se.playOneShot();
 			player[player_number].se[5] = true;
@@ -506,7 +518,7 @@ void Game::update_player() {
 #ifndef debug_mode
 			getData().client->sendAction(U"Guard", player_number);
 #endif
-		//ガード破壊
+			//ガード破壊
 		}elif(got_voice == 5) {
 			if ((player[player_number].status & 500) == 0) {
 				shot_se.playOneShot();
@@ -514,7 +526,7 @@ void Game::update_player() {
 				player[player_number].status |= 128;
 				player[player_number].timer[12] = now_time;
 			}
-		//特殊攻撃
+			//特殊攻撃
 		}elif(got_voice == 6) {
 			if ((player[player_number].status & 500) == 0) {
 				player[player_number].se[7] = true;
@@ -528,8 +540,8 @@ void Game::update_player() {
 	//技とかの処理/////////////////////////////////////////////////////////////////////////////////
 	for (int cnt = 0; cnt < player_sum; cnt++) {
 		if (player[cnt].number == 0) {
-			rei_attack(cnt, now_time,player_reserved_pos);
-		}elif (player[cnt].number == 1) {
+			rei_attack(cnt, now_time, player_reserved_pos);
+		}elif(player[cnt].number == 1) {
 			yuuka_attack(cnt, now_time, player_reserved_pos);
 		}elif(player[cnt].number == 2) {
 			airi_attack(cnt, now_time, player_reserved_pos);
@@ -612,23 +624,23 @@ void Game::update_player() {
 	}
 }
 
-void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int type) {
+void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[], int type) {
 	//銃攻撃
-	if (player[cnt].status & (16*(int)pow(2,type))) {
-		player[cnt].timer[9+type] = now_time - player[cnt].timer[4+type];
-		if ((180 < player[cnt].timer[9+type]) && player[cnt].se[2+type]) {
-			player[cnt].se[2+type] = false;
+	if (player[cnt].status & (16 * (int)pow(2, type))) {
+		player[cnt].timer[9 + type] = now_time - player[cnt].timer[4 + type];
+		if ((180 < player[cnt].timer[9 + type]) && player[cnt].se[2 + type]) {
+			player[cnt].se[2 + type] = false;
 			gun_se.playOneShot();
 			//銃弾の発生
 			search(bullet);
 			if (bullet_number != -1) {
-				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 140+((type==1)?55:0),what<int>(type,-115,-66,-90)};
+				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 140 + ((type == 1) ? 55 : 0),what<int>(type,-115,-66,-90) };
 				bullet[bullet_number].old_pos = bullet[bullet_number].pos;
 				bullet[bullet_number].direction = !player[cnt].direction;
 				bullet[bullet_number].angle = (bullet[bullet_number].direction ? 0.0 : M_PI);
 				bullet[bullet_number].timer = now_time;
 				bullet[bullet_number].mode = 0;
-				bullet[bullet_number].type = (type == 2)?3:type;
+				bullet[bullet_number].type = (type == 2) ? 3 : type;
 				bullet[bullet_number].character = player[cnt].number;
 				bullet[bullet_number].disable_disappear = (type == 2);
 			}
@@ -645,11 +657,12 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		//弱
 		if (bullet[i].type == 0) {
 			bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 3.0;
-		//狂
+			//狂
 		}elif(bullet[i].type == 1) {
 			if (now_time - bullet[i].timer < 250) {
 				bullet[i].pos.x = bullet[i].old_pos.x + sign(bullet[i].direction) * (now_time - bullet[i].timer) * 1.5;
-			}else {
+			}
+			else {
 				//爆発
 				bomber_se.playOneShot();
 				//エフェクトの発生
@@ -666,7 +679,8 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				if (abs(player_reserved_pos[another_player_number].x - bullet[i].pos.x) < 60.0) {
 					if (player[another_player_number].status & 8) {
 						void_damage_se.playOneShot();
-					}else {
+					}
+					else {
 #ifndef debug_mode
 						if (cnt == player_number)
 							getData().client->sendAction(U"StrongAttackBomb", another_player_number);
@@ -674,7 +688,8 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						player[another_player_number].hp[1] -= rei_strong_attack_bomb;
 						player[cnt].ap += rei_strong_attack_ap;
 					}
-				}else {
+				}
+				else {
 					for (int j = 0; j < 6; j++) {
 						search(bullet);
 						if (bullet_number == -1)break;
@@ -691,48 +706,49 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				}
 				bullet[i].exist = false;
 			}
-		//狂(爆発後)
+			//狂(爆発後)
 		}elif(bullet[i].type == 2) {
 			bullet[i].pos.x = bullet[i].old_pos.x + cos(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
 			bullet[i].pos.y = bullet[i].old_pos.y + sin(bullet[i].angle) * (now_time - bullet[i].timer) * 2.0;
-			bullet[i].angle = bullet[i].old_angle - (bullet[i].direction?-1.0:1.0)*(now_time - bullet[i].timer) * (M_PI/3000);
-		//必殺(第一段階)
+			bullet[i].angle = bullet[i].old_angle - (bullet[i].direction ? -1.0 : 1.0) * (now_time - bullet[i].timer) * (M_PI / 3000);
+			//必殺(第一段階)
 		}elif(bullet[i].type == 3) {
-			bullet[i].angle = -(bullet[i].direction ? M_PI / 15.0:M_PI*14.0/15.0);
+			bullet[i].angle = -(bullet[i].direction ? M_PI / 15.0 : M_PI * 14.0 / 15.0);
 			bullet[i].pos.x = bullet[i].old_pos.x + 2.5 * (now_time - bullet[i].timer) * cos(bullet[i].angle);
 			bullet[i].pos.y = bullet[i].old_pos.y + 2.5 * (now_time - bullet[i].timer) * sin(bullet[i].angle);
 			//第二段階(反射)
 			if ((bullet[i].pos.x < 10) || (bullet[i].pos.x > 1910)) {
 				gun_reflect1_se.playOneShot();
 				bullet[i].type = 4;
-				bullet[i].angle = M_PI-bullet[i].angle;
+				bullet[i].angle = M_PI - bullet[i].angle;
 				bullet[i].old_pos = bullet[i].pos;
 				bullet[i].timer = now_time;
 			}
-		//必殺(第二、三段階)
-		}elif ((bullet[i].type == 4) || (bullet[i].type == 5)) {
+			//必殺(第二、三段階)
+		}elif((bullet[i].type == 4) || (bullet[i].type == 5)) {
 			bullet[i].pos.x = bullet[i].old_pos.x + 4.2 * (now_time - bullet[i].timer) * cos(bullet[i].angle);
 			bullet[i].pos.y = bullet[i].old_pos.y + 4.2 * (now_time - bullet[i].timer) * sin(bullet[i].angle);
 			//反射
 			if ((bullet[i].pos.y < 0) || (bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920)) {
 				if (bullet[i].type == 4) {
 					gun_reflect2_se.playOneShot();
-					bullet[i].angle = 2.0*M_PI - bullet[i].angle;
+					bullet[i].angle = 2.0 * M_PI - bullet[i].angle;
 					bullet[i].old_pos = bullet[i].pos;
 					bullet[i].timer = now_time;
-				//第三段階(反射して相手へ)
-				}else {
+					//第三段階(反射して相手へ)
+				}
+				else {
 					gun_reflect3_se.playOneShot();
-					bullet[i].angle = atan2(player_reserved_pos[another_player_number].y-80.0 - bullet[i].pos.y, player_reserved_pos[another_player_number].x - bullet[i].pos.x);
+					bullet[i].angle = atan2(player_reserved_pos[another_player_number].y - 80.0 - bullet[i].pos.y, player_reserved_pos[another_player_number].x - bullet[i].pos.x);
 					bullet[i].old_pos = bullet[i].pos;
 					bullet[i].timer = now_time;
 				}
 				bullet[i].type++;
 			}
-		//必殺(最終段階:高速で相手へ)
+			//必殺(最終段階:高速で相手へ)
 		}elif(bullet[i].type == 6) {
-			bullet[i].pos.x = bullet[i].old_pos.x + 6.0 * (now_time - bullet[i].timer)  * cos(bullet[i].angle);
-			bullet[i].pos.y = bullet[i].old_pos.y + 6.0 * (now_time - bullet[i].timer)  * sin(bullet[i].angle);
+			bullet[i].pos.x = bullet[i].old_pos.x + 6.0 * (now_time - bullet[i].timer) * cos(bullet[i].angle);
+			bullet[i].pos.y = bullet[i].old_pos.y + 6.0 * (now_time - bullet[i].timer) * sin(bullet[i].angle);
 		}
 
 		//残像の発生
@@ -761,7 +777,8 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						player[j].event |= 1;
 						if (player[j].status & 8) {
 							void_damage_se.playOneShot();
-						}else {
+						}
+						else {
 #ifndef debug_mode
 							if (cnt == player_number)
 								getData().client->sendAction(U"WeakAttack", j);
@@ -777,7 +794,8 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && (abs(player_reserved_pos[j].y - bullet[i].pos.y) < 195.0)) {
 					if (player[j].status & 8) {
 						void_damage_se.playOneShot();
-					}else {
+					}
+					else {
 #ifndef debug_mode
 						if (cnt == player_number)
 							getData().client->sendAction(U"StrongAttack", j);
@@ -788,7 +806,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					bullet[i].exist = false;
 					break;
 				}
-			//必殺技(最終段階)
+				//必殺技(最終段階)
 			}elif(bullet[i].type == 6) {
 				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 50.0) && (abs(player_reserved_pos[j].y - bullet[i].pos.y) < 195.0)) {
 					//爆発
@@ -805,7 +823,8 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 
 					if (player[j].status & 64) {
 						void_damage_se.playOneShot();
-					}else {
+					}
+					else {
 #ifndef debug_mode
 						if (cnt == player_number)
 							getData().client->sendAction(U"SpecialAttack", j);
@@ -829,14 +848,16 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			if (t < 200) {
 				torpedo[i].pos.x = torpedo[i].old_pos.x + 0.8 * sign(torpedo[i].angle == 0.0) * t;
 				torpedo[i].pos.y = torpedo[i].old_pos.y - 0.44 * t + 0.008 * t * t;
-			}else {
+			}
+			else {
 				torpedo[i].mode = 1;
 				torpedo[i].timer = now_time;
 				torpedo[i].pos = Vec2{ torpedo[i].old_pos.x + sign(torpedo[i].angle == 0.0) * 160,torpedo[i].old_pos.y + 232 };
 				torpedo[i].old_pos = torpedo[i].pos;
 				torpedo[i].angle = (torpedo[i].angle == 0.0) ? atan2(-0.07, 4.0) : M_PI - atan2(-0.07, 4.0);
 			}
-		}else {
+		}
+		else {
 			torpedo[i].pos.x = torpedo[i].old_pos.x + sign(!player[cnt].direction) * 4.0 * (now_time - torpedo[i].timer);
 			torpedo[i].pos.y = torpedo[i].old_pos.y - 0.07 * (now_time - torpedo[i].timer);
 			//場外退場
@@ -845,10 +866,11 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		//当たり判定
 		for (int j = 0; j < player_sum; j++) {
 			if (j == cnt)continue;
-			if ((abs(player_reserved_pos[j].x - torpedo[i].pos.x) < 60.0) && ((player[j].status&4) == 0)) {
+			if ((abs(player_reserved_pos[j].x - torpedo[i].pos.x) < 60.0) && ((player[j].status & 4) == 0)) {
 				if (player[j].status & 8) {
 					void_damage_se.playOneShot();
-				}else {
+				}
+				else {
 #ifndef debug_mode
 					if (cnt == player_number)
 						getData().client->sendAction(U"UniqueAttack", j);
@@ -881,13 +903,14 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		int t = now_time - after_images[i].timer;
 		if (t > 500) {
 			after_images[i].exist = false;
-		}else {
+		}
+		else {
 			after_images[i].alpha = 1.0 - EaseOutExpo((double)t / 500.0);
 		}
 	}
 
 	//弱攻撃
-	call_bullet(cnt, now_time, player_reserved_pos,0);
+	call_bullet(cnt, now_time, player_reserved_pos, 0);
 	//狂攻撃(爆発する銃)
 	call_bullet(cnt, now_time, player_reserved_pos, 1);
 	//必殺技(反射する銃)
@@ -904,7 +927,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			if (torpedo_number != -1) {
 				torpedo[torpedo_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 130,-75 };
 				torpedo[torpedo_number].old_pos = torpedo[torpedo_number].pos;
-				torpedo[torpedo_number].angle = (player[cnt].direction ? M_PI:0.0);
+				torpedo[torpedo_number].angle = (player[cnt].direction ? M_PI : 0.0);
 				torpedo[torpedo_number].timer = now_time;
 				torpedo[torpedo_number].mode = 0;
 			}
@@ -962,7 +985,8 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							player[i].event |= 2;
 							if (player[i].status & 8) {
 								void_damage_se.playOneShot();
-							}else {
+							}
+							else {
 #ifndef debug_mode
 								if (cnt == player_number)
 									getData().client->sendAction(U"StrongAttack", i);
@@ -971,7 +995,8 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							}
 							player[cnt].ap += yuuka_strong_attack_ap;
 							//必殺技
-						}else {
+						}
+						else {
 							if (player[cnt].se[4]) {
 								player[cnt].se[4] = false;
 								dododos_se.playOneShot();
@@ -979,7 +1004,8 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							player[i].event |= 4;
 							if (player[i].status & 8) {
 								void_damage_se.playOneShot();
-							}else {
+							}
+							else {
 #ifndef debug_mode
 								if (cnt == player_number)
 									getData().client->sendAction(U"SpecialAttack", i);
@@ -1009,7 +1035,8 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					player[j].event |= 1;
 					if (player[j].status & 8) {
 						void_damage_se.playOneShot();
-					}else {
+					}
+					else {
 						//弱
 						if (bullet[i].mode == 0) {
 #ifndef debug_mode
@@ -1018,8 +1045,9 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 #endif
 							player[j].hp[1] -= airi_weak_atttack;
 							player[cnt].ap += airi_weak_atttack_ap;
-						//特殊
-						}else {
+							//特殊
+						}
+						else {
 #ifndef debug_mode
 							if (cnt == player_number)
 								getData().client->sendAction(U"UniqueAttack", j);
@@ -1045,8 +1073,9 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				knife[i].timer[1] = now_time;
 				knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
 			}
-		//発射
-		}else{
+			//発射
+		}
+		else {
 			double t = now_time - knife[i].timer[1];
 			double distance = sqrt(pow(knife[i].goal_pos.x - knife[i].pos.x, 2) + pow(knife[i].goal_pos.y - knife[i].pos.y, 2));
 			if (distance < 32.0) {
@@ -1057,12 +1086,12 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				// 角度差を-π～πの間に収める
 				if (tmp_angle > M_PI) tmp_angle -= 2.0 * M_PI;
 				if (tmp_angle < -M_PI) tmp_angle += 2.0 * M_PI;
-				knife[i].angle[0] = knife[i].angle[1] + tmp_angle * EaseOutExpo(Min(t / knife[i].time,1.0));
+				knife[i].angle[0] = knife[i].angle[1] + tmp_angle * EaseOutExpo(Min(t / knife[i].time, 1.0));
 			}
 			//ナイフの移動
-			knife[i].pos += (Scene::DeltaTime()) * 1800.0 * Vec2 { cos(knife[i].angle[0]), sin(knife[i].angle[0]) };
+			knife[i].pos += (Scene::DeltaTime()) * 1800.0 * Vec2{ cos(knife[i].angle[0]), sin(knife[i].angle[0]) };
 			//角度を-π～πの間に収める
-			if (knife[i].angle[0] >  M_PI) knife[i].angle[0] -= 2.0 * M_PI;
+			if (knife[i].angle[0] > M_PI) knife[i].angle[0] -= 2.0 * M_PI;
 			if (knife[i].angle[0] < -M_PI) knife[i].angle[0] += 2.0 * M_PI;
 			//画面外に出たら退場
 			if ((t > knife[i].time) && ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920) || (knife[i].pos.y < 0) || (knife[i].pos.y > 1080)))
@@ -1070,10 +1099,11 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			//当たり判定処理
 			int distance_x = abs(player_reserved_pos[another_player_number].x - knife[i].pos.x);
 			int distance_y = abs(player_reserved_pos[another_player_number].y - knife[i].pos.y);
-			if ((distance_x < 20.0) && (distance_y < (((player[another_player_number].status & 3) == 0)? 180.0:90.0))) {
+			if ((distance_x < 20.0) && (distance_y < (((player[another_player_number].status & 3) == 0) ? 180.0 : 90.0))) {
 				if (player[another_player_number].status & 8) {
 					void_damage_se.playOneShot();
-				}else {
+				}
+				else {
 #ifndef debug_mode
 					if (cnt == player_number)
 						getData().client->sendAction(U"SpecialAttack", another_player_number);
@@ -1088,7 +1118,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	}
 
 	//弱攻撃(銃)
-	call_bullet(cnt, now_time, player_reserved_pos,0);
+	call_bullet(cnt, now_time, player_reserved_pos, 0);
 
 	//狂攻撃(ナイフ)
 	if (player[cnt].status & 32) {
@@ -1125,7 +1155,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		player[cnt].timer[11] = now_time - player[cnt].timer[6];
 		if ((140 < player[cnt].timer[11]) && player[cnt].se[4]) {
 			player[cnt].se[4] = false;
-			setting_knife(cnt,now_time,player_reserved_pos,0);
+			setting_knife(cnt, now_time, player_reserved_pos, 0);
 		}
 		if ((180 < player[cnt].timer[11]) && (player[cnt].knife_mode <= 1)) {
 			setting_knife(cnt, now_time, player_reserved_pos, 1);
@@ -1163,10 +1193,10 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	}
 }
 
-void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[],int now_number) {
-	player[cnt].knife_mode = 1+ now_number;
+void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[], int now_number) {
+	player[cnt].knife_mode = 1 + now_number;
 	shot_se.playOneShot();
-	double set_angle = (M_PI / 7.0) * (- 6.0);
+	double set_angle = (M_PI / 7.0) * (-6.0);
 	double knife_angle = (M_PI * 2.0 / 5.0) * now_number;
 	//ナイフ召喚x5
 	for (int i = 0; i < 5; i++) {
@@ -1174,16 +1204,16 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[],int n
 		if (knife_number == -1) break;
 		knife[knife_number].pos = player_reserved_pos[cnt] + Vec2{ cos(set_angle) * 180.0, sin(set_angle) * 180.0 };
 		knife[knife_number].old_pos = knife[knife_number].pos;
-		knife[knife_number].angle[0] = knife_angle + (M_PI*2 / 5.0) * i;
+		knife[knife_number].angle[0] = knife_angle + (M_PI * 2 / 5.0) * i;
 		//角度を-π～πの間に収める
-		if (knife[knife_number].angle[0] >  M_PI)knife[knife_number].angle[0] -= M_PI * 2.0;
+		if (knife[knife_number].angle[0] > M_PI)knife[knife_number].angle[0] -= M_PI * 2.0;
 		if (knife[knife_number].angle[0] < -M_PI)knife[knife_number].angle[0] += M_PI * 2.0;
 		knife[knife_number].angle[1] = knife[knife_number].angle[0];
 		knife[knife_number].timer[0] = now_time;
 		knife[knife_number].mode = 0;
 		knife[knife_number].horming = true;
 		knife[knife_number].img_number = i;
-		knife[knife_number].goal_pos = player_reserved_pos[(cnt == player_number)?another_player_number:player_number];
+		knife[knife_number].goal_pos = player_reserved_pos[(cnt == player_number) ? another_player_number : player_number];
 		knife[knife_number].distance = sqrt(pow(knife[knife_number].goal_pos.x - knife[knife_number].pos.x, 2) + pow(knife[knife_number].goal_pos.y - knife[knife_number].pos.y, 2));
 		knife[knife_number].time = knife[knife_number].distance / 1.8;
 		set_angle += M_PI / 7.0;
@@ -1343,7 +1373,8 @@ void Game::synchronizate_data() {
 						//暫定HPを元に戻す
 						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 0);
 						//ガードしていない
-					}else {
+					}
+					else {
 						//実質HPを確定
 						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 0);
 					}
@@ -1355,20 +1386,22 @@ void Game::synchronizate_data() {
 						//暫定HPを元に戻す
 						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 1);
 						//ガードしていない
-					}else {
+					}
+					else {
 						//実質HPを確定
 						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 1);
 					}
 				}
-			//玲限定技
-			}elif (event ->type == U"StrongAttackBomb") {
+				//玲限定技
+			}elif(event ->type == U"StrongAttackBomb") {
 				if (event->data.get<int32>() != player_number) {
 					//ガード中
 					if (void_attack[event->data.get<int32>()]) {
 						//暫定HPを元に戻す
 						player[event->data.get<int32>()].hp[1] += rei_strong_attack_bomb;
 						//ガードしていない
-					}else {
+					}
+					else {
 						//実質HPを確定
 						player[event->data.get<int32>()].hp[0] -= rei_strong_attack_bomb;
 					}
@@ -1379,20 +1412,22 @@ void Game::synchronizate_data() {
 					if (void_attack[event->data.get<int32>()]) {
 						//暫定HPを元に戻す
 						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 2);
-					//ガードしていない
-					}else {
+						//ガードしていない
+					}
+					else {
 						//実質HPを確定
 						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 2);
 					}
 				}
-			}elif (event-> type == U"UniqueAttack"){
+			}elif(event-> type == U"UniqueAttack") {
 				if (event->data.get<int32>() != player_number) {
 					//ガード中
 					if (void_attack[event->data.get<int32>()]) {
 						//暫定HPを元に戻す
 						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 3);
-					//ガードしていない
-					}else {
+						//ガードしていない
+					}
+					else {
 						//実質HPを確定
 						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 3);
 					}
@@ -1418,7 +1453,8 @@ void Game::synchronizate_data() {
 			ping_timer = GameTimer();
 			ping = (int)getData().client->api->fetchServerStatus().get().ping.count();
 		}
-	}catch (const APIClient::HTTPError& error) {
+	}
+	catch (const APIClient::HTTPError& error) {
 		Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
 		OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
 	}
@@ -1426,7 +1462,8 @@ void Game::synchronizate_data() {
 		if (error.what() == U"Session not found.") {
 			error_mode = 1;
 			error_ID = 2;
-		}else {
+		}
+		else {
 			Print << error.what();
 			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
 		}
@@ -1460,7 +1497,7 @@ void Game::Json2ArrayTimer(String str, int(&timer)[16]) {
 	timer[14] = GameTimer() - timer[15];
 }
 
-void Game::Json2ArrayPos(String str,Vec2 (& pos)[2]) {
+void Game::Json2ArrayPos(String str, Vec2(&pos)[2]) {
 	remove_trash(str);
 	// 文字列から数値を抽出
 	Array<double> parts = str.split(U',').map(Parse<double>);
@@ -1490,11 +1527,11 @@ void Game::update_player_animation() {
 		if (player[i].status == 0) {
 			player[i].img_number = 0;
 			continue;
-		//スタン
+			//スタン
 		}elif(player[i].status == 8) {
 			player[i].img_number = 0;
 			continue;
-		//弱攻撃のアニメーション
+			//弱攻撃のアニメーション
 		}elif(player[i].status & 16) {
 			if (now_time - player[i].timer[4] < 60) {
 				player[i].img_number = 0;
@@ -1502,18 +1539,19 @@ void Game::update_player_animation() {
 				player[i].img_number = 4;
 			}elif(now_time - player[i].timer[4] < 270) {
 				player[i].img_number = 0;
-			}else {
+			}
+			else {
 				player[i].status ^= 16;
 				player[i].img_number = 0;
 			}
 			continue;
-		//狂攻撃のアニメーション
+			//狂攻撃のアニメーション
 		}elif(player[i].status & 32) {
 			if (now_time - player[i].timer[5] < 130) {
 				player[i].img_number = 0;
-			}elif (now_time - player[i].timer[5] < 320) {
+			}elif(now_time - player[i].timer[5] < 320) {
 				player[i].img_number = 3;
-			}elif (now_time - player[i].timer[5] < 450) {
+			}elif(now_time - player[i].timer[5] < 450) {
 				player[i].img_number = 0;
 			}
 			else {
@@ -1521,7 +1559,7 @@ void Game::update_player_animation() {
 				player[i].img_number = 0;
 			}
 			continue;
-		//必殺技のアニメーション
+			//必殺技のアニメーション
 		}elif(player[i].status & 64) {
 			if (now_time - player[i].timer[6] < 120) {
 				player[i].img_number = 3;
@@ -1535,7 +1573,7 @@ void Game::update_player_animation() {
 				player[i].img_number = 0;
 			}
 			continue;
-		//ガード破壊のアニメーション
+			//ガード破壊のアニメーション
 		}elif(player[i].status & 128) {
 			if (now_time - player[i].timer[12] < 60) {
 				player[i].img_number = 0;
@@ -1549,8 +1587,8 @@ void Game::update_player_animation() {
 				player[i].img_number = 0;
 			}
 			continue;
-		//特殊攻撃のアニメーション
-		}elif (player[i].status & 256){
+			//特殊攻撃のアニメーション
+		}elif(player[i].status & 256) {
 			//玲
 			if (player[i].number == 0) {
 				if (now_time - player[i].timer[14] < 150) {
@@ -1559,11 +1597,12 @@ void Game::update_player_animation() {
 					player[i].img_number = 2;
 				}elif(now_time - player[i].timer[14] < 550) {
 					player[i].img_number = 0;
-				}else {
+				}
+				else {
 					player[i].status ^= 256;
 					player[i].img_number = 0;
 				}
-			//アイリ
+				//アイリ
 			}elif(player[i].number == 2) {
 				if (now_time - player[i].timer[14] < 130) {
 					player[i].img_number = 0;
@@ -1579,13 +1618,17 @@ void Game::update_player_animation() {
 				player[i].wave_pos = 3.0 * sin(0.1 * GameTimer());
 			}
 			continue;
-		//ジャンプアニメーション
+			//ジャンプアニメーション
 		}elif(player[i].status & 4) {
 			player[i].img_number = 0;
 			continue;
-		//移動アニメーション
+			//移動アニメーション
 		}elif(player[i].status & 3) {
 			player[i].img_number = 1;
+			// アイリのみ移動アニメーション
+			if (player[i].number == 2) {
+				player[i].img_number = player[i].walking;
+			}
 			continue;
 		}
 		player[i].img_number = 0;
@@ -1598,7 +1641,8 @@ void Game::draw() const {
 		//通信中...
 		Rect(0, 0, 1920, 1080).draw(ColorF{ Palette::Black });
 		connecting_img.drawAt(1500, 950);
-	}else {
+	}
+	else {
 #endif
 		background_img.draw(0, 0);
 		command_img.at(getData().player[player_number]).draw(120, 150);
@@ -1653,11 +1697,12 @@ void Game::draw() const {
 }
 
 void Game::draw_settle() const {
-	settle_img.scaled(1.0/((settle_fade == 0.0)?0.0000001: settle_fade)).drawAt(960, 540, ColorF{1,settle_fade});
+	settle_img.scaled(1.0 / ((settle_fade == 0.0) ? 0.0000001 : settle_fade)).drawAt(960, 540, ColorF{ 1,settle_fade });
 	if (settle_mode >= 2) {
 		if (are_you_winnner) {
-			you_win_img .drawAt(960, 540 + 1080 * settle_fade, ColorF{ 1, 1.0 - settle_fade});
-		}else {
+			you_win_img.drawAt(960, 540 + 1080 * settle_fade, ColorF{ 1, 1.0 - settle_fade });
+		}
+		else {
 			you_lose_img.drawAt(960, 540 + 1080 * settle_fade, ColorF{ 1, 1.0 - settle_fade });
 		}
 	}
@@ -1669,8 +1714,9 @@ void Game::draw_ping() const {
 		font(ping).drawAt(1720, 50, Palette::Green);
 	}elif(ping <= 100) {
 		ping_middle_img.draw(1550, 7);
-		font(ping).drawAt(1720, 50, ColorF{1.0,0.729,0.0});
-	}else {
+		font(ping).drawAt(1720, 50, ColorF{ 1.0,0.729,0.0 });
+	}
+	else {
 		ping_slow_img.draw(1550, 7);
 		font(ping).drawAt(1720, 50, ColorF{ 0.812,0.137,0.137 });
 	}
@@ -1680,7 +1726,7 @@ void Game::draw_ping() const {
 void Game::draw_bullet() const {
 	for (int i = 0; i < max_bullet; i++) {
 		if (!bullet[i].exist)continue;
-		guns_img(0,7*min(bullet[i].type,3), 14, 7).rotated(bullet[i].angle).drawAt(bullet[i].pos);
+		guns_img(0, 7 * min(bullet[i].type, 3), 14, 7).rotated(bullet[i].angle).drawAt(bullet[i].pos);
 	}
 }
 
@@ -1688,7 +1734,7 @@ void Game::draw_bullet() const {
 void Game::draw_knife() const {
 	for (int i = 0; i < max_knife; i++) {
 		if (!knife[i].exist)continue;
-		knives_img(0,28*knife[i].img_number,54,28).rotated(knife[i].angle[0]).drawAt(knife[i].pos);
+		knives_img(0, 28 * knife[i].img_number, 54, 28).rotated(knife[i].angle[0]).drawAt(knife[i].pos);
 	}
 }
 
@@ -1705,7 +1751,7 @@ void Game::draw_effects() const {
 	for (int i = 0; i < max_occation; i++) {
 		if (!occation[i].exist)continue;
 		const ScopedRenderStates2D blend{ BlendState::Additive };
-		occation_img(occation[i].type*20,0,20,20).scaled(occation[i].scale).drawAt(occation[i].pos, ColorF{1.0,occation[i].alpha});
+		occation_img(occation[i].type * 20, 0, 20, 20).scaled(occation[i].scale).drawAt(occation[i].pos, ColorF{ 1.0,occation[i].alpha });
 	}
 }
 
@@ -1720,17 +1766,17 @@ void Game::draw_after_images() const {
 
 //キャラの描画
 void Game::draw_player() const {
-	for (int i = 0; i < player_sum;i++) {
+	for (int i = 0; i < player_sum; i++) {
 		if (!player_flag[i]) continue;
-		player_img.at(getData().player[i]).at(player[i].img_number).mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0],i));
+		player_img.at(getData().player[i]).at(player[i].img_number).mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i));
 		//シールドの表示
 		if (player[i].status & 8)guard_img.drawAt(player[i].pos[0]);
 	}
 }
 
-Vec2 Game::draw_player_pos(Vec2 player_pos,int i) const {
-	if ((player[i].number == 2)&&((player[i].status & 256) == 256)) {
-		return player_pos + Vec2{player[i].wave_pos,0.0};
+Vec2 Game::draw_player_pos(Vec2 player_pos, int i) const {
+	if ((player[i].number == 2) && ((player[i].status & 256) == 256)) {
+		return player_pos + Vec2{ player[i].wave_pos,0.0 };
 	}
 	return player_pos;
 }
@@ -1746,7 +1792,7 @@ void Game::draw_HP_bar() const {
 	//2PのHP
 	HP_bar_flame_img.draw(1090, 100);
 	HP_bar_gray_img.draw(1100, 108);
-	HP_bar_red_img (680.0 * (1.0 - ((double)player[1].hp[2] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[2] / player_max_hp), 25).mirrored().draw(1100, 108);
+	HP_bar_red_img(680.0 * (1.0 - ((double)player[1].hp[2] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[2] / player_max_hp), 25).mirrored().draw(1100, 108);
 	HP_bar_blue_img(680.0 * (1.0 - ((double)player[1].hp[1] / player_max_hp)), 0, 680.0 * ((double)player[1].hp[1] / player_max_hp), 25).mirrored().draw(1100, 108);
 }
 
@@ -1760,8 +1806,9 @@ void Game::draw_AP_bar() const {
 			const ScopedRenderStates2D blend{ BlendState::Additive };
 			fire_img.at(player[0].fire_animation).draw(90, 800);
 		}
-	}else {
-		AP_bar_img(0, 0, 360.0 * ((double)player[0].ap / player_max_ap), 42).mirrored().draw(612.0- 360.0 * ((double)player[0].ap / player_max_ap), 992);
+	}
+	else {
+		AP_bar_img(0, 0, 360.0 * ((double)player[0].ap / player_max_ap), 42).mirrored().draw(612.0 - 360.0 * ((double)player[0].ap / player_max_ap), 992);
 	}
 
 
@@ -1773,7 +1820,8 @@ void Game::draw_AP_bar() const {
 			const ScopedRenderStates2D blend{ BlendState::Additive };
 			fire_img.at(player[1].fire_animation).draw(1610, 800);
 		}
-	}else {
+	}
+	else {
 		AP_bar_img(0, 0, 360.0 * ((double)player[1].ap / player_max_ap), 42).mirrored().draw(1305, 992);
 	}
 }
@@ -1820,7 +1868,8 @@ int Game::get_character_power(int character_number, int attack_sort) {
 		default:
 			return 0;
 		}
-	}else {
+	}
+	else {
 		switch (attack_sort)
 		{
 		case 0:
