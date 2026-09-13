@@ -35,6 +35,7 @@ struct Player {
 	int knife_mode = 0;
 	int airi_old_timer = 0;
 	double wave_pos = 0.0;
+	bool walking = true;
 
 	int img_number = 0;
 	int img_status = 0;
