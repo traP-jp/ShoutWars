@@ -1,6 +1,9 @@
 ﻿#include "Game.hpp"
 # include "common_function.hpp"
 
+# include <algorithm>
+# include <ranges>
+
 //音声コマンド
 //共通//////////////////////////////////////
 

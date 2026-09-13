@@ -1,17 +1,21 @@
 # ShoutWars
 
 **© 2024 traP Community**  
-ソースコードのライセンス: [MIT License](LICENSE)  
-画像素材のライセンス: [CC BY-NC-ND 4.0](images/LICENSE.md)  
-音声素材のライセンス: [CC BY-NC 4.0](audioes/LICENSE.md)
 
 traP ワンマンソン 2024 レジェンドクリエイターズのゲーム
 
-**[ダウンロードページ](https://shoutwars.trap.games/)**
----
-
 サーバー: [traP-jp/ShoutWars-server](https://github.com/traP-jp/ShoutWars-server)  
 ホームページ: [traP-jp/ShoutWars-web](https://github.com/traP-jp/ShoutWars-web)
+
+## ライセンス
+
+traP Community が制作したアセットには以下のライセンスが適用されます。
+
+- ソースコード: [MIT License](LICENSE)  
+- 画像素材: [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ja)  
+- 音声素材: [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/deed.ja)
+
+第三者が権利を持つ素材は [`CREDITS.ini`](CREDITS.ini) に「収録先」付きで列挙してあり、それぞれのライセンスに従います。
 
 ## 開発メンバー
 
@@ -34,4 +38,10 @@ traP ワンマンソン 2024 レジェンドクリエイターズのゲーム
 ## 使用技術
 
 - 言語: **C++23**
-- ゲームフレームワーク: [**Siv3D** v0.6.15](https://github.com/Siv3D/OpenSiv3D/tree/v0.6.15)
+- ゲームフレームワーク: [**Siv3D** v0.6.16](https://github.com/Siv3D/OpenSiv3D/tree/v0.6.16)
+
+## 開発にあたって
+
+- Visual Studio 2026 と Siv3D v0.6.16 が必要です。
+- 素材は Git LFS で管理しているため、クローン前に `git lfs install` を実行する必要があります。
+- ゲームに再配布できない素材が含まれていたため、v0.2.1 以前のコミット履歴から画像・音声素材が全て削除されています。そのため、それ以前のビルドを再現することはできないことに注意してください。
