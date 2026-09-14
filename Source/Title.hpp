@@ -55,7 +55,13 @@ private:
 	std::string room_ID;
 	int room_ID_digit = 0;
 
+	//部屋数の表示とサーバーを起こすため、数秒おきに状況を問い合わせる
+	Multiplay::APICall<Multiplay::ServerStatus> status_call;
+	Timer status_timer{ 5s };
+	String status_text = U"サーバーに接続中…";
+
 	int key_num();
+	void updateServerStatus();
 public:
 	Title(const InitData& init);
 

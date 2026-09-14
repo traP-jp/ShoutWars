@@ -13,7 +13,6 @@ struct Player {
 	Vec2 pos[2];
 	//ステータス(0:待機中,1:左移動,2:右移動,4ジャンプ,8:ガード,16:弱,32:狂,64:必殺,128:ガード破壊,256:特殊攻撃,512～:予備)
 	int status = 0;
-	int old_status = 0;
 	//HP(0:実質HP(確定),1:表示HP(未確定),2:表示HP(確定))
 	int hp[3] = { 1000,1000,1000 };
 	int ap = 0;
@@ -148,6 +147,8 @@ private:
 	const static int no0_special_attack_ap = 8;
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
+	//対戦の制限時間 (秒)。サーバーの対戦の期限 (20分) より短く取る
+	const static int match_seconds = 600;
 	const static int player_min_y = 650;
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
@@ -250,14 +251,20 @@ private:
 
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;
-	double ping_time = 0.0;
 #ifndef debug_mode
 	bool is_connected = false;
 #else
 	bool is_connected = true;
 #endif
+	//相手から最後に届いた状態 (効果音を立ち上がりでだけ鳴らすため)
+	int received_status = 0;
+	//確認イベントで確定したガード状態
+	bool void_attack[player_sum] = { false };
+	//対戦の残り時間 (秒)。開始の tick から数えるので全員で一致する
+	int remaining_seconds = match_seconds;
 	int ping = 0;
 	int ping_timer = 0;
+	Array<Duration> rtt_samples;
 
 	//内部関数////////////////////////////////////////////////////////
 
@@ -280,11 +287,12 @@ private:
 	void update_effects();
 	void synchronizate_data();
 	void update_error_screen();
+	void showError(const Multiplay::APIError& error);
+	void finish_game(bool won);
 	int voice_command();
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
-	void Json2ArrayPos(String str,Vec2 (& pos)[2]);
-	void Json2ArrayTimer(String str, int(&timer)[16]);
-	void Json2ArrayHP(String str, int(&hp)[3]);
+	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
+	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
 	inline int GameTimer();
 	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
 	//各キャラ専用関数
@@ -307,6 +315,7 @@ public:
 	~Game() { getData().phoneme.stop(); }
 
 	void update() override;
+	void updateFadeIn(double t) override;
 
 	void draw() const override;
 };

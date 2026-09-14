@@ -165,10 +165,16 @@
     <ClCompile Include="Source\Multiplay\APIClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Multiplay\SyncClient.cpp">
+    <ClCompile Include="Source\Multiplay\CurlTransport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Multiplay\RoomInfo.cpp">
+    <ClCompile Include="Source\Multiplay\Room.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Multiplay\SimpleHTTPTransport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ServerConfig.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Calibration.cpp">
@@ -503,10 +509,19 @@
     <ClInclude Include="Source\Multiplay\APIClient.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Multiplay\SyncClient.hpp">
+    <ClInclude Include="Source\Multiplay\CurlTransport.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Multiplay\RoomInfo.hpp">
+    <ClInclude Include="Source\Multiplay\HTTPTransport.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Multiplay\Room.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Multiplay\SimpleHTTPTransport.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ServerConfig.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Calibration.hpp">

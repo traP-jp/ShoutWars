@@ -19,7 +19,7 @@ void Main() {
 	//フルスクリーン
 	//Window::SetFullscreen(true);
 	//タイトル
-	Window::SetTitle(U"Shout Wars v0.3");
+	Window::SetTitle(U"Shout Wars v{}"_fmt(GameVersion));
 
 	App manager;
 	manager.add<logo>(State::logo);

@@ -64,8 +64,6 @@ using namespace std;
 //マクロ
 #define search(p1) int p1##_number = -1; for (int iter = 0; iter < max_##p1; iter++) { if (!p1[iter].exist) { p1[iter].exist = true; p1##_number = iter;break; } };
 
-#define debug_voice
-
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
 command_img(4),
@@ -123,9 +121,7 @@ player_flag(player_sum, true)
 	command_img.at(3) = Texture{ Unicode::Widen("../images/game/system/command_no0.png") };
 
 	//録音開始!
-#ifndef debug_voice
 	getData().phoneme.start();
-#endif
 
 	player[0].pos[0] = { 600.0,player_min_y };
 	player[1].pos[0] = { 1200,player_min_y };
@@ -151,7 +147,16 @@ int Game::getkey() {
 }
 
 int Game::voice_command() {
-#ifndef debug_voice
+# if defined(_DEBUG) || defined(DEBUG)
+	//デバッグ用に、声のコマンドをキーでも発動できるようにする
+	const int character = getData().player[player_number];
+	if (KeyB.down()) return 1;
+	if (KeyV.down()) return 2;
+	if (KeyF.down()) return 3;
+	if (KeyG.down()) return 4;
+	if (KeyC.down()) return 5;
+	if (KeyE.down() && ((character == 0) || (character == 2))) return 6;
+# endif
 	HashTable<char32, double> scores;
 	for (const auto& [id, score] : getData().phoneme.estimate() | views::enumerate) {
 		const auto vowel = getData().vowels[id];
@@ -185,14 +190,6 @@ int Game::voice_command() {
 	if (wordDetector.detect(ガード1))return 4;
 	if (wordDetector.detect(ガード2))return 4;
 	if (wordDetector.detect(ガード破壊共通))return 5;
-#else
-	if (KeyB.pressed()) return 1;
-	if (KeyV.pressed()) return 2;
-	if (KeyF.pressed()) return 3;
-	if (KeyG.pressed()) return 4;
-	if (KeyC.pressed()) return 5;
-	if (KeyE.pressed()) return 6;
-#endif
 	return 0;
 }
 
@@ -227,6 +224,22 @@ void Game::update_error_screen() {
 	}
 }
 
+void Game::showError(const Multiplay::APIError& error) {
+	error_mode = 1;
+	error_ID = 2;
+	OutputLogFile("(" + error.code.narrow() + ")\n" + error.message.narrow());
+}
+
+void Game::finish_game(bool won) {
+	is_game_finished = true;
+	are_you_winnner = won;
+	settle_timer = GameTimer();
+}
+
+void Game::updateFadeIn(double) {
+	getData().room->update();
+}
+
 inline int Game::GameTimer() {
 	return (int)Time::GetMillisec() - connection_timer;
 }
@@ -239,62 +252,21 @@ void Game::update() {
 #ifndef debug_mode
 	//ゲーム開始時間の調整
 	if (!is_connected) {
-		try {
-			if (getData().client->isOwner()) {
-				getData().client->update();
-				while (const auto event = getData().client->receiveReport()) {
-					if (event->type == U"Start") {
-						is_connected = true;
-						//Player
-						player_number = 0;
-						another_player_number = 1;
-						//ゲーム開始時刻
-						connection_timer = (int)Time::GetMillisec() + 700;
-						ping_time = (getData().client->api->fetchServerStatus().get().ping).count();
-						connection_timer += ping_time;
-						fade_back_timer = GameTimer();
-						fade_back_alpha = 1.0;
-						//BGMを流す
-						bgm.play();
-					}
-				}
-			}
-			else {
-				getData().client->sendReport(U"Start", true);
-				getData().client->update();
-				//Player
-				player_number = 1;
-				another_player_number = 0;
-				//時差調整
-				System::Sleep(0.1s);
-				//ゲーム開始時刻
-				connection_timer = (int)Time::GetMillisec() + 700;
-				is_connected = true;
-				fade_back_timer = GameTimer();
-				fade_back_alpha = 1.0;
-				//BGMを流す
-				bgm.play();
-			}
-		}
-		catch (const APIClient::HTTPError& error) {
-			if (FromEnum(error.statusCode) == 404) {
-				error_mode = 1;
-				error_ID = 1;
-			}
-			else {
-				Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
-				OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
-			}
-		}
-		catch (const Error& error) {
-			if (error.what() == U"Session not found.") {
-				error_mode = 1;
-				error_ID = 2;
-			}
-			else {
-				Print << error.what();
-				OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
-			}
+		auto& room = *getData().room;
+		room.update();
+		if (room.error()) {
+			showError(*room.error());
+		}elif(room.lastTick() && (getData().start_tick <= *room.lastTick())) {
+			is_connected = true;
+			//Player
+			player_number = room.isOwner() ? 0 : 1;
+			another_player_number = 1 - player_number;
+			//ゲーム開始時刻
+			connection_timer = (int)Time::GetMillisec() + 700;
+			fade_back_timer = GameTimer();
+			fade_back_alpha = 1.0;
+			//BGMを流す
+			bgm.play();
 		}
 	}
 	else {
@@ -302,7 +274,7 @@ void Game::update() {
 		if (!is_game_finished)synchronizate_data();
 		//フェードイン
 		if (fade_back_alpha > 0.0) {
-			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer)) / (700 - (getData().client->isOwner()) ? ping_time : 0);
+			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer)) / 700.0;
 			if (fade_back_alpha < 0.0)fade_back_alpha = 0.0;
 			return;
 		}
@@ -449,26 +421,37 @@ void Game::update_player() {
 		}
 	}
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
-	for (int i = 0; i < player_sum; i++) {
-		if (i == player_number) continue;
-		if ((abs(player_reserved_pos[player_number].x - player_reserved_pos[i].x) < 70.0) && (abs(player_reserved_pos[player_number].y - player_reserved_pos[i].y) < 242.0)) {
-			//相手が動いている場合
-			if (player[i].status & 3) {
-				if (player[i].status == player[player_number].status) {
-					player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
-				}elif(player[player_number].status == 0) {
-					player_reserved_pos[player_number].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? -16.0 : 16.0;
-				}
-				else {
-					player_reserved_pos[player_number].x = player[player_number].pos[0].x;
-					player_reserved_pos[i].x = player[i].pos[0].x;
-				}
-				//自分だけが動いている場合
-			}
-			else {
-				player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
+	//位置を決めるのは本人なので、押し合いでも自分のキャラだけを動かす。押した相手は、相手のクライアントが自分で押し出す
+	{
+		const double contact = 70.0;
+		//押す側がこの深さまでめり込むのを許す。接した位置で止めると、相手の画面で重ならず押せなくなる
+		const double push_depth = 20.0;
+		Vec2& self = player_reserved_pos[player_number];
+		const Vec2& other = player_reserved_pos[another_player_number];
+		const double self_x = self.x;
+		//ジャンプ中はすれ違えるようにする
+		const bool jumping = ((player[player_number].status | player[another_player_number].status) & 4);
+		if ((!jumping) && (abs(self.x - other.x) < contact) && (abs(self.y - other.y) < 242.0)) {
+			//重なり中の左右の見え方は通信の遅れで食い違うため、向きは動いている側の進行方向で決める
+			const auto direction = [](const Player& p) { return (p.status & 1) ? -1.0 : ((p.status & 2) ? 1.0 : 0.0); };
+			const double self_direction = direction(player[player_number]);
+			const double other_direction = direction(player[another_player_number]);
+			const bool pushing = (0.0 < (other.x - self.x) * self_direction);
+			const bool pushed = (0.0 < (self.x - other.x) * other_direction);
+			if (pushing && pushed) {
+				//向かい合ってぶつかったら進めない
+				self.x = player[player_number].pos[0].x;
+			}elif(pushing) {
+				self.x = other.x - self_direction * Max((other.x - self.x) * self_direction, contact - push_depth);
+			}elif(pushed) {
+				self.x = other.x + other_direction * contact;
+			}elif((self_direction == 0.0) && (other_direction == 0.0) && (player_number == 1)) {
+				//止まったまま重なったら片方だけが離れる。両方が動くと、見え方の食い違いで同じ向きに逃げ続ける
+				self.x = other.x + ((self.x < other.x) ? -contact : contact);
 			}
 		}
+		//相手は歩き始めの位置と進み具合から位置を計算するので、押し合いで動かした分を歩き始めの位置にも反映する
+		player[player_number].pos[1].x += (self.x - self_x);
 	}
 
 	//プレイヤーの向き
@@ -518,7 +501,7 @@ void Game::update_player() {
 			player[player_number].status |= 8;
 			player[player_number].timer[3] = now_time;
 #ifndef debug_mode
-			getData().client->sendAction(U"Guard", player_number);
+			getData().room->sendAction(U"Guard", player_number);
 #endif
 			//ガード破壊
 		}elif(got_voice == 5) {
@@ -571,7 +554,7 @@ void Game::update_player() {
 							}
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"DestroyGuard", i);
+								getData().room->sendAction(U"DestroyGuard", i);
 #endif
 							player[i].hp[1] -= 1;
 							player[cnt].ap += 1;
@@ -587,7 +570,9 @@ void Game::update_player() {
 			if (t > 1000) {
 				player[cnt].status ^= 8;
 #ifndef debug_mode
-				getData().client->sendAction(U"VoidGuard", cnt);
+				//相手の時計で先に解除されないよう、ガードした本人だけが送る
+				if (cnt == player_number)
+					getData().room->sendAction(U"VoidGuard", cnt);
 #endif
 			}
 		}
@@ -608,10 +593,6 @@ void Game::update_player() {
 		player[i].hp[1] = Max(player[i].hp[1], 0);
 		if (player[i].hp[2] > player[i].hp[0])player[i].hp[2]--;
 		if (player[i].hp[0] <= 0) {
-			//敗北を通知
-#ifndef debug_mode
-			getData().client->sendAction(U"Loser", i);
-#endif
 			player[i].hp[0] = 0;
 			player[i].hp[2] = 0;
 		}
@@ -685,7 +666,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					else {
 #ifndef debug_mode
 						if (cnt == player_number)
-							getData().client->sendAction(U"StrongAttackBomb", another_player_number);
+							getData().room->sendAction(U"StrongAttackBomb", another_player_number);
 #endif
 						player[another_player_number].hp[1] -= rei_strong_attack_bomb;
 						player[cnt].ap += rei_strong_attack_ap;
@@ -783,7 +764,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", j);
+								getData().room->sendAction(U"WeakAttack", j);
 #endif
 							player[j].hp[1] -= rei_weak_atttack;
 							player[cnt].ap += rei_weak_atttack_ap;
@@ -800,7 +781,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					else {
 #ifndef debug_mode
 						if (cnt == player_number)
-							getData().client->sendAction(U"StrongAttack", j);
+							getData().room->sendAction(U"StrongAttack", j);
 #endif
 						player[j].hp[1] -= rei_strong_attack;
 						player[cnt].ap += rei_strong_attack_ap;
@@ -829,7 +810,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					else {
 #ifndef debug_mode
 						if (cnt == player_number)
-							getData().client->sendAction(U"SpecialAttack", j);
+							getData().room->sendAction(U"SpecialAttack", j);
 #endif
 						player[j].hp[1] -= rei_special_attack;
 						player[cnt].ap += rei_special_attack_ap;
@@ -875,7 +856,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				else {
 #ifndef debug_mode
 					if (cnt == player_number)
-						getData().client->sendAction(U"UniqueAttack", j);
+						getData().room->sendAction(U"UniqueAttack", j);
 #endif
 					player[j].hp[1] -= rei_uniqe_attack;
 					player[cnt].ap += rei_uniqe_attack_ap;
@@ -958,7 +939,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", i);
+								getData().room->sendAction(U"WeakAttack", i);
 #endif
 							player[i].hp[1] -= yuuka_weak_atttack;
 						}
@@ -991,7 +972,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							else {
 #ifndef debug_mode
 								if (cnt == player_number)
-									getData().client->sendAction(U"StrongAttack", i);
+									getData().room->sendAction(U"StrongAttack", i);
 #endif
 								player[i].hp[1] -= yuuka_strong_attack;
 							}
@@ -1010,7 +991,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							else {
 #ifndef debug_mode
 								if (cnt == player_number)
-									getData().client->sendAction(U"SpecialAttack", i);
+									getData().room->sendAction(U"SpecialAttack", i);
 #endif
 								player[i].hp[1] -= yuuka_special_attack;
 							}
@@ -1043,7 +1024,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						if (bullet[i].mode == 0) {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", j);
+								getData().room->sendAction(U"WeakAttack", j);
 #endif
 							player[j].hp[1] -= airi_weak_atttack;
 							player[cnt].ap += airi_weak_atttack_ap;
@@ -1052,7 +1033,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"UniqueAttack", j);
+								getData().room->sendAction(U"UniqueAttack", j);
 #endif
 							player[j].hp[1] -= airi_uniqe_attack;
 							player[cnt].ap += airi_uniqe_attack_ap;
@@ -1108,7 +1089,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				else {
 #ifndef debug_mode
 					if (cnt == player_number)
-						getData().client->sendAction(U"SpecialAttack", another_player_number);
+						getData().room->sendAction(U"SpecialAttack", another_player_number);
 #endif
 					player[another_player_number].hp[1] -= airi_special_attack;
 					player[another_player_number].ap += airi_special_attack_ap;
@@ -1142,7 +1123,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"StrongAttack", i);
+								getData().room->sendAction(U"StrongAttack", i);
 #endif
 							player[i].hp[1] -= airi_strong_attack;
 						}
@@ -1244,7 +1225,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", i);
+								getData().room->sendAction(U"WeakAttack", i);
 #endif
 							player[i].hp[1] -= no0_weak_atttack;
 						}
@@ -1275,7 +1256,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"StrongAttack", i);
+								getData().room->sendAction(U"StrongAttack", i);
 #endif
 							player[i].hp[1] -= no0_strong_attack;
 						}
@@ -1304,171 +1285,148 @@ void Game::update_AP_bar_animation() {
 
 void Game::synchronizate_data() {
 	//同期
+	auto& room = *getData().room;
 	try {
-		getData().client->sendReport(U"PlayerInfoPos", player[player_number].pos);
-		if (player[player_number].status != player[player_number].old_status) {
-			getData().client->sendReport(U"PlayerStatus", player[player_number].status);
-			player[player_number].old_status = player[player_number].status;
+		const auto& me = player[player_number];
+		room.sendReport(U"PlayerInfoPos", Array<double>{ me.pos[0].x, me.pos[0].y, me.pos[1].x, me.pos[1].y });
+		//取りこぼしても次で上書きされるよう、変化の有無にかかわらず毎フレーム送る
+		room.sendReport(U"PlayerStatus", me.status);
+		//届くまでに経った分を相手が補えるよう、送った時点のゲーム内時刻を添える
+		room.sendReport(U"PlayerInfoTimer", JSON{ { U"sent", GameTimer() }, { U"timer", Array<int32>(std::begin(me.timer), std::end(me.timer)) } });
+		room.sendReport(U"PlayerInfoAP", me.ap);
+		room.sendReport(U"PlayerInfoSpecialAttack", me.special_attack);
+		room.update();
+		if (room.error()) {
+			showError(*room.error());
+			return;
 		}
-		getData().client->sendReport(U"PlayerInfoTimer", player[player_number].timer);
-		//自分のHPは基本的に相手が管理する
-		getData().client->sendReport(U"PlayerInfoHP", player[another_player_number].hp);
-		getData().client->sendReport(U"PlayerInfoAP", player[player_number].ap);
-		getData().client->sendReport(U"PlayerInfoSpecialAttack", player[player_number].special_attack);
-		getData().client->update();
+		//相手が脱落した (v3 のサーバーは残った人がいる限り部屋を消さない)
+		if (room.users().size() < player_sum) {
+			error_mode = 1;
+			error_ID = 1;
+			return;
+		}
 		//一方的な報告の処理
-		while (const auto event = getData().client->receiveReport()) {
-			if (event->type == U"PlayerInfoPos") {
-				Json2ArrayPos((event->data).getString(), player[another_player_number].pos);
+		for (const auto& event : room.receiveReports()) {
+			if (event.type == U"PlayerInfoPos") {
+				Json2ArrayPos(event.data, player[another_player_number].pos);
 			}
-			if (event->type == U"PlayerStatus") {
-				player[another_player_number].status = (event->data).get<int32>();
+			if (event.type == U"PlayerStatus") {
+				const int status = event.data.get<int32>();
+				//状態は毎フレーム届くため、前回届いた状態から立ち上がったビットでだけ効果音を鳴らす
+				const int started = (status & ~received_status);
+				received_status = status;
+				player[another_player_number].status = status;
 				//各種効果音の設定
-				if (player[another_player_number].status & 3) {
+				if (started & 3) {
 					player[another_player_number].se[0] = true;
 				}
-				if (player[another_player_number].status & 4) {
+				if (started & 4) {
 					player[another_player_number].se[1] = true;
 				}
-				if (player[another_player_number].status & 8) {
+				if (started & 8) {
 					player[another_player_number].se[5] = true;
 				}
-				if (player[another_player_number].status & 16) {
+				if (started & 16) {
 					player[another_player_number].se[2] = true;
 				}
-				if (player[another_player_number].status & 32) {
+				if (started & 32) {
 					player[another_player_number].se[3] = true;
 				}
-				if (player[another_player_number].status & 64) {
+				if (started & 64) {
 					player[another_player_number].se[4] = true;
 				}
-				if (player[another_player_number].status & 128) {
+				if (started & 128) {
 					player[another_player_number].se[6] = true;
 				}
-				if (player[another_player_number].status & 256) {
+				if (started & 256) {
 					player[another_player_number].se[7] = true;
 				}
 			}
-			if (event->type == U"PlayerInfoTimer") {
-				Json2ArrayTimer((event->data).getString(), player[another_player_number].timer);
+			if (event.type == U"PlayerInfoTimer") {
+				Json2ArrayTimer(event.data, player[another_player_number].timer);
 			}
-			//自分のHPは基本的に相手が管理する
-			//したがって相手に自分のHPを聞かなくてはならない
-			if (event->type == U"PlayerInfoHP") {
-				Json2ArrayHP((event->data).getString(), player[player_number].hp);
+			if (event.type == U"PlayerInfoAP") {
+				player[another_player_number].ap = (event.data).get<int32>();
 			}
-			if (event->type == U"PlayerInfoAP") {
-				player[another_player_number].ap = (event->data).get<int32>();
-			}
-			if (event->type == U"PlayerInfoSpecialAttack") {
-				player[another_player_number].special_attack = (event->data).get<bool>();
+			if (event.type == U"PlayerInfoSpecialAttack") {
+				player[another_player_number].special_attack = (event.data).get<bool>();
 			}
 		}
 		//相互確認が必要な処理
-		bool void_attack[player_sum] = { false };
-		while (const auto event = getData().client->receiveAction()) {
-			if (event->type == U"WeakAttack") {
-				//自分のHPは基本的に相手が管理する
-				if (event->data.get<int32>() != player_number) {
-					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
-						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 0);
-						//ガードしていない
-					}
-					else {
-						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 0);
-					}
-				}
-			}elif(event->type == U"StrongAttack") {
-				if (event->data.get<int32>() != player_number) {
-					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
-						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 1);
-						//ガードしていない
-					}
-					else {
-						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 1);
-					}
-				}
+		//全員が同じ順番で適用するので、HP とガードはここでだけ確定させる
+		const uint64 end_tick = getData().start_tick + static_cast<uint64>(match_seconds / room.joined().tickDuration.count());
+		for (const auto& event : room.receiveActions()) {
+			//時間切れより後の確認イベントは適用しない
+			if (end_tick <= event.tick) break;
+			const int target = event.data.get<int32>();
+			const int attacker = (event.from == room.joined().userId) ? player_number : another_player_number;
+			int damage = 0;
+			if (event.type == U"WeakAttack") {
+				damage = get_character_power(player[attacker].number, 0);
+			}elif(event.type == U"StrongAttack") {
+				damage = get_character_power(player[attacker].number, 1);
 				//玲限定技
-			}elif(event ->type == U"StrongAttackBomb") {
-				if (event->data.get<int32>() != player_number) {
-					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
-						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += rei_strong_attack_bomb;
-						//ガードしていない
-					}
-					else {
-						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= rei_strong_attack_bomb;
-					}
-				}
-			}elif(event->type == U"SpecialAttack") {
-				if (event->data.get<int32>() != player_number) {
-					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
-						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 2);
-						//ガードしていない
-					}
-					else {
-						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 2);
-					}
-				}
-			}elif(event-> type == U"UniqueAttack") {
-				if (event->data.get<int32>() != player_number) {
-					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
-						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 3);
-						//ガードしていない
-					}
-					else {
-						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 3);
-					}
-				}
-			}elif(event->type == U"Guard") {
-				void_attack[event->data.get<int32>()] = true;
-			}elif(event->type == U"VoidGuard") {
-				void_attack[event->data.get<int32>()] = false;
-			}elif(event->type == U"DestroyGuard") {
-				void_attack[event->data.get<int32>()] = false;
-				player[event->data.get<int32>()].hp[0] -= 1;
-			}elif(event->type == U"Loser") {
-				is_game_finished = true;
-				are_you_winnner = (event->data.get<int32>() != player_number);
-				settle_timer = GameTimer();
+			}elif(event.type == U"StrongAttackBomb") {
+				damage = rei_strong_attack_bomb;
+			}elif(event.type == U"SpecialAttack") {
+				damage = get_character_power(player[attacker].number, 2);
+			}elif(event.type == U"UniqueAttack") {
+				damage = get_character_power(player[attacker].number, 3);
+			}elif(event.type == U"Guard") {
+				void_attack[target] = true;
+				continue;
+			}elif(event.type == U"VoidGuard") {
+				void_attack[target] = false;
+				continue;
+			}elif(event.type == U"DestroyGuard") {
+				void_attack[target] = false;
+				damage = 1;
+			}
+			else {
+				continue;
+			}
+			//ガード中
+			if (void_attack[target]) {
+				//暫定HPを元に戻す
+				player[target].hp[1] += damage;
+				//ガードしていない
+			}
+			else {
+				//実質HPを確定
+				player[target].hp[0] -= damage;
+			}
+			if (player[target].hp[0] <= 0) {
+				finish_game(target != player_number);
 				//笹食ってる場合じゃねぇ！！
 				break;
 			}
 		}
-
-		//2秒ごとにpingを取得
-		if (GameTimer() - ping_timer > 2000) {
-			ping_timer = GameTimer();
-			ping = (int)getData().client->api->fetchServerStatus().get().ping.count();
+		if (const auto last_tick = room.lastTick()) {
+			remaining_seconds = Max(0, match_seconds - static_cast<int>((*last_tick - getData().start_tick) * room.joined().tickDuration.count()));
+			//時間切れは残り HP が多い方の勝ち。同じなら両者とも負け
+			if (!is_game_finished && (end_tick <= *last_tick)) {
+				finish_game(player[another_player_number].hp[0] < player[player_number].hp[0]);
+			}
 		}
-	}
-	catch (const APIClient::HTTPError& error) {
-		Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
-		OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
+
+		//1秒ごとに、その間の往復時間の中央値を表示する
+		rtt_samples.append(room.receiveRTTs());
+		if (GameTimer() - ping_timer > 1000) {
+			ping_timer = GameTimer();
+			//応答が1つも無ければ、送ってからの経過時間で重さを示す
+			Duration rtt = room.timeSinceLastSync();
+			if (!rtt_samples.isEmpty()) {
+				rtt_samples.sort();
+				rtt = rtt_samples[rtt_samples.size() / 2];
+			}
+			ping = static_cast<int>(rtt.count() * 1000);
+			rtt_samples.clear();
+		}
 	}
 	catch (const Error& error) {
-		if (error.what() == U"Session not found.") {
-			error_mode = 1;
-			error_ID = 2;
-		}
-		else {
-			Print << error.what();
-			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
-		}
+		Print << error.what();
+		OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
 	}
 
 	for (int i = 0; i < player_sum; i++) {
@@ -1478,48 +1436,25 @@ void Game::synchronizate_data() {
 	}
 }
 
-#define remove_trash(str)\
-	str.replace(U"}", U"");\
-	str.replace(U"{", U"");\
-	str.replace(U")", U"");\
-	str.replace(U"(", U"");
-
-void Game::Json2ArrayTimer(String str, int(&timer)[16]) {
-	remove_trash(str);
-	// 文字列から数値を抽出
-	Array<int32> parts = str.split(U',').map(Parse<int32>);
-	for (int i = 0; i < 16; i++)timer[i] = parts[i];
-	timer[0] = GameTimer() - timer[1];
-	timer[2] = GameTimer() - timer[7];
-	timer[3] = GameTimer() - timer[8];
-	timer[4] = GameTimer() - timer[9];
-	timer[5] = GameTimer() - timer[10];
-	timer[6] = GameTimer() - timer[11];
-	timer[12] = GameTimer() - timer[13];
-	timer[14] = GameTimer() - timer[15];
+void Game::Json2ArrayTimer(const JSON& json, int(&timer)[16]) {
+	const JSON values = json[U"timer"];
+	for (int i = 0; i < 16; i++)timer[i] = values[i].get<int32>();
+	//開始を tick で揃えているので、ゲーム内時刻は相手と比べられる。先の時刻にはならないよう手元の時刻で打ち切る
+	const int sent = Min(json[U"sent"].get<int32>(), GameTimer());
+	timer[0] = sent - timer[1];
+	timer[2] = sent - timer[7];
+	timer[3] = sent - timer[8];
+	timer[4] = sent - timer[9];
+	timer[5] = sent - timer[10];
+	timer[6] = sent - timer[11];
+	timer[12] = sent - timer[13];
+	timer[14] = sent - timer[15];
 }
 
-void Game::Json2ArrayPos(String str, Vec2(&pos)[2]) {
-	remove_trash(str);
-	// 文字列から数値を抽出
-	Array<double> parts = str.split(U',').map(Parse<double>);
-
-	if (parts.size() >= 4) {
-		pos[0].x = parts[0];
-		pos[0].y = parts[1];
-		pos[1].x = parts[2];
-		pos[1].y = parts[3];
-	}
+void Game::Json2ArrayPos(const JSON& json, Vec2(&pos)[2]) {
+	pos[0] = { json[0].get<double>(), json[1].get<double>() };
+	pos[1] = { json[2].get<double>(), json[3].get<double>() };
 }
-
-void Game::Json2ArrayHP(String str, int(&hp)[3]) {
-	remove_trash(str);
-	// 文字列から数値を抽出
-	Array<int32> parts = str.split(U',').map(Parse<int32>);
-	for (int i = 0; i < 3; i++)hp[i] = parts[i];
-}
-
-#undef remove_trash
 
 void Game::update_player_animation() {
 	int now_time = GameTimer();
@@ -1651,6 +1586,8 @@ void Game::draw() const {
 		draw_HP_bar();
 		draw_AP_bar();
 		draw_ping();
+		//残り時間
+		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 50, Palette::White);
 
 		draw_bullet();
 		draw_knife();

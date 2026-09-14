@@ -1,12 +1,12 @@
 ﻿# pragma once
 # include <Siv3D.hpp>
 # include "Voice/Phoneme.hpp"
-# include "Multiplay/SyncClient.hpp"
+# include "Multiplay/Room.hpp"
+# include "ServerConfig.hpp"
 #define elif else if
 #define M_PI 3.14159265358979323846
 
-//XXX:Debug用
-//#define debug_voice
+inline constexpr StringView GameVersion = U"0.3";
 
 // シーンの名前
 enum class State
@@ -25,8 +25,6 @@ struct GameData
 {
 	//キャラが確定したかどうか
 	bool decided_character = false;
-	//接続開始時間
-	int timer = 0;
 	//Config画面に遷移する前のシーン
 	State before_scene = State::Title;
 	//0:ルーム作成,1:ルーム参加
@@ -43,7 +41,10 @@ struct GameData
 	Array<char32> vowels = { U' ', U' ', U'A', U'A', U'I', U'I', U'U', U'U', U'E', U'E', U'O', U'O' };
 	
 	//通信用
-	std::unique_ptr<SyncClient> client;
+	ServerConfig server = LoadServerConfig(U"config.json", GameVersion);
+	std::unique_ptr<Multiplay::Room> room;
+	//ゲームを開始する tick
+	uint64 start_tick = 0;
 };
 
 using App = SceneManager<State, GameData>;

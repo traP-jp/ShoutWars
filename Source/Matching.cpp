@@ -4,191 +4,135 @@
 # include <ranges>
 using namespace std;
 
+namespace
+{
+	//シーンの切り替えと Game の読み込みより長く取る
+	constexpr Duration StartDelay = 2s;
+}
+
 Matching::Matching(const InitData& init) : IScene(init)
 {
-#ifndef debug_voice
-	//資格を満たしているかどうか
+	// 光らせるやつの初期化
+	for (const auto chars = { select_char_img1, select_char_img2, select_char_img3, select_char_img4 };
+		auto& charactors : chars) {
+		select_char_glow[&charactors - chars.begin()].init(charactors);
+	}
+	for (auto&& [img, glow] : std::views::zip(stand_char_img, character_glow)) {
+		glow.init(img);
+	}
+	decide_button_glow.init(decide_img);
+	setting_glow.init(setting_img);
+	return_glow.init(return_img);
+
+	is_owner = (getData().room_mode == 0);
+	room_ID = getData().room_ID;
+
+	//資格を満たしていなければ部屋を作らない
 	if (getData().phoneme.isMFCCUnset()) {
 		error_ID = 7;
 		error_mode = 1;
+		return;
 	}
-#endif
 
-	//通信関連の処理
-	if (getData().before_scene != State::Calibration) {
-		//鯖との接続を確立する
-		//todo:urlとかはテキストに書く
-		const auto api = std::make_shared<APIClient>(U"0.2", U"https://shoutwars.trap.games/api/v2");
-		const auto status = api->fetchServerStatus().get();
-
-		try {
-			//部屋を作る
-			if (getData().room_mode == 0) {
-				getData().client = SyncClient::createRoom(api, U"Owner").get();
-				getData().room_ID = (Parse<String>(getData().client->roomName.str())).narrow();
-				getData().timer = (int)Time::GetSec() - 1;
-				is_owner = true;
-				//部屋に入る
-			}
-			else {
-				getData().client = SyncClient::joinRoom(api, Unicode::Widen(getData().room_ID), U"Guest").get();
-				//既に決定している場合、反映する
-				//ただし、現時点では２人プレイのみを想定
-				if ((getData().client)->roomInfo.player.size()) {
-					opponent_decided = (getData().client)->roomInfo.is_ready.at(0);
-					opponent_character_number = (getData().client)->roomInfo.character.at(0);
-				}
-			}
-		}
-		catch (const APIClient::HTTPError& error) {
-			setErrorMessage(FromEnum(error.statusCode), error.what());
-		}
-		//TODO:エラーダイアログに変える
-		catch (const Error& error) {
-			Print << U"INTERNAL ERROR:" << error.what();
-			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
-		}
-		// 光らせるやつの初期化
-		for (const auto chars = { select_char_img1, select_char_img2, select_char_img3, select_char_img4 };
-			auto& charactors : chars) {
-			select_char_glow[&charactors - chars.begin()].init(charactors);
-		}
-		for (auto&& [img, glow] : std::views::zip(stand_char_img, character_glow)) {
-			glow.init(img);
-		}
-		decide_button_glow.init(decide_img);
-		setting_glow.init(setting_img);
-		return_glow.init(return_img);
-	}
-	room_ID = getData().room_ID;
+	//設定画面から戻ってきた場合は同じ部屋を使い続ける
+	if (!getData().room) requestRoom();
 }
 
-void Matching::setErrorMessage(int error_code, String message)
+void Matching::requestRoom()
 {
-	if (error_code == 404) {
-		string error_message = message.narrow();
-		if (error_message.find("version") != string::npos) {
-			error_ID = 3;
-		}
-		else {
-			error_ID = (getData().room_ID == "114514") ? 2 : 1;
-		}
-		error_mode = 1;
-	}elif(error_code == 403) {
-		error_ID = 5;
-		error_mode = 1;
-	}elif(error_code == 400) {
-		error_ID = 3;
-		error_mode = 1;
-	}elif(error_code == 500) {
-		error_ID = 4;
-		error_mode = 1;
-		//TODO:完全なエラーダイアログに変える
+	if (is_owner) {
+		getData().room_ID.clear();
+		room_ID.clear();
+		joining = getData().server.api.create(U"Owner", 2);
 	}
 	else {
-		Print << U"[SERVER ERROR:" << error_code << U"] " << message;
-		OutputLogFile("(SERVER ERROR:CODE [" + to_string(error_code) + "])\n" + message.narrow());
+		joining = getData().server.api.join(Unicode::Widen(getData().room_ID), U"Guest");
 	}
-	return;
 }
 
-void Matching::syncRoomInfo()
+void Matching::showError(const Multiplay::APIError& error)
 {
-	try {
-		//自分のキャラ変更を伝える
-		if (character_changed) {
-			getData().client->sendReport(U"character", character_number);
-			character_changed = false;
-		}
-		//(鯖主の場合)残り時間を伝える
-		if (is_owner && (old_remaining_time != remaining_time) && (member_sum != (getData().client->getUsers()).size())) {
-			getData().client->sendReport(U"ElapsedTime", ((int)Time::GetSec() - getData().timer));
-			member_sum = (getData().client->getUsers()).size();
-		}
-		//鯖主以外は整合性の確認を問い合わせる
-		if ((!is_owner) && (opponent_decided && getData().decided_character) && (!confirm_accuracy)) {
-			//整合性確認用の数値を送信
-			confirm_num = character_number + opponent_character_number * 10;
-			getData().client->sendReport(U"ConfirmAccuracy", confirm_num);
-			confirm_accuracy = true;
-		}
-		//同期
-		getData().client->update();
-		//相手の変更を取得
-		while (const auto event = getData().client->receiveReport()) {
-			//相手がキャラを変更したら更新
-			if (event->type == U"character") {
-				opponent_character_number = event->data.get<int>();
-			}
-			//(鯖主じゃない場合)鯖主の待機時間を取得
-			if ((!is_owner) && (!recieved_time) && (event->type == U"ElapsedTime")) {
-				getData().timer = (int)Time::GetSec() - (event->data.get<int>());
-				recieved_time = true;
-			}
-			//相手のキャラが確定！
-			if (event->type == U"decided") {
-				decision_sound.playOneShot();
-				opponent_character_number = event->data.get<int>();
-				opponent_decided = true;
-			}
-			//整合性の確認(鯖主)
-			if (is_owner && (event->type == U"ConfirmAccuracy")) {
-				confirm_num = character_number * 10 + opponent_character_number;
-				//整合性の確認が取れたらそのことを伝える
-				if (event->data.get<int>() == confirm_num) {
-					//問題なければゲーム画面への移行許可を発報してゲーム画面へ
-					getData().client->sendReport(U"IsOK", true);
-				}
-				else {
-					//整合性に問題があれば鯖側で勝手に予測して押し付けてゲーム画面へ
-					getData().client->sendReport(U"IsOK", false);
-					opponent_character_number = event->data.get<int>() % 10;
-					getData().client->sendReport(U"AcuurateData", character_number);
-					OutputLogFile("整合性の確認が取れませんでした。\n鯖:" + to_string(confirm_num) + ",ユーザー:" + to_string(event->data.get<int>()));
-				}
-				//ガラガラ閉店
-				getData().client->sendStart();
-				gotoGame = true;
-				getData().player[0] = character_number;
-				getData().player[1] = opponent_character_number;
-				getData().before_scene = State::Matching;
-				changeScene(State::Game, 0.8s);
-			}
-			//整合性の確認(鯖主以外)
-			if (confirm_accuracy && (event->type == U"IsOK")) {
-				if (event->data.get<bool>()) {
-					//問題なければゲーム画面へ
-					gotoGame = true;
-					getData().player[0] = opponent_character_number;
-					getData().player[1] = character_number;
-					getData().before_scene = State::Matching;
-					changeScene(State::Game, 0.8s);
-				}
-			}
-			//整合性の確認が取れなかったら押し付けられたやつを渋々使う(鯖主以外)
-			if (confirm_accuracy && (event->type == U"AcuurateData")) {
-				opponent_character_number = event->data.get<int>();
-				gotoGame = true;
-				getData().player[0] = opponent_character_number;
-				getData().player[1] = character_number;
-				getData().before_scene = State::Matching;
-				changeScene(State::Game, 0.8s);
-			}
-		}
+	const String& code = error.code;
+	if (code == U"room_not_found") {
+		error_ID = (getData().room_ID == "114514") ? 2 : 1;
+	}elif(code == U"version_mismatch") {
+		error_ID = 3;
+	}elif((code == U"room_full") || (code == U"game_started") || (code == U"room_limit_reached")) {
+		error_ID = 5;
+	}elif(code == U"invalid_session") {
+		error_ID = 6;
+	}elif((code == U"internal") || (code == U"timeout") || (code == U"network")) {
+		error_ID = 4;
 	}
-	catch (const APIClient::HTTPError& error) {
-		setErrorMessage(FromEnum(error.statusCode), error.what());
+	else {
+		error_ID = 0;
 	}
-	catch (const Error& error) {
-		Print << error.what();
-		OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
+	OutputLogFile("(" + code.narrow() + ")\n" + error.message.narrow());
+	error_mode = 1;
+}
+
+void Matching::updateRoom()
+{
+	if (joining.isReady()) {
+		const auto joined = joining.get();
+		if (!joined) {
+			//アプリに届く前に返った応答なので、送り直しても部屋は重複しない
+			if (joined.error().code == U"unavailable") requestRoom();
+			else showError(joined.error());
+			return;
+		}
+		getData().room_ID = joined->code.narrow();
+		room_ID = getData().room_ID;
+		getData().room = std::make_unique<Multiplay::Room>(getData().server.api, *joined, getData().server.syncLogDirectory);
+	}
+
+	if (!getData().room) return;
+	auto& room = *getData().room;
+	room.update();
+	if (room.error()) {
+		showError(*room.error());
+		return;
+	}
+
+	room.sendReport(U"lobby", JSON{ { U"character", character_number }, { U"decided", getData().decided_character } });
+
+	for (const auto& event : room.receiveReports()) {
+		if (event.type != U"lobby") continue;
+		opponent_character_number = event.data[U"character"].get<int32>();
+		const bool decided = event.data[U"decided"].get<bool>();
+		//相手のキャラが確定！
+		if (decided && !opponent_decided) decision_sound.playOneShot();
+		opponent_decided = decided;
+	}
+	opponent_present = (2 <= room.users().size());
+	//相手が抜けた
+	if (!opponent_present) opponent_decided = false;
+
+	//双方が確定したら、部屋主がキャラの組み合わせを確定させる
+	if (room.isOwner() && getData().decided_character && opponent_decided && !start_sent) {
+		room.sendAction(U"start", JSON{ { U"owner", character_number }, { U"guest", opponent_character_number } });
+		room.start();
+		start_sent = true;
+	}
+
+	for (const auto& event : room.receiveActions()) {
+		if (event.type != U"start") continue;
+		getData().player[0] = event.data[U"owner"].get<int32>();
+		getData().player[1] = event.data[U"guest"].get<int32>();
+		getData().start_tick = event.tick + static_cast<uint64>(StartDelay / room.joined().tickDuration);
+		gotoGame = true;
+		getData().before_scene = State::Matching;
+		changeScene(State::Game, 0.8s);
 	}
 }
 
 String Matching::CalcRemainingTime()
 {
-	//制限時間は10分
-	int remaining_int_time = 600 - ((int)Time::GetSec() - getData().timer);
+	//制限時間は部屋の作成から5分 (tick は部屋の作成時が 0)。サーバーの部屋の期限 (10分) より短く取る
+	int remaining_int_time = 300;
+	if (const auto& room = getData().room; room && room->lastTick()) {
+		remaining_int_time -= static_cast<int>(*room->lastTick() * room->joined().tickDuration.count());
+	}
 	//時間切れ☆
 	if (remaining_int_time < 1) {
 		remaining_int_time = 0;
@@ -308,11 +252,6 @@ void Matching::update()
 		if (decide_button_shape.leftClicked() || KeyEnter.down()) {
 			decision_sound.playOneShot();
 			getData().decided_character = true;
-			getData().client->sendReport(U"decided", character_number);
-			//RoomInfoに自分の情報を追加
-			(getData().client->roomInfo.player).push_back(getData().client->userId.str());
-			(getData().client->roomInfo.character).push_back(character_number);
-			(getData().client->roomInfo.is_ready).push_back(true);
 		}
 		decide_button_size = 1.0 + 0.02 * sin(0.0005 * M_PI * (double)Time::GetMillisec());
 	}
@@ -369,9 +308,9 @@ void Matching::update()
 		}
 		copy_pos_y = (int)(50.0 - EaseInExpo(now_rate) * 80.0);
 	}
-	if (recieved_time || is_owner)remaining_time = CalcRemainingTime();
+	remaining_time = CalcRemainingTime();
 	//通信
-	syncRoomInfo();
+	updateRoom();
 }
 
 void Matching::draw() const
@@ -381,12 +320,12 @@ void Matching::draw() const
 	if (is_owner) {
 		you_img.drawAt(360, 60);
 		character_glow[character_number].drawAt(true, { 360, 540 }, Palette::Silver);
-		stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
+		if (opponent_present) stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
 	}
 	else {
 		you_img.drawAt(1560, 60);
 		character_glow[character_number].drawAt(true, { 1560, 540 }, Palette::Silver, 1.0, true);
-		stand_char_img[opponent_character_number].drawAt(360, 540);
+		if (opponent_present) stand_char_img[opponent_character_number].drawAt(360, 540);
 	}
 	//キミに決めた！
 	if (getData().decided_character) {
@@ -396,7 +335,7 @@ void Matching::draw() const
 		decide_button_glow.drawAt(isDecideImageHovered, { 960, 540 }, Palette::White, decide_button_size);
 	}
 	//相手が確定したら表示
-	if (opponent_decided) {
+	if (opponent_present && opponent_decided) {
 		decided_img.drawAt(is_owner ? 1560 : 360, 60);
 	}
 
@@ -427,7 +366,7 @@ void Matching::draw() const
 	//コピー通知
 	if (copy_mode)copied_img.drawAt(960, copy_pos_y);
 	//通信中
-	if (confirm_accuracy)connecting_img.drawAt(1500, 950);
+	if (joining.isValid() || start_sent)connecting_img.drawAt(1500, 950);
 
 	//エラーダイアログ
 	if (error_mode)drawErrorDialog();
@@ -462,6 +401,12 @@ void Matching::drawFadeIn(double t) const
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, 1.0 - t });
 	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t });
+}
+
+void Matching::updateFadeOut(double)
+{
+	//Game の開始まで同期を止めない
+	if (getData().room) getData().room->update();
 }
 
 void Matching::drawFadeOut(double t) const
