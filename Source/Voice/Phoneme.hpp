@@ -15,6 +15,12 @@ struct PhonemeOptions {
 	PhonemeDistance distance = PhonemeDistance::Cosine;
 	/// @brief ユークリッド距離を測る前に、登録した特徴量の分散で各次元を正規化する
 	bool standardize = true;
+	/// @brief 直近何フレームのスペクトルを平均してから特徴量にするか
+	size_t smoothingFrames = 3;
+	/// @brief 先頭から何個の音素が、無音や息などの母音でない音か
+	size_t silentPhonemes = 2;
+	/// @brief 入力感度の閾値よりこの dB 以上大きいフレームは、母音でない音素に分類しない
+	double silenceMarginDb = 10.0;
 };
 
 class Phoneme {
@@ -54,11 +60,11 @@ public:
 	/// @brief 登録していない音素があるかを調べる
 	bool isMFCCUnset() const;
 
-	/// @brief 直近の MFCC で音素を登録する
+	/// @brief 直近の音声で音素を登録する
 	/// @param id 登録する音素の ID (インデックス)
 	/// @param timeUs 現在時刻 (マイクロ秒)
 	/// @param durationUs 遡る時間 (マイクロ秒)
-	/// @throw Error MFCC の履歴が空
+	/// @throw Error 履歴が空
 	void setMFCC(uint64 id, uint64 timeUs = Time::GetMicrosec(), uint64 durationUs = 1'000'000);
 
 	/// @brief 登録した MFCC の平均を取得する
@@ -76,14 +82,19 @@ public:
 protected:
 	PhonemeOptions options;
 	MFCCAnalyzer mfccAnalyzer;
+	/// @brief 音素ごとの、登録したフレームのメルスペクトル
+	Array<Array<Array<double>>> registeredSpectra;
+	/// @brief registeredSpectra から求めた特徴量
 	Array<Array<MFCC>> registered;
+	Array<Array<double>> recentSpectra;
+	std::map<uint64, Array<double>> spectrumHistory;
 	std::map<uint64, MFCC> mfccHistory;
 	Array<double> featureScale;
 
 	[[nodiscard]] Array<float> latestSamples(FFTSampleLength frames) const;
 	[[nodiscard]] Array<double> silenceScores() const;
 	[[nodiscard]] Array<double> averageScores(const MFCC& mfcc) const;
+	[[nodiscard]] Array<double> nearestNeighborScores(const MFCC& mfcc, bool voiced) const;
 	[[nodiscard]] double distance(const MFCC& a, const MFCC& b) const;
-	[[nodiscard]] Array<double> nearestNeighborScores(const MFCC& mfcc) const;
-	void updateFeatureScale();
+	void updateFeatures();
 };

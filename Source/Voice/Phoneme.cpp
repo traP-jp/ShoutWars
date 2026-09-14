@@ -4,7 +4,7 @@ using namespace std;
 
 Phoneme::Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t n, uint64 mfccHistoryLife, const PhonemeOptions& options)
 	: configPath(configPath), volumeThreshold(defaultVolumeThreshold), mfccHistoryLife(mfccHistoryLife),
-	options(options), mfccAnalyzer(options.mfcc), registered(n) {
+	options(options), mfccAnalyzer(options.mfcc), registeredSpectra(n) {
 	if (n < 1) throw Error{ U"The number of phoneme must not be empty" };
 	JSON config = JSON::Load(configPath);
 	try {
@@ -12,13 +12,11 @@ Phoneme::Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t 
 			if (config[U"volumeThreshold"].isNumber()) {
 				volumeThreshold = config[U"volumeThreshold"].get<double>();
 			}
-			if (config[U"phonemeSamples"].isArray()) {
-				for (size_t id : step(Min(n, config[U"phonemeSamples"].size()))) {
-					for (const auto& sample : config[U"phonemeSamples"][id].arrayView()) {
-						if (!sample.isArray() || sample.size() != options.mfcc.order) continue;
-						MFCC loaded{ Array<double>(options.mfcc.order, 0.0) };
-						for (size_t i : step(options.mfcc.order)) loaded.feature[i] = sample[i].get<double>();
-						registered[id] << loaded;
+			if (config[U"phonemeSpectra"].isArray()) {
+				for (size_t id : step(Min(n, config[U"phonemeSpectra"].size()))) {
+					for (const auto& spectrum : config[U"phonemeSpectra"][id].arrayView()) {
+						if (!spectrum.isArray() || spectrum.size() != options.mfcc.melChannels) continue;
+						registeredSpectra[id] << Array<double>(spectrum.size(), Arg::generator = [&, i = size_t{ 0 }]() mutable { return spectrum[i++].get<double>(); });
 					}
 				}
 			}
@@ -26,12 +24,15 @@ Phoneme::Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t 
 	}
 	catch (...) {
 		// 設定ファイルの読み込みに失敗した際は無いものとして扱うため、握りつぶす
+		registeredSpectra = Array<Array<Array<double>>>(n);
 	}
-	updateFeatureScale();
+	updateFeatures();
 }
 
 bool Phoneme::start() {
 	mic = Microphone{ StartImmediately::Yes };
+	recentSpectra.clear();
+	spectrumHistory.clear();
 	mfccHistory.clear();
 	return mic.isRecording();
 }
@@ -46,25 +47,35 @@ Array<double> Phoneme::estimate(FFTSampleLength frames) {
 }
 
 Array<double> Phoneme::estimate(Array<float> samples, uint32 sampleRate, double rootMeanSquare, uint64 timeUs) {
-	const auto currentMFCC = mfccAnalyzer.analyze(std::move(samples), sampleRate);
-	erase_if(mfccHistory, [this, timeUs](const auto& p) { return timeUs - p.first > mfccHistoryLife; });
+	recentSpectra << mfccAnalyzer.melSpectrum(std::move(samples), sampleRate);
+	if (recentSpectra.size() > Max<size_t>(options.smoothingFrames, 1)) recentSpectra.pop_front();
+	Array<double> spectrum(recentSpectra.front().size(), 0.0);
+	for (const auto& recent : recentSpectra) {
+		for (size_t i : step(spectrum.size())) spectrum[i] += recent[i] / recentSpectra.size();
+	}
+	const auto currentMFCC = mfccAnalyzer.cepstrum(spectrum);
+	const bool voiced = 20.0 * log10(rootMeanSquare / volumeThreshold) >= options.silenceMarginDb;
+	const auto expired = [this, timeUs](const auto& p) { return timeUs - p.first > mfccHistoryLife; };
+	erase_if(spectrumHistory, expired);
+	erase_if(mfccHistory, expired);
+	spectrumHistory[timeUs] = std::move(spectrum);
 	mfccHistory[timeUs] = currentMFCC;
 
 	if (rootMeanSquare < volumeThreshold || isMFCCUnset()) return silenceScores();
-	return options.k ? nearestNeighborScores(currentMFCC) : averageScores(currentMFCC);
+	return options.k ? nearestNeighborScores(currentMFCC, voiced) : averageScores(currentMFCC);
 }
 
 bool Phoneme::isMFCCUnset() const {
-	return registered.any([](const Array<MFCC>& mfccs) { return mfccs.isEmpty(); });
+	return registeredSpectra.any([](const auto& spectra) { return spectra.isEmpty(); });
 }
 
 void Phoneme::setMFCC(uint64 id, uint64 timeUs, uint64 durationUs) {
-	if (mfccHistory.empty()) throw Error{ U"MFCC history is empty" };
-	registered[id].clear();
-	for (const auto& [historyUs, mfcc] : mfccHistory) {
-		if (historyUs + durationUs >= timeUs) registered[id] << mfcc;
+	if (spectrumHistory.empty()) throw Error{ U"MFCC history is empty" };
+	registeredSpectra[id].clear();
+	for (const auto& [historyUs, spectrum] : spectrumHistory) {
+		if (historyUs + durationUs >= timeUs) registeredSpectra[id] << spectrum;
 	}
-	updateFeatureScale();
+	updateFeatures();
 }
 
 MFCC Phoneme::averageMFCC(size_t id) const {
@@ -79,7 +90,7 @@ bool Phoneme::save() const {
 	JSON config = JSON::Load(configPath);
 	if (!config || !config.isObject()) config = {};
 	config[U"volumeThreshold"] = volumeThreshold;
-	config[U"phonemeSamples"] = registered.map([](const Array<MFCC>& samples) { return samples.map([](const MFCC& mfcc) { return mfcc.feature; }); });
+	config[U"phonemeSpectra"] = registeredSpectra;
 	return config.save(configPath);
 }
 
@@ -99,7 +110,7 @@ Array<float> Phoneme::latestSamples(FFTSampleLength frames) const {
 }
 
 Array<double> Phoneme::silenceScores() const {
-	Array<double> scores(registered.size(), options.k ? 0.0 : -1.0);
+	Array<double> scores(registeredSpectra.size(), options.k ? 0.0 : -1.0);
 	scores[0] = 1.0;
 	return scores;
 }
@@ -112,19 +123,10 @@ Array<double> Phoneme::averageScores(const MFCC& mfcc) const {
 	return scores;
 }
 
-double Phoneme::distance(const MFCC& a, const MFCC& b) const {
-	if (options.distance == PhonemeDistance::Cosine) return 1.0 - a.cosineSimilarity(b);
-	double sum = 0.0;
-	for (size_t i : step(a.feature.size())) sum += Math::Square((a.feature[i] - b.feature[i]) / featureScale[i]);
-	return sum;
-}
-
-Array<double> Phoneme::nearestNeighborScores(const MFCC& mfcc) const {
+Array<double> Phoneme::nearestNeighborScores(const MFCC& mfcc, bool voiced) const {
 	Array<std::pair<double, size_t>> distances;
-	for (size_t id : step(registered.size())) {
-		for (const auto& sample : registered[id]) {
-			distances.emplace_back(distance(mfcc, sample), id);
-		}
+	for (size_t id : Range(voiced ? Min(options.silentPhonemes, registered.size() - 1) : 0, registered.size() - 1)) {
+		for (const auto& sample : registered[id]) distances.emplace_back(distance(mfcc, sample), id);
 	}
 	const size_t k = Min(options.k, distances.size());
 	ranges::partial_sort(distances, distances.begin() + k);
@@ -133,15 +135,24 @@ Array<double> Phoneme::nearestNeighborScores(const MFCC& mfcc) const {
 	return scores;
 }
 
-void Phoneme::updateFeatureScale() {
-	const size_t order = options.mfcc.order;
-	featureScale.assign(order, 1.0);
+double Phoneme::distance(const MFCC& a, const MFCC& b) const {
+	if (options.distance == PhonemeDistance::Cosine) return 1.0 - a.cosineSimilarity(b);
+	double sum = 0.0;
+	for (size_t i : step(a.feature.size())) sum += Math::Square((a.feature[i] - b.feature[i]) / featureScale[i]);
+	return sum;
+}
+
+void Phoneme::updateFeatures() {
+	registered = registeredSpectra.map([this](const auto& spectra) { return spectra.map([this](const auto& spectrum) { return mfccAnalyzer.cepstrum(spectrum); }); });
+
+	const size_t dimensions = options.mfcc.order;
+	featureScale.assign(dimensions, 1.0);
 	if (!options.standardize) return;
-	Array<double> sum(order, 0.0), squareSum(order, 0.0);
+	Array<double> sum(dimensions, 0.0), squareSum(dimensions, 0.0);
 	size_t count = 0;
 	for (const auto& mfccs : registered) {
 		for (const auto& mfcc : mfccs) {
-			for (size_t i : step(order)) {
+			for (size_t i : step(dimensions)) {
 				sum[i] += mfcc.feature[i];
 				squareSum[i] += Math::Square(mfcc.feature[i]);
 			}
@@ -149,5 +160,5 @@ void Phoneme::updateFeatureScale() {
 		}
 	}
 	if (count < 2) return;
-	for (size_t i : step(order)) featureScale[i] = Max(Math::Sqrt(squareSum[i] / count - Math::Square(sum[i] / count)), 1e-6);
+	for (size_t i : step(dimensions)) featureScale[i] = Max(Math::Sqrt(squareSum[i] / count - Math::Square(sum[i] / count)), 1e-6);
 }

@@ -19,7 +19,7 @@ using namespace std;
 
 MFCCAnalyzer::MFCCAnalyzer(const MFCCOptions& options) : options(options) {}
 
-MFCC MFCCAnalyzer::analyze(Array<float> f, uint32 sampleRate) const {
+Array<double> MFCCAnalyzer::melSpectrum(Array<float> f, uint32 sampleRate) const {
 	const auto frames = FFTSampleLength(countr_zero(f.size()) - 8);
 	const size_t melChannels = options.melChannels;
 
@@ -52,17 +52,23 @@ MFCC MFCCAnalyzer::analyze(Array<float> f, uint32 sampleRate) const {
 		for (size_t j = bin[i + 1]; j < bin[i + 2]; ++j) {
 			melSpectrum[i] += fftResult.buffer[j] * (bin[i + 2] - j) / (bin[i + 2] - bin[i + 1]);
 		}
-		// 無音で log(0) にならないようにする
-		melSpectrum[i] = log10(melSpectrum[i] + 1e-10);
 	}
+	return melSpectrum;
+}
 
+MFCC MFCCAnalyzer::cepstrum(const Array<double>& melSpectrum) const {
+	const size_t melChannels = melSpectrum.size();
 	MFCC mfcc{ Array<double>(options.order, 0.0) };
-	for (size_t i : step(options.order)) {
-		for (size_t j : step(melChannels)) {
-			mfcc.feature[i] += melSpectrum[j] * cos(Math::Pi * (i + 1) * (j + 0.5) / melChannels) * 10;
-		}
+	for (size_t j : step(melChannels)) {
+		// 無音で log(0) にならないようにする
+		const double logMel = log10(melSpectrum[j] + 1e-10);
+		for (size_t i : step(options.order)) mfcc.feature[i] += logMel * cos(Math::Pi * (i + 1) * (j + 0.5) / melChannels) * 10;
 	}
 	return mfcc;
+}
+
+MFCC MFCCAnalyzer::analyze(Array<float> samples, uint32 sampleRate) const {
+	return cepstrum(melSpectrum(std::move(samples), sampleRate));
 }
 
 double MFCCAnalyzer::freqToMel(double freq) {
