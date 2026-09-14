@@ -7,20 +7,20 @@ class Title : public App::Scene
 {
 private:
 	//画像////////////////////////////////////////////////////////////
-	const Texture background_img{ U"../images/title/background.png" };
-	const Texture button1_img{ U"../images/title/button1.png" };
-	const Texture button2_img{ U"../images/title/button2.png" };
-	const Texture calc_img{ U"../images/title/calc.png" };
-	const Texture connecting_img{ U"../images/common/connecting.png" };
-	const Texture setting_img{ U"../images/common/setting.png" };
+	const Texture background_img{ Resource(U"images/title/background.png") };
+	const Texture button1_img{ Resource(U"images/title/button1.png") };
+	const Texture button2_img{ Resource(U"images/title/button2.png") };
+	const Texture calc_img{ Resource(U"images/title/calc.png") };
+	const Texture connecting_img{ Resource(U"images/common/connecting.png") };
+	const Texture setting_img{ Resource(U"images/common/setting.png") };
 
 	//音声素材////////////////////////////////////////////////////////
-	const Audio bgm{ U"../audioes/zun_mgcr.mp3" , Loop::Yes };
+	const Audio bgm{ Resource(U"audioes/zun_mgcr.mp3") , Loop::Yes };
 
-	const Audio click_sound{ U"../audioes/click.wav" };
-	const Audio click_number_sound{ U"../audioes/click_number.wav" };
-	const Audio decision_sound{ U"../audioes/decision.wav" };
-	const Audio choice_sound{ U"../audioes/choice.wav" };
+	const Audio click_sound{ Resource(U"audioes/click.wav") };
+	const Audio click_number_sound{ Resource(U"audioes/click_number.wav") };
+	const Audio decision_sound{ Resource(U"audioes/decision.wav") };
+	const Audio choice_sound{ Resource(U"audioes/choice.wav") };
 
 	//font////////////////////////////////////////////////////////////
 	Font font{ FontMethod::MSDF, 72 };

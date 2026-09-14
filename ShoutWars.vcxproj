@@ -270,7 +270,7 @@
   </ItemGroup>
   <Target Name="GenerateAppResources" BeforeTargets="ResourceCompile">
     <ItemGroup>
-      <AppResource Include="CREDITS.ini;licenses\**\*" />
+      <AppResource Include="CREDITS.ini;licenses\**\*;images\**\*;audioes\**\*;shaders\**\*" />
       <AppResourceEntry Include="@(AppResource)">
         <ResourcePath>$([System.String]::Copy('%(Identity)').Replace('\','/'))</ResourcePath>
       </AppResourceEntry>

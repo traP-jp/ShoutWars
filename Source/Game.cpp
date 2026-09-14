@@ -72,53 +72,53 @@ player_flag(player_sum, true)
 {
 	//システムで使用する画像
 	for (int i = 0; i < 5; i++)
-		fire_img.at(i) = Texture{ Unicode::Widen("../images/game/system/fire" + to_string(i) + ".png") };
+		fire_img.at(i) = Texture{ Resource(Unicode::Widen("images/game/system/fire" + to_string(i) + ".png")) };
 
 	//玲の画像
 	if ((getData().player[0] == 0) || (getData().player[1] == 0)) {
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/waiting.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/running.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/special_attack.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/strong_attack.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/weak_attack.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/super_attack.png") });
-		player_img.at(0).push_back(Texture{ Unicode::Widen("../images/game/0/destroy_guard.png") });
+		player_img.at(0).push_back(Texture{ Resource(Unicode::Widen("images/game/0/waiting.png")) });
+		player_img.at(0).push_back(Texture{ Resource(Unicode::Widen("images/game/0/running.png")) });
+		player_img.at(0).push_back(Texture{ Resource(Unicode::Widen("images/game/0/special_attack.png")) });
+		player_img.at(0).push_back(Texture{ Resource(Unicode::Widen("images/game/0/strong_attack.png")) });
+		player_img.at(0).push_back(Texture{ Resource(Unicode::Widen("images/game/0/weak_attack.png")) });
+		player_img.at(0).push_back(Texture{ Resource(Unicode::Widen("images/game/0/super_attack.png")) });
+		player_img.at(0).push_back(Texture{ Resource(Unicode::Widen("images/game/0/destroy_guard.png")) });
 	}
 	//ユウカの画像
 	if ((getData().player[0] == 1) || (getData().player[1] == 1)) {
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/waiting.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/running.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/special_kick.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/kick.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/weak_attack.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/powerful_kick.png") });
-		player_img.at(1).push_back(Texture{ Unicode::Widen("../images/game/1/destroy_guard.png") });
+		player_img.at(1).push_back(Texture{ Resource(Unicode::Widen("images/game/1/waiting.png")) });
+		player_img.at(1).push_back(Texture{ Resource(Unicode::Widen("images/game/1/running.png")) });
+		player_img.at(1).push_back(Texture{ Resource(Unicode::Widen("images/game/1/special_kick.png")) });
+		player_img.at(1).push_back(Texture{ Resource(Unicode::Widen("images/game/1/kick.png")) });
+		player_img.at(1).push_back(Texture{ Resource(Unicode::Widen("images/game/1/weak_attack.png")) });
+		player_img.at(1).push_back(Texture{ Resource(Unicode::Widen("images/game/1/powerful_kick.png")) });
+		player_img.at(1).push_back(Texture{ Resource(Unicode::Widen("images/game/1/destroy_guard.png")) });
 	}
 	//アイリの画像
 	if ((getData().player[0] == 2) || (getData().player[1] == 2)) {
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/waiting.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/running.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/special_gun.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/strong_knife.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/gun.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/beautiful_knife.png") });
-		player_img.at(2).push_back(Texture{ Unicode::Widen("../images/game/2/destroy_guard.png") });
+		player_img.at(2).push_back(Texture{ Resource(Unicode::Widen("images/game/2/waiting.png")) });
+		player_img.at(2).push_back(Texture{ Resource(Unicode::Widen("images/game/2/running.png")) });
+		player_img.at(2).push_back(Texture{ Resource(Unicode::Widen("images/game/2/special_gun.png")) });
+		player_img.at(2).push_back(Texture{ Resource(Unicode::Widen("images/game/2/strong_knife.png")) });
+		player_img.at(2).push_back(Texture{ Resource(Unicode::Widen("images/game/2/gun.png")) });
+		player_img.at(2).push_back(Texture{ Resource(Unicode::Widen("images/game/2/beautiful_knife.png")) });
+		player_img.at(2).push_back(Texture{ Resource(Unicode::Widen("images/game/2/destroy_guard.png")) });
 	}
 	//No.0の画像
 	if ((getData().player[0] == 3) || (getData().player[1] == 3)) {
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/waiting.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/running.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/special_attack.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/strong_attack.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/weak_attack.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/super_attack.png") });
-		player_img.at(3).push_back(Texture{ Unicode::Widen("../images/game/3/destroy_guard.png") });
+		player_img.at(3).push_back(Texture{ Resource(Unicode::Widen("images/game/3/waiting.png")) });
+		player_img.at(3).push_back(Texture{ Resource(Unicode::Widen("images/game/3/running.png")) });
+		player_img.at(3).push_back(Texture{ Resource(Unicode::Widen("images/game/3/special_attack.png")) });
+		player_img.at(3).push_back(Texture{ Resource(Unicode::Widen("images/game/3/strong_attack.png")) });
+		player_img.at(3).push_back(Texture{ Resource(Unicode::Widen("images/game/3/weak_attack.png")) });
+		player_img.at(3).push_back(Texture{ Resource(Unicode::Widen("images/game/3/super_attack.png")) });
+		player_img.at(3).push_back(Texture{ Resource(Unicode::Widen("images/game/3/destroy_guard.png")) });
 	}
 	//コマンド画像
-	command_img.at(0) = Texture{ Unicode::Widen("../images/game/system/command_rei.png") };
-	command_img.at(1) = Texture{ Unicode::Widen("../images/game/system/command_yuuka.png") };
-	command_img.at(2) = Texture{ Unicode::Widen("../images/game/system/command_airi.png") };
-	command_img.at(3) = Texture{ Unicode::Widen("../images/game/system/command_no0.png") };
+	command_img.at(0) = Texture{ Resource(Unicode::Widen("images/game/system/command_rei.png")) };
+	command_img.at(1) = Texture{ Resource(Unicode::Widen("images/game/system/command_yuuka.png")) };
+	command_img.at(2) = Texture{ Resource(Unicode::Widen("images/game/system/command_airi.png")) };
+	command_img.at(3) = Texture{ Resource(Unicode::Widen("images/game/system/command_no0.png")) };
 
 	//録音開始!
 	getData().phoneme.start();
