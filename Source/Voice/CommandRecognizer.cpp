@@ -132,8 +132,11 @@ int32 CommandRecognizer::decide(const Array<Frame>& frames, int32 character) con
 	for (const auto& candidate : candidates) {
 		if (candidate.length > chosen->length && candidate.cost <= best->cost + options.longerPreference) chosen = &candidate;
 	}
-	const double threshold = (chosen->command->action == 3) ? options.specialThreshold : options.threshold;
-	return (chosen->cost <= threshold) ? chosen->command->action : 0;
+	if (chosen->cost > options.threshold) return 0;
+	for (const auto& candidate : candidates) {
+		if (candidate.command->action != chosen->command->action && candidate.cost < chosen->cost + options.ambiguityMargin) return 0;
+	}
+	return chosen->command->action;
 }
 
 double CommandRecognizer::alignmentCost(const Array<Frame>& frames, StringView pronunciation) const {
