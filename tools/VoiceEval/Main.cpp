@@ -10,8 +10,9 @@ SIV3D_SET(EngineOption::Renderer::Headless);
 // 録音コーパスに環境音を混ぜ、ゲームと同じ 60 fps の呼び出しを再現して音声認識を評価する。
 // 使い方: VoiceEval.exe <コーパスのフォルダ> <環境音の WAV> <出力フォルダ> [key=value ...]
 // takes=1,2,3 (キャリブレーションに使う回), mode=all|vowels, k, standardize, hamming, fmin, fmax, mel, order, preemph,
-// 単語判定: end, minvoiced, minvowel, filler, thr, special, longer (CommandRecognizerOptions)
+// 単語判定: end, cooldown, minvoiced, minvowel, mingap, filler, thr, special, longer (CommandRecognizerOptions)
 // conditions=clean,snr10 (評価する条件), mode=dump (フレームごとのスコアを frames.csv に書き出す)
+// smooth (スペクトルを平均するフレーム数), margin (入力感度の閾値より何 dB 大きければ無音に分類しないか)
 // gate (入力感度を環境音の音量の何倍にするか), silence / vowel (無音 / 母音を何秒登録するか), distance=cosine|euclidean
 
 namespace {
@@ -435,12 +436,16 @@ namespace {
 			else if (key == U"mel") options.mfcc.melChannels = Parse<size_t>(value);
 			else if (key == U"order") options.mfcc.order = Parse<size_t>(value);
 			else if (key == U"preemph") options.mfcc.preEmphasisCoefficient = Parse<double>(value);
+			else if (key == U"smooth") options.smoothingFrames = Parse<size_t>(value);
+			else if (key == U"margin") options.silenceMarginDb = Parse<double>(value);
 			else if (key == U"gate") calibration.gateScale = Parse<double>(value);
 			else if (key == U"silence") calibration.silenceSeconds = Parse<double>(value);
 			else if (key == U"vowel") calibration.vowelSeconds = Parse<double>(value);
 			else if (key == U"end") recognizerOptions.endSilenceFrames = Parse<size_t>(value);
 			else if (key == U"minvoiced") recognizerOptions.minVoicedFrames = Parse<size_t>(value);
 			else if (key == U"minvowel") recognizerOptions.minVowelFrames = Parse<size_t>(value);
+			else if (key == U"mingap") recognizerOptions.minGapFrames = Parse<size_t>(value);
+			else if (key == U"cooldown") recognizerOptions.cooldownFrames = Parse<size_t>(value);
 			else if (key == U"filler") recognizerOptions.fillerCost = Parse<double>(value);
 			else if (key == U"thr") recognizerOptions.threshold = Parse<double>(value);
 			else if (key == U"special") recognizerOptions.specialThreshold = Parse<double>(value);
