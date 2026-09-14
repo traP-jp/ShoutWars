@@ -5,7 +5,7 @@ Title::Title(const InitData& init) : IScene(init)
 {
 	//タイトル画面でほぼすべてを初期化
 	getData().decided_character = false;
-	getData().timer = 0;
+	getData().room.reset();
 	getData().room_mode = 0;
 
 	//電卓のボタンの当たり判定を作成

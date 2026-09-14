@@ -71,17 +71,14 @@ class Matching : public App::Scene
 	bool character_changed = false;
 	double decide_button_size = 1.0;
 	bool opponent_decided = false;
-	int confirm_num;
 	//部屋に関して
 	std::string room_ID;
 	bool is_owner = false;
-	int member_sum = 1;
-	bool recieved_time = false;
-	bool confirm_accuracy = false;
+	Multiplay::APICall<Multiplay::Joined> joining;
+	bool start_sent = false;
 
 	//制限時間
 	String remaining_time = U"10:00";
-	String old_remaining_time = U"10:00";
 
 	//エラーダイアログ関連
 	int error_mode = 0;
@@ -98,13 +95,15 @@ class Matching : public App::Scene
 	bool gotoGame = false;
 	//内部関数/////////////////////////////////////////////////////////
 	void drawErrorDialog() const;
-	void syncRoomInfo();
-	void setErrorMessage(int error_code, String message);
+	void requestRoom();
+	void updateRoom();
+	void showError(const Multiplay::APIError& error);
 	String CalcRemainingTime();
 public:
 	Matching(const InitData& init);
 	void update() override;
 	void draw() const override;
 	void drawFadeIn(double t) const override;
+	void updateFadeOut(double t) override;
 	void drawFadeOut(double t) const override;
 };

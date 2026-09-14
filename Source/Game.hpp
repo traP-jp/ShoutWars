@@ -250,7 +250,6 @@ private:
 
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;
-	double ping_time = 0.0;
 #ifndef debug_mode
 	bool is_connected = false;
 #else
@@ -258,6 +257,7 @@ private:
 #endif
 	int ping = 0;
 	int ping_timer = 0;
+	Array<Duration> rtt_samples;
 
 	//内部関数////////////////////////////////////////////////////////
 
@@ -280,6 +280,7 @@ private:
 	void update_effects();
 	void synchronizate_data();
 	void update_error_screen();
+	void showError(const Multiplay::APIError& error);
 	int voice_command();
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
 	void Json2ArrayPos(String str,Vec2 (& pos)[2]);
@@ -307,6 +308,7 @@ public:
 	~Game() { getData().phoneme.stop(); }
 
 	void update() override;
+	void updateFadeIn(double t) override;
 
 	void draw() const override;
 };

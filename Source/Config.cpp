@@ -14,8 +14,8 @@ void Config::update()
 		changeScene(old_scene, 0.5s);
 	}
 	//通信は継続
-	if (getData().before_scene == State::Matching) {
-		getData().client->update();
+	if ((getData().before_scene == State::Matching) && getData().room) {
+		getData().room->update();
 	}
 }
 

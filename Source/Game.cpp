@@ -227,6 +227,16 @@ void Game::update_error_screen() {
 	}
 }
 
+void Game::showError(const Multiplay::APIError& error) {
+	error_mode = 1;
+	error_ID = 2;
+	OutputLogFile("(" + error.code.narrow() + ")\n" + error.message.narrow());
+}
+
+void Game::updateFadeIn(double) {
+	getData().room->update();
+}
+
 inline int Game::GameTimer() {
 	return (int)Time::GetMillisec() - connection_timer;
 }
@@ -239,62 +249,21 @@ void Game::update() {
 #ifndef debug_mode
 	//ゲーム開始時間の調整
 	if (!is_connected) {
-		try {
-			if (getData().client->isOwner()) {
-				getData().client->update();
-				while (const auto event = getData().client->receiveReport()) {
-					if (event->type == U"Start") {
-						is_connected = true;
-						//Player
-						player_number = 0;
-						another_player_number = 1;
-						//ゲーム開始時刻
-						connection_timer = (int)Time::GetMillisec() + 700;
-						ping_time = (getData().client->api->fetchServerStatus().get().ping).count();
-						connection_timer += ping_time;
-						fade_back_timer = GameTimer();
-						fade_back_alpha = 1.0;
-						//BGMを流す
-						bgm.play();
-					}
-				}
-			}
-			else {
-				getData().client->sendReport(U"Start", true);
-				getData().client->update();
-				//Player
-				player_number = 1;
-				another_player_number = 0;
-				//時差調整
-				System::Sleep(0.1s);
-				//ゲーム開始時刻
-				connection_timer = (int)Time::GetMillisec() + 700;
-				is_connected = true;
-				fade_back_timer = GameTimer();
-				fade_back_alpha = 1.0;
-				//BGMを流す
-				bgm.play();
-			}
-		}
-		catch (const APIClient::HTTPError& error) {
-			if (FromEnum(error.statusCode) == 404) {
-				error_mode = 1;
-				error_ID = 1;
-			}
-			else {
-				Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
-				OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
-			}
-		}
-		catch (const Error& error) {
-			if (error.what() == U"Session not found.") {
-				error_mode = 1;
-				error_ID = 2;
-			}
-			else {
-				Print << error.what();
-				OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
-			}
+		auto& room = *getData().room;
+		room.update();
+		if (room.error()) {
+			showError(*room.error());
+		}elif(room.lastTick() && (getData().start_tick <= *room.lastTick())) {
+			is_connected = true;
+			//Player
+			player_number = room.isOwner() ? 0 : 1;
+			another_player_number = 1 - player_number;
+			//ゲーム開始時刻
+			connection_timer = (int)Time::GetMillisec() + 700;
+			fade_back_timer = GameTimer();
+			fade_back_alpha = 1.0;
+			//BGMを流す
+			bgm.play();
 		}
 	}
 	else {
@@ -302,7 +271,7 @@ void Game::update() {
 		if (!is_game_finished)synchronizate_data();
 		//フェードイン
 		if (fade_back_alpha > 0.0) {
-			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer)) / (700 - (getData().client->isOwner()) ? ping_time : 0);
+			fade_back_alpha = 1.0 - ((double)(GameTimer() - fade_back_timer)) / 700.0;
 			if (fade_back_alpha < 0.0)fade_back_alpha = 0.0;
 			return;
 		}
@@ -518,7 +487,7 @@ void Game::update_player() {
 			player[player_number].status |= 8;
 			player[player_number].timer[3] = now_time;
 #ifndef debug_mode
-			getData().client->sendAction(U"Guard", player_number);
+			getData().room->sendAction(U"Guard", player_number);
 #endif
 			//ガード破壊
 		}elif(got_voice == 5) {
@@ -571,7 +540,7 @@ void Game::update_player() {
 							}
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"DestroyGuard", i);
+								getData().room->sendAction(U"DestroyGuard", i);
 #endif
 							player[i].hp[1] -= 1;
 							player[cnt].ap += 1;
@@ -587,7 +556,7 @@ void Game::update_player() {
 			if (t > 1000) {
 				player[cnt].status ^= 8;
 #ifndef debug_mode
-				getData().client->sendAction(U"VoidGuard", cnt);
+				getData().room->sendAction(U"VoidGuard", cnt);
 #endif
 			}
 		}
@@ -610,7 +579,7 @@ void Game::update_player() {
 		if (player[i].hp[0] <= 0) {
 			//敗北を通知
 #ifndef debug_mode
-			getData().client->sendAction(U"Loser", i);
+			getData().room->sendAction(U"Loser", i);
 #endif
 			player[i].hp[0] = 0;
 			player[i].hp[2] = 0;
@@ -685,7 +654,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					else {
 #ifndef debug_mode
 						if (cnt == player_number)
-							getData().client->sendAction(U"StrongAttackBomb", another_player_number);
+							getData().room->sendAction(U"StrongAttackBomb", another_player_number);
 #endif
 						player[another_player_number].hp[1] -= rei_strong_attack_bomb;
 						player[cnt].ap += rei_strong_attack_ap;
@@ -783,7 +752,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", j);
+								getData().room->sendAction(U"WeakAttack", j);
 #endif
 							player[j].hp[1] -= rei_weak_atttack;
 							player[cnt].ap += rei_weak_atttack_ap;
@@ -800,7 +769,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					else {
 #ifndef debug_mode
 						if (cnt == player_number)
-							getData().client->sendAction(U"StrongAttack", j);
+							getData().room->sendAction(U"StrongAttack", j);
 #endif
 						player[j].hp[1] -= rei_strong_attack;
 						player[cnt].ap += rei_strong_attack_ap;
@@ -829,7 +798,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					else {
 #ifndef debug_mode
 						if (cnt == player_number)
-							getData().client->sendAction(U"SpecialAttack", j);
+							getData().room->sendAction(U"SpecialAttack", j);
 #endif
 						player[j].hp[1] -= rei_special_attack;
 						player[cnt].ap += rei_special_attack_ap;
@@ -875,7 +844,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				else {
 #ifndef debug_mode
 					if (cnt == player_number)
-						getData().client->sendAction(U"UniqueAttack", j);
+						getData().room->sendAction(U"UniqueAttack", j);
 #endif
 					player[j].hp[1] -= rei_uniqe_attack;
 					player[cnt].ap += rei_uniqe_attack_ap;
@@ -958,7 +927,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", i);
+								getData().room->sendAction(U"WeakAttack", i);
 #endif
 							player[i].hp[1] -= yuuka_weak_atttack;
 						}
@@ -991,7 +960,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							else {
 #ifndef debug_mode
 								if (cnt == player_number)
-									getData().client->sendAction(U"StrongAttack", i);
+									getData().room->sendAction(U"StrongAttack", i);
 #endif
 								player[i].hp[1] -= yuuka_strong_attack;
 							}
@@ -1010,7 +979,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							else {
 #ifndef debug_mode
 								if (cnt == player_number)
-									getData().client->sendAction(U"SpecialAttack", i);
+									getData().room->sendAction(U"SpecialAttack", i);
 #endif
 								player[i].hp[1] -= yuuka_special_attack;
 							}
@@ -1043,7 +1012,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						if (bullet[i].mode == 0) {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", j);
+								getData().room->sendAction(U"WeakAttack", j);
 #endif
 							player[j].hp[1] -= airi_weak_atttack;
 							player[cnt].ap += airi_weak_atttack_ap;
@@ -1052,7 +1021,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"UniqueAttack", j);
+								getData().room->sendAction(U"UniqueAttack", j);
 #endif
 							player[j].hp[1] -= airi_uniqe_attack;
 							player[cnt].ap += airi_uniqe_attack_ap;
@@ -1108,7 +1077,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				else {
 #ifndef debug_mode
 					if (cnt == player_number)
-						getData().client->sendAction(U"SpecialAttack", another_player_number);
+						getData().room->sendAction(U"SpecialAttack", another_player_number);
 #endif
 					player[another_player_number].hp[1] -= airi_special_attack;
 					player[another_player_number].ap += airi_special_attack_ap;
@@ -1142,7 +1111,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"StrongAttack", i);
+								getData().room->sendAction(U"StrongAttack", i);
 #endif
 							player[i].hp[1] -= airi_strong_attack;
 						}
@@ -1244,7 +1213,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"WeakAttack", i);
+								getData().room->sendAction(U"WeakAttack", i);
 #endif
 							player[i].hp[1] -= no0_weak_atttack;
 						}
@@ -1275,7 +1244,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						else {
 #ifndef debug_mode
 							if (cnt == player_number)
-								getData().client->sendAction(U"StrongAttack", i);
+								getData().room->sendAction(U"StrongAttack", i);
 #endif
 							player[i].hp[1] -= no0_strong_attack;
 						}
@@ -1304,25 +1273,36 @@ void Game::update_AP_bar_animation() {
 
 void Game::synchronizate_data() {
 	//同期
+	auto& room = *getData().room;
 	try {
-		getData().client->sendReport(U"PlayerInfoPos", player[player_number].pos);
+		room.sendReport(U"PlayerInfoPos", player[player_number].pos);
 		if (player[player_number].status != player[player_number].old_status) {
-			getData().client->sendReport(U"PlayerStatus", player[player_number].status);
+			room.sendReport(U"PlayerStatus", player[player_number].status);
 			player[player_number].old_status = player[player_number].status;
 		}
-		getData().client->sendReport(U"PlayerInfoTimer", player[player_number].timer);
+		room.sendReport(U"PlayerInfoTimer", player[player_number].timer);
 		//自分のHPは基本的に相手が管理する
-		getData().client->sendReport(U"PlayerInfoHP", player[another_player_number].hp);
-		getData().client->sendReport(U"PlayerInfoAP", player[player_number].ap);
-		getData().client->sendReport(U"PlayerInfoSpecialAttack", player[player_number].special_attack);
-		getData().client->update();
+		room.sendReport(U"PlayerInfoHP", player[another_player_number].hp);
+		room.sendReport(U"PlayerInfoAP", player[player_number].ap);
+		room.sendReport(U"PlayerInfoSpecialAttack", player[player_number].special_attack);
+		room.update();
+		if (room.error()) {
+			showError(*room.error());
+			return;
+		}
+		//相手が脱落した (v3 のサーバーは残った人がいる限り部屋を消さない)
+		if (room.users().size() < player_sum) {
+			error_mode = 1;
+			error_ID = 1;
+			return;
+		}
 		//一方的な報告の処理
-		while (const auto event = getData().client->receiveReport()) {
-			if (event->type == U"PlayerInfoPos") {
-				Json2ArrayPos((event->data).getString(), player[another_player_number].pos);
+		for (const auto& event : room.receiveReports()) {
+			if (event.type == U"PlayerInfoPos") {
+				Json2ArrayPos((event.data).getString(), player[another_player_number].pos);
 			}
-			if (event->type == U"PlayerStatus") {
-				player[another_player_number].status = (event->data).get<int32>();
+			if (event.type == U"PlayerStatus") {
+				player[another_player_number].status = (event.data).get<int32>();
 				//各種効果音の設定
 				if (player[another_player_number].status & 3) {
 					player[another_player_number].se[0] = true;
@@ -1349,126 +1329,124 @@ void Game::synchronizate_data() {
 					player[another_player_number].se[7] = true;
 				}
 			}
-			if (event->type == U"PlayerInfoTimer") {
-				Json2ArrayTimer((event->data).getString(), player[another_player_number].timer);
+			if (event.type == U"PlayerInfoTimer") {
+				Json2ArrayTimer((event.data).getString(), player[another_player_number].timer);
 			}
 			//自分のHPは基本的に相手が管理する
 			//したがって相手に自分のHPを聞かなくてはならない
-			if (event->type == U"PlayerInfoHP") {
-				Json2ArrayHP((event->data).getString(), player[player_number].hp);
+			if (event.type == U"PlayerInfoHP") {
+				Json2ArrayHP((event.data).getString(), player[player_number].hp);
 			}
-			if (event->type == U"PlayerInfoAP") {
-				player[another_player_number].ap = (event->data).get<int32>();
+			if (event.type == U"PlayerInfoAP") {
+				player[another_player_number].ap = (event.data).get<int32>();
 			}
-			if (event->type == U"PlayerInfoSpecialAttack") {
-				player[another_player_number].special_attack = (event->data).get<bool>();
+			if (event.type == U"PlayerInfoSpecialAttack") {
+				player[another_player_number].special_attack = (event.data).get<bool>();
 			}
 		}
 		//相互確認が必要な処理
 		bool void_attack[player_sum] = { false };
-		while (const auto event = getData().client->receiveAction()) {
-			if (event->type == U"WeakAttack") {
+		for (const auto& event : room.receiveActions()) {
+			if (event.type == U"WeakAttack") {
 				//自分のHPは基本的に相手が管理する
-				if (event->data.get<int32>() != player_number) {
+				if (event.data.get<int32>() != player_number) {
 					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
+					if (void_attack[event.data.get<int32>()]) {
 						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 0);
+						player[event.data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 0);
 						//ガードしていない
 					}
 					else {
 						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 0);
+						player[event.data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 0);
 					}
 				}
-			}elif(event->type == U"StrongAttack") {
-				if (event->data.get<int32>() != player_number) {
+			}elif(event.type == U"StrongAttack") {
+				if (event.data.get<int32>() != player_number) {
 					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
+					if (void_attack[event.data.get<int32>()]) {
 						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 1);
+						player[event.data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 1);
 						//ガードしていない
 					}
 					else {
 						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 1);
+						player[event.data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 1);
 					}
 				}
 				//玲限定技
-			}elif(event ->type == U"StrongAttackBomb") {
-				if (event->data.get<int32>() != player_number) {
+			}elif(event.type == U"StrongAttackBomb") {
+				if (event.data.get<int32>() != player_number) {
 					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
+					if (void_attack[event.data.get<int32>()]) {
 						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += rei_strong_attack_bomb;
+						player[event.data.get<int32>()].hp[1] += rei_strong_attack_bomb;
 						//ガードしていない
 					}
 					else {
 						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= rei_strong_attack_bomb;
+						player[event.data.get<int32>()].hp[0] -= rei_strong_attack_bomb;
 					}
 				}
-			}elif(event->type == U"SpecialAttack") {
-				if (event->data.get<int32>() != player_number) {
+			}elif(event.type == U"SpecialAttack") {
+				if (event.data.get<int32>() != player_number) {
 					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
+					if (void_attack[event.data.get<int32>()]) {
 						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 2);
+						player[event.data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 2);
 						//ガードしていない
 					}
 					else {
 						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 2);
+						player[event.data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 2);
 					}
 				}
-			}elif(event-> type == U"UniqueAttack") {
-				if (event->data.get<int32>() != player_number) {
+			}elif(event.type == U"UniqueAttack") {
+				if (event.data.get<int32>() != player_number) {
 					//ガード中
-					if (void_attack[event->data.get<int32>()]) {
+					if (void_attack[event.data.get<int32>()]) {
 						//暫定HPを元に戻す
-						player[event->data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 3);
+						player[event.data.get<int32>()].hp[1] += get_character_power(getData().player[player_number], 3);
 						//ガードしていない
 					}
 					else {
 						//実質HPを確定
-						player[event->data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 3);
+						player[event.data.get<int32>()].hp[0] -= get_character_power(getData().player[player_number], 3);
 					}
 				}
-			}elif(event->type == U"Guard") {
-				void_attack[event->data.get<int32>()] = true;
-			}elif(event->type == U"VoidGuard") {
-				void_attack[event->data.get<int32>()] = false;
-			}elif(event->type == U"DestroyGuard") {
-				void_attack[event->data.get<int32>()] = false;
-				player[event->data.get<int32>()].hp[0] -= 1;
-			}elif(event->type == U"Loser") {
+			}elif(event.type == U"Guard") {
+				void_attack[event.data.get<int32>()] = true;
+			}elif(event.type == U"VoidGuard") {
+				void_attack[event.data.get<int32>()] = false;
+			}elif(event.type == U"DestroyGuard") {
+				void_attack[event.data.get<int32>()] = false;
+				player[event.data.get<int32>()].hp[0] -= 1;
+			}elif(event.type == U"Loser") {
 				is_game_finished = true;
-				are_you_winnner = (event->data.get<int32>() != player_number);
+				are_you_winnner = (event.data.get<int32>() != player_number);
 				settle_timer = GameTimer();
 				//笹食ってる場合じゃねぇ！！
 				break;
 			}
 		}
 
-		//2秒ごとにpingを取得
-		if (GameTimer() - ping_timer > 2000) {
+		//1秒ごとに、その間の往復時間の中央値を表示する
+		rtt_samples.append(room.receiveRTTs());
+		if (GameTimer() - ping_timer > 1000) {
 			ping_timer = GameTimer();
-			ping = (int)getData().client->api->fetchServerStatus().get().ping.count();
+			//応答が1つも無ければ、送ってからの経過時間で重さを示す
+			Duration rtt = room.timeSinceLastSync();
+			if (!rtt_samples.isEmpty()) {
+				rtt_samples.sort();
+				rtt = rtt_samples[rtt_samples.size() / 2];
+			}
+			ping = static_cast<int>(rtt.count() * 1000);
+			rtt_samples.clear();
 		}
-	}
-	catch (const APIClient::HTTPError& error) {
-		Print << U"[SERVER ERROR:" << FromEnum(error.statusCode) << U"] " << error.what();
-		OutputLogFile("(SERVER ERROR:CODE [" + to_string(FromEnum(error.statusCode)) + "])\n" + error.what().narrow());
 	}
 	catch (const Error& error) {
-		if (error.what() == U"Session not found.") {
-			error_mode = 1;
-			error_ID = 2;
-		}
-		else {
-			Print << error.what();
-			OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
-		}
+		Print << error.what();
+		OutputLogFile("(INTERNAL ERROR)\n" + error.what().narrow());
 	}
 
 	for (int i = 0; i < player_sum; i++) {
