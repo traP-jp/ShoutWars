@@ -39,7 +39,7 @@ struct CommandRecognizerOptions {
 	/// @brief 1 フレームあたりの平均コストがこれ以下なら発動する
 	double threshold = 0.7;
 	/// @brief 別の行動のコマンドとのコストの差がこれ未満なら、取り違えを避けて発動しない
-	double ambiguityMargin = 0.05;
+	double ambiguityMargin = 0.0;
 	/// @brief 長いコマンドを優先する、コストの差の許容量
 	double longerPreference = 0.05;
 };
