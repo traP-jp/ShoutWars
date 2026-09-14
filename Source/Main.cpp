@@ -29,8 +29,9 @@ void Main() {
 	manager.add<Game>(State::Game);
 	
 
-	//XXX:debug用
+# if defined(_DEBUG) || defined(DEBUG)
 	manager.init(State::Title);
+# endif
 
 	while (System::Update() && manager.update()) {};
 }
