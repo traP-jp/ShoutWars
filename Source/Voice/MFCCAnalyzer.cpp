@@ -1,8 +1,6 @@
 ﻿# include "MFCCAnalyzer.hpp"
 
-# include <algorithm>
 # include <bit>
-# include <ranges>
 
 using namespace std;
 
@@ -25,19 +23,12 @@ Array<double> MFCCAnalyzer::melSpectrum(Array<float> f, uint32 sampleRate) const
 
 	for (size_t i = f.size() - 1; i >= 1; --i) f[i] -= static_cast<float>(f[i - 1] * options.preEmphasisCoefficient);
 
-	if (options.hammingWindow) {
-		for (size_t i : step(f.size())) f[i] *= static_cast<float>(0.54 - 0.46 * cos(2 * Math::Pi * i / (f.size() - 1)));
-	}
-	else {
-		f.front() = 0.0f;
-		f.back() = 0.0f;
-	}
+	for (size_t i : step(f.size())) f[i] *= static_cast<float>(0.54 - 0.46 * cos(2 * Math::Pi * i / (f.size() - 1)));
 
 	FFTResult fftResult;
 	FFT::Analyze(fftResult, f.data(), f.size(), sampleRate, frames);
 
-	const double maxFrequency = options.maxFrequency > 0.0 ? options.maxFrequency : sampleRate / 2.0;
-	const double melMax = freqToMel(maxFrequency);
+	const double melMax = freqToMel(Min(options.maxFrequency, sampleRate / 2.0));
 	const double melMin = freqToMel(options.minFrequency);
 	const double deltaMel = (melMax - melMin) / (melChannels + 1);
 	Array<size_t> bin(melChannels + 2);
@@ -65,10 +56,6 @@ MFCC MFCCAnalyzer::cepstrum(const Array<double>& melSpectrum) const {
 		for (size_t i : step(options.order)) mfcc.feature[i] += logMel * cos(Math::Pi * (i + 1) * (j + 0.5) / melChannels) * 10;
 	}
 	return mfcc;
-}
-
-MFCC MFCCAnalyzer::analyze(Array<float> samples, uint32 sampleRate) const {
-	return cepstrum(melSpectrum(std::move(samples), sampleRate));
 }
 
 double MFCCAnalyzer::freqToMel(double freq) {

@@ -9,7 +9,7 @@ SIV3D_SET(EngineOption::Renderer::Headless);
 
 // 録音コーパスに環境音を混ぜ、ゲームと同じ 60 fps の呼び出しを再現して音声認識を評価する。
 // 使い方: VoiceEval.exe <コーパスのフォルダ> <環境音の WAV> <出力フォルダ> [key=value ...]
-// takes=1,2,3 (キャリブレーションに使う回), mode=all|vowels, k, standardize, hamming, fmin, fmax, mel, order, preemph,
+// takes=1,2,3 (キャリブレーションに使う回), mode=all|vowels, k, standardize, fmin, fmax, mel, order, preemph,
 // 単語判定: end, early, earlythr, merge, cooldown, minvoiced, minvowel, mingap, filler, thr, ambiguity, longer (CommandRecognizerOptions)
 // conditions=clean,snr10 (評価する条件), mode=dump (フレームごとのスコアを frames.csv に書き出す)
 // margin (入力感度の閾値より何 dB 大きければ無音に分類しないか)
@@ -430,7 +430,6 @@ namespace {
 			else if (key == U"conditions") conditionNames = value.split(U',');
 			else if (key == U"k") options.k = Parse<size_t>(value);
 			else if (key == U"standardize") options.standardize = Parse<bool>(value);
-			else if (key == U"hamming") options.mfcc.hammingWindow = Parse<bool>(value);
 			else if (key == U"fmin") options.mfcc.minFrequency = Parse<double>(value);
 			else if (key == U"fmax") options.mfcc.maxFrequency = Parse<double>(value);
 			else if (key == U"mel") options.mfcc.melChannels = Parse<size_t>(value);

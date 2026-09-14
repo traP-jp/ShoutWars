@@ -48,7 +48,7 @@ Array<double> Phoneme::estimate(FFTSampleLength frames) {
 Array<double> Phoneme::estimate(Array<float> samples, uint32 sampleRate, double rootMeanSquare, uint64 timeUs) {
 	auto spectrum = mfccAnalyzer.melSpectrum(std::move(samples), sampleRate);
 	const auto currentMFCC = mfccAnalyzer.cepstrum(spectrum);
-	const bool voiced = 20.0 * log10(rootMeanSquare / volumeThreshold) >= options.silenceMarginDb;
+	const bool loud = 20.0 * log10(rootMeanSquare / volumeThreshold) >= options.silenceMarginDb;
 	const auto expired = [this, timeUs](const auto& p) { return timeUs - p.first > mfccHistoryLife; };
 	erase_if(spectrumHistory, expired);
 	erase_if(mfccHistory, expired);
@@ -56,7 +56,7 @@ Array<double> Phoneme::estimate(Array<float> samples, uint32 sampleRate, double 
 	mfccHistory[timeUs] = currentMFCC;
 
 	if (rootMeanSquare < volumeThreshold || isMFCCUnset()) return silenceScores();
-	return options.k ? nearestNeighborScores(currentMFCC, voiced) : averageScores(currentMFCC);
+	return options.k ? nearestNeighborScores(currentMFCC, loud) : averageScores(currentMFCC);
 }
 
 bool Phoneme::isMFCCUnset() const {
@@ -117,9 +117,9 @@ Array<double> Phoneme::averageScores(const MFCC& mfcc) const {
 	return scores;
 }
 
-Array<double> Phoneme::nearestNeighborScores(const MFCC& mfcc, bool voiced) const {
+Array<double> Phoneme::nearestNeighborScores(const MFCC& mfcc, bool loud) const {
 	Array<std::pair<double, size_t>> distances;
-	for (size_t id : Range(voiced ? Min(options.silentPhonemes, registered.size() - 1) : 0, registered.size() - 1)) {
+	for (size_t id : Range(loud ? Min(options.silentPhonemes, registered.size() - 1) : 0, registered.size() - 1)) {
 		for (const auto& sample : registered[id]) distances.emplace_back(distance(mfcc, sample), id);
 	}
 	const size_t k = Min(options.k, distances.size());

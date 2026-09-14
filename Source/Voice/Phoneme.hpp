@@ -91,7 +91,7 @@ protected:
 	[[nodiscard]] Array<float> latestSamples(FFTSampleLength frames) const;
 	[[nodiscard]] Array<double> silenceScores() const;
 	[[nodiscard]] Array<double> averageScores(const MFCC& mfcc) const;
-	[[nodiscard]] Array<double> nearestNeighborScores(const MFCC& mfcc, bool voiced) const;
+	[[nodiscard]] Array<double> nearestNeighborScores(const MFCC& mfcc, bool loud) const;
 	[[nodiscard]] double distance(const MFCC& a, const MFCC& b) const;
 	void updateFeatures();
 };
