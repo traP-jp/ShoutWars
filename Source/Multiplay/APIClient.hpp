@@ -143,7 +143,7 @@ namespace Multiplay
 		std::expected<Type, APIError> get()
 		{
 			auto result = std::exchange(m_call, nullptr)->get();
-			m_elapsed = (result ? Optional<Duration>{ result->elapsed } : none);
+			m_stats = (result ? Optional<TransferStats>{ result->stats } : none);
 
 			const auto response = detail::ReadResponse(std::move(result));
 
@@ -162,11 +162,11 @@ namespace Multiplay
 			}
 		}
 
-		/// @brief 直前の get() で応答を受け取れていれば、リクエストを投げてから受け取り終えるまでの時間
+		/// @brief 直前の get() で応答を受け取れていれば、その通信の計測値
 		[[nodiscard]]
-		Optional<Duration> elapsed() const noexcept
+		Optional<TransferStats> stats() const noexcept
 		{
-			return m_elapsed;
+			return m_stats;
 		}
 
 	private:
@@ -175,7 +175,7 @@ namespace Multiplay
 
 		Decoder m_decode;
 
-		Optional<Duration> m_elapsed;
+		Optional<TransferStats> m_stats;
 	};
 
 	class APIClient

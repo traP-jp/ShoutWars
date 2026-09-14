@@ -1,5 +1,5 @@
 ﻿# include "ServerConfig.hpp"
-# include "Multiplay/SimpleHTTPTransport.hpp"
+# include "Multiplay/CurlTransport.hpp"
 
 namespace
 {
@@ -45,7 +45,7 @@ ServerConfig LoadServerConfig(const FilePathView configPath, const StringView ve
 	}
 
 	return ServerConfig{
-		.api = Multiplay::APIClient{ std::make_shared<Multiplay::SimpleHTTPTransport>(), url.value_or(String{ DefaultServerURL }), String{ version }, password.value_or(U"") },
+		.api = Multiplay::APIClient{ std::make_shared<Multiplay::CurlTransport>(), url.value_or(String{ DefaultServerURL }), String{ version }, password.value_or(U"") },
 		.syncLogDirectory = syncLogDirectory.value_or(U""),
 	};
 }

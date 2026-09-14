@@ -31,7 +31,7 @@ namespace Multiplay
 				return std::unexpected{ TransportError::Network };
 			}
 
-			return HTTPResult{ .status = response.getStatusCode(), .body = writer.retrieve(), .elapsed = elapsed };
+			return HTTPResult{ .status = response.getStatusCode(), .body = writer.retrieve(), .stats = { .elapsed = elapsed, .newConnection = true } };
 		}
 
 		/// @brief 送信中の数を数える。リクエストの寿命と合わせて増減させる

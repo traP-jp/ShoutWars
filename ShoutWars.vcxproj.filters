@@ -165,6 +165,9 @@
     <ClCompile Include="Source\Multiplay\APIClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Multiplay\CurlTransport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Multiplay\Room.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -504,6 +507,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Multiplay\APIClient.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Multiplay\CurlTransport.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Multiplay\HTTPTransport.hpp">

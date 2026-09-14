@@ -23,14 +23,23 @@ namespace Multiplay
 		Duration timeout;
 	};
 
+	/// @brief 通信の計測値。呼び出し側のフレームに依存しないよう、通信するスレッドで測る
+	struct TransferStats
+	{
+		/// @brief リクエストを投げてから応答を受け取り終えるまで
+		Duration elapsed;
+
+		/// @brief この転送のために新しく接続したか
+		bool newConnection = true;
+	};
+
 	struct HTTPResult
 	{
 		HTTPStatusCode status = HTTPStatusCode::Invalid;
 
 		Blob body;
 
-		/// @brief リクエストを投げてから応答を受け取り終えるまで。呼び出し側のフレームに依存しないよう、通信するスレッドで測る
-		Duration elapsed;
+		TransferStats stats;
 	};
 
 	enum class TransportError
