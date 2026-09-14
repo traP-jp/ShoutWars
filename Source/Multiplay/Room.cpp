@@ -111,9 +111,14 @@ namespace Multiplay
 		return m_lastTick;
 	}
 
-	Optional<Duration> Room::rtt() const noexcept
+	Array<Duration> Room::receiveRTTs()
 	{
-		return m_rtt;
+		return std::exchange(m_rtts, {});
+	}
+
+	Duration Room::timeSinceLastSync() const
+	{
+		return m_syncStopwatch.elapsed();
 	}
 
 	const Optional<APIError>& Room::error() const noexcept
@@ -167,7 +172,7 @@ namespace Multiplay
 			return;
 		}
 
-		m_rtt = (m_syncStopwatch.elapsed() - result->held);
+		m_rtts << (m_syncStopwatch.elapsed() - result->held);
 		m_applied += (result->reports.size() + result->actions.size());
 		std::ranges::move(result->reports, std::back_inserter(m_receivedReports));
 		std::ranges::move(result->actions, std::back_inserter(m_receivedActions));

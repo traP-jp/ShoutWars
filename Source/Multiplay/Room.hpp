@@ -48,9 +48,13 @@ namespace Multiplay
 		[[nodiscard]]
 		Optional<uint64> lastTick() const noexcept;
 
-		/// @brief 通信の往復時間 (サーバーでの保留を除く)
+		/// @brief 前回の呼び出し以降に測った通信の往復時間 (サーバーでの保留を除く)
 		[[nodiscard]]
-		Optional<Duration> rtt() const noexcept;
+		Array<Duration> receiveRTTs();
+
+		/// @brief 最後に同期を送ってからの経過時間
+		[[nodiscard]]
+		Duration timeSinceLastSync() const;
 
 		/// @brief 値があれば同期は止まっている
 		[[nodiscard]]
@@ -97,7 +101,7 @@ namespace Multiplay
 
 		APICall<Started> m_start;
 
-		Optional<Duration> m_rtt;
+		Array<Duration> m_rtts;
 
 		Optional<APIError> m_error;
 
