@@ -44,7 +44,7 @@ struct GameData
 	Array<char32> vowels = { U' ', U' ', U'A', U'A', U'I', U'I', U'U', U'U', U'E', U'E', U'O', U'O' };
 	
 	//通信用
-	Multiplay::APIClient api = LoadAPIClient(U"config.json", GameVersion);
+	ServerConfig server = LoadServerConfig(U"config.json", GameVersion);
 	std::unique_ptr<Multiplay::Room> room;
 	//ゲームを開始する tick
 	uint64 start_tick = 0;

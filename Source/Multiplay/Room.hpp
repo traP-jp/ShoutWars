@@ -8,7 +8,8 @@ namespace Multiplay
 	{
 	public:
 
-		Room(APIClient api, Joined joined);
+		/// @param logDirectory 空でなければ、同期ごとの計測をこのディレクトリに CSV で書き出す
+		Room(APIClient api, Joined joined, FilePathView logDirectory = U"");
 
 		/// @brief 毎フレーム呼ぶ
 		void update();
@@ -105,9 +106,13 @@ namespace Multiplay
 
 		Optional<APIError> m_error;
 
+		TextWriter m_log;
+
 		void sendSync();
 
 		void onSynced(std::expected<SyncResponse, APIError> result);
+
+		void writeLog(Duration elapsed, const std::expected<SyncResponse, APIError>& result);
 
 		void sendStartIfRequested();
 

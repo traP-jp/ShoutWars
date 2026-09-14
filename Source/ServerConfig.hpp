@@ -1,6 +1,14 @@
 ﻿# pragma once
 # include "Multiplay/APIClient.hpp"
 
-/// @brief 設定ファイルの server.url と server.password から API クライアントを作る。url が無ければ本番サーバーに繋ぐ
+struct ServerConfig
+{
+	Multiplay::APIClient api;
+
+	/// @brief 空なら同期の計測ログを書き出さない
+	FilePath syncLogDirectory;
+};
+
+/// @brief 設定ファイルの server から読み込む。url が無ければ本番サーバーに繋ぐ
 [[nodiscard]]
-Multiplay::APIClient LoadAPIClient(FilePathView configPath, StringView version);
+ServerConfig LoadServerConfig(FilePathView configPath, StringView version);

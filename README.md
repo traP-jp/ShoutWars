@@ -44,5 +44,5 @@ traP Community が制作したアセットには以下のライセンスが適�
 
 - Visual Studio 2026 と Siv3D v0.6.16 が必要です。
 - 素材は Git LFS で管理しているため、クローン前に `git lfs install` を実行する必要があります。
-- 通信先のサーバーは `App/config.json` に `{ "server": { "url": "https://shoutwars.trap.games/develop/api", "password": "..." } }` のように書くと切り替えられます。書かなければ本番サーバー (`https://shoutwars.trap.games/api`) に繋ぎます。
+- 通信先のサーバーは `App/config.json` に `{ "server": { "url": "https://shoutwars.trap.games/develop/api", "password": "..." } }` のように書くと切り替えられます。書かなければ本番サーバー (`https://shoutwars.trap.games/api`) に繋ぎます。`server` に `"syncLogDirectory": "logs"` を足すと、同期ごとの通信時間を `App/logs/` に CSV で書き出します。
 - ゲームに再配布できない素材が含まれていたため、v0.2.1 以前のコミット履歴から画像・音声素材が全て削除されています。そのため、それ以前のビルドを再現することはできないことに注意してください。

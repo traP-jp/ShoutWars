@@ -22,12 +22,13 @@ namespace
 	}
 }
 
-Multiplay::APIClient LoadAPIClient(const FilePathView configPath, const StringView version)
+ServerConfig LoadServerConfig(const FilePathView configPath, const StringView version)
 {
 	const JSON config = JSON::Load(configPath);
 
 	Optional<String> url;
 	Optional<String> password;
+	Optional<String> syncLogDirectory;
 
 	if (config.isObject() && config.contains(U"server"))
 	{
@@ -40,7 +41,11 @@ Multiplay::APIClient LoadAPIClient(const FilePathView configPath, const StringVi
 
 		url = ReadString(server, U"url");
 		password = ReadString(server, U"password");
+		syncLogDirectory = ReadString(server, U"syncLogDirectory");
 	}
 
-	return Multiplay::APIClient{ std::make_shared<Multiplay::SimpleHTTPTransport>(), url.value_or(String{ DefaultServerURL }), String{ version }, password.value_or(U"") };
+	return ServerConfig{
+		.api = Multiplay::APIClient{ std::make_shared<Multiplay::SimpleHTTPTransport>(), url.value_or(String{ DefaultServerURL }), String{ version }, password.value_or(U"") },
+		.syncLogDirectory = syncLogDirectory.value_or(U""),
+	};
 }

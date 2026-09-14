@@ -45,10 +45,10 @@ void Matching::requestRoom()
 	if (is_owner) {
 		getData().room_ID.clear();
 		room_ID.clear();
-		joining = getData().api.create(U"Owner", 2);
+		joining = getData().server.api.create(U"Owner", 2);
 	}
 	else {
-		joining = getData().api.join(Unicode::Widen(getData().room_ID), U"Guest");
+		joining = getData().server.api.join(Unicode::Widen(getData().room_ID), U"Guest");
 	}
 }
 
@@ -85,7 +85,7 @@ void Matching::updateRoom()
 		}
 		getData().room_ID = joined->code.narrow();
 		room_ID = getData().room_ID;
-		getData().room = std::make_unique<Multiplay::Room>(getData().api, *joined);
+		getData().room = std::make_unique<Multiplay::Room>(getData().server.api, *joined, getData().server.syncLogDirectory);
 	}
 
 	if (!getData().room) return;

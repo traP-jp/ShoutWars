@@ -16,11 +16,23 @@ namespace Multiplay
 		}
 	}
 
-	Room::Room(APIClient api, Joined joined)
+	Room::Room(APIClient api, Joined joined, const FilePathView logDirectory)
 		: m_api{ std::move(api) }
 		, m_joined{ std::move(joined) }
 		, m_nextTick{ m_joined.nextTick }
 	{
+		if (not logDirectory.isEmpty())
+		{
+			const FilePath path = FileSystem::PathAppend(logDirectory, U"{}-{}-{}.csv"_fmt(DateTime::Now().format(U"yyyyMMdd-HHmmss"), m_joined.code, m_joined.userId.str()));
+
+			if (not m_log.open(path))
+			{
+				throw Error{ U"Cannot open the sync log: {}"_fmt(path) };
+			}
+
+			m_log.writeln(U"unix_ms,next_tick,elapsed_ms,held_ms,rtt_ms,error");
+		}
+
 		sendSync();
 	}
 
@@ -146,6 +158,9 @@ namespace Multiplay
 
 	void Room::onSynced(std::expected<SyncResponse, APIError> result)
 	{
+		const Duration elapsed = m_syncStopwatch.elapsed();
+		writeLog(elapsed, result);
+
 		if (not result)
 		{
 			if (not IsTransient(result.error()))
@@ -172,7 +187,7 @@ namespace Multiplay
 			return;
 		}
 
-		m_rtts << (m_syncStopwatch.elapsed() - result->held);
+		m_rtts << (elapsed - result->held);
 		m_applied += (result->reports.size() + result->actions.size());
 		std::ranges::move(result->reports, std::back_inserter(m_receivedReports));
 		std::ranges::move(result->actions, std::back_inserter(m_receivedActions));
@@ -186,6 +201,18 @@ namespace Multiplay
 
 		sendSync();
 		sendStartIfRequested();
+	}
+
+	void Room::writeLog(const Duration elapsed, const std::expected<SyncResponse, APIError>& result)
+	{
+		if (not m_log)
+		{
+			return;
+		}
+
+		const auto ms = [](const Duration duration) { return U"{:.1f}"_fmt(duration.count() * 1000); };
+		m_log.writeln(U"{},{},{},{},{},{}"_fmt(Time::GetMillisecSinceEpoch(), m_nextTick, ms(elapsed),
+			(result ? ms(result->held) : U""), (result ? ms(elapsed - result->held) : U""), (result ? U"" : result.error().code)));
 	}
 
 	void Room::sendStartIfRequested()
