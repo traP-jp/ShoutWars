@@ -12,14 +12,25 @@ namespace {
 	const Array<VoiceCommand> CommonCommands = {
 		{ U"ガード", U"AO", 4 },
 		{ U"守れ", U"AOE", 4 },
-		{ U"壊せ", U"OAE", 5 },
-		{ U"刺せ", U"AE", 5 },
+		{ U"壊せ", U"OA_E", 5 },
+		{ U"刺せ", U"A_E", 5 },
 	};
 
-	Optional<size_t> VowelLabel(char32 vowel) {
-		const auto index = StringView{ U"AIUEO" }.indexOf(ToUpper(vowel));
-		return index == StringView::npos ? none : Optional<size_t>{ index };
-	}
+	enum class SegmentType {
+		Vowel,
+		Gap,
+		/// @brief 発話の前後の、無音ならほぼ無償で当てはめられる区間
+		Edge,
+		/// @brief 母音と母音の間の子音などを当てはめる区間
+		Join,
+	};
+
+	struct Segment {
+		SegmentType type;
+		size_t label = 0;
+		size_t minFrames = 0;
+		bool skippable = true;
+	};
 }
 
 Array<VoiceCommand> VoiceCommandsOf(int32 character) {
@@ -28,24 +39,24 @@ Array<VoiceCommand> VoiceCommandsOf(int32 character) {
 	case 0:
 		commands = {
 			{ U"殴れ", U"AUE", 1 },
-			{ U"キック", U"Iu", 2 },
-			{ U"龍虎水雷撃", U"UOuIAIEi", 3 },
+			{ U"キック", U"I_ue", 2 },
+			{ U"龍虎水雷撃", U"U_O_uIAIE_i", 3 },
 			{ U"魚雷", U"OAI", 6 },
 		};
 		break;
 	case 2:
 		commands = {
-			{ U"撃て", U"UE", 1 },
+			{ U"撃て", U"U_E", 1 },
 			{ U"斬れ", U"IE", 2 },
-			{ U"デッドリーアサルト", U"EOIAuO", 3 },
-			{ U"連射", U"EiA", 6 },
+			{ U"デッドリーアサルト", U"E_OIA_AU_O", 3 },
+			{ U"連射", U"Ei_A", 6 },
 		};
 		break;
 	default:
 		commands = {
 			{ U"殴れ", U"AUE", 1 },
-			{ U"キック", U"Iu", 2 },
-			{ U"龍虎水雷撃", U"UOuIAIEi", 3 },
+			{ U"キック", U"I_ue", 2 },
+			{ U"龍虎水雷撃", U"U_O_uIAIE_i", 3 },
 		};
 		break;
 	}
@@ -57,6 +68,10 @@ CommandRecognizer::CommandRecognizer(const CommandRecognizerOptions& options) : 
 int32 CommandRecognizer::update(const Array<double>& phonemeScores, int32 character, uint64 timeUs) {
 	if (timeUs + FrameIntervalUs / 2 < nextFrameUs) return 0;
 	nextFrameUs = (nextFrameUs + FrameIntervalUs * 4 < timeUs) ? timeUs + FrameIntervalUs : nextFrameUs + FrameIntervalUs;
+	if (cooldown) {
+		--cooldown;
+		return 0;
+	}
 
 	Frame frame{};
 	for (size_t id : step(Min(phonemeScores.size(), PhonemeLabels.size()))) frame[PhonemeLabels[id]] += Max(phonemeScores[id], 0.0);
@@ -85,6 +100,7 @@ int32 CommandRecognizer::update(const Array<double>& phonemeScores, int32 charac
 	utterance.clear();
 	voicedFrames = 0;
 	silentFrames = 0;
+	if (action) cooldown = options.cooldownFrames;
 	return action;
 }
 
@@ -100,8 +116,8 @@ int32 CommandRecognizer::decide(int32 character) const {
 	const auto commands = VoiceCommandsOf(character);
 	Array<Candidate> candidates;
 	for (const auto& command : commands) {
-		const double cost = (alignmentCost(command.vowels) - freeCost) / utterance.size();
-		const size_t length = count_if(command.vowels.begin(), command.vowels.end(), [](char32 c) { return IsUpper(c); });
+		const double cost = (alignmentCost(command.pronunciation) - freeCost) / utterance.size();
+		const size_t length = count_if(command.pronunciation.begin(), command.pronunciation.end(), [](char32 c) { return IsUpper(c); });
 		candidates << Candidate{ &command, cost, length };
 	}
 	const auto best = ranges::min_element(candidates, {}, &Candidate::cost);
@@ -113,46 +129,69 @@ int32 CommandRecognizer::decide(int32 character) const {
 	return (chosen->cost <= threshold) ? chosen->command->action : 0;
 }
 
-double CommandRecognizer::alignmentCost(StringView vowels) const {
-	Array<size_t> labels;
-	Array<bool> optional;
-	for (const char32 vowel : vowels) {
-		if (const auto label = VowelLabel(vowel)) {
-			labels << *label;
-			optional << IsLower(vowel);
+double CommandRecognizer::alignmentCost(StringView pronunciation) const {
+	// 発話の前後 → 母音 → (母音間の子音 or 無声子音の無音) → 母音 ... → 発話の前後 と、区間を一列に並べる
+	Array<Segment> segments = { { SegmentType::Edge } };
+	bool gap = false;
+	for (const char32 c : pronunciation) {
+		if (c == U'_') {
+			gap = true;
+			continue;
 		}
+		const auto label = StringView{ U"AIUEO" }.indexOf(ToUpper(c));
+		if (label == StringView::npos) continue;
+		if (segments.size() > 1) {
+			segments << Segment{ SegmentType::Join };
+			if (gap) {
+				segments << Segment{ SegmentType::Gap, SilenceLabel, options.minGapFrames, false };
+				segments << Segment{ SegmentType::Join };
+			}
+		}
+		segments << Segment{ SegmentType::Vowel, label, options.minVowelFrames, IsLower(c) };
+		gap = false;
 	}
-	const size_t n = labels.size();
-	const size_t d = Max<size_t>(options.minVowelFrames, 1);
-	// 状態: 母音 i の前の「どれにも当てはめない」状態 F(i) と、母音 i の d 段の継続 V(i, j)
-	const auto F = [d](size_t i) { return i * (d + 1); };
-	const auto V = [d](size_t i, size_t j) { return i * (d + 1) + 1 + j; };
+	segments << Segment{ SegmentType::Edge };
 
-	Array<double> previous(n * (d + 1) + 1, Infinity), current(previous.size());
-	Array<double> entry(n + 1);
-	previous[F(0)] = 0.0;
+	Array<size_t> first(segments.size());
+	size_t stateCount = 0;
+	for (size_t s : step(segments.size())) {
+		first[s] = stateCount;
+		stateCount += Max<size_t>(segments[s].minFrames, 1);
+	}
+	const auto last = [&](size_t s) { return first[s] + Max<size_t>(segments[s].minFrames, 1) - 1; };
+
+	Array<double> previous(stateCount, Infinity), current(stateCount);
+	Array<double> entry(segments.size() + 1);
+	bool started = false;
 	const auto computeEntry = [&](const Array<double>& costs) {
-		for (size_t i : step(n + 1)) {
-			entry[i] = costs[F(i)];
-			if (i > 0) entry[i] = Min(entry[i], costs[V(i - 1, d - 1)]);
-			if (i > 0 && optional[i - 1]) entry[i] = Min(entry[i], entry[i - 1]);
+		entry[0] = started ? Infinity : 0.0;
+		for (size_t s : step(segments.size())) {
+			entry[s + 1] = costs[last(s)];
+			if (segments[s].skippable) entry[s + 1] = Min(entry[s + 1], entry[s]);
 		}
 	};
 
 	for (const auto& frame : utterance) {
 		computeEntry(previous);
-		const double filler = Min(-log(frame[SilenceLabel]), options.fillerCost);
-		for (size_t i : step(n + 1)) current[F(i)] = entry[i] + filler;
-		for (size_t i : step(n)) {
-			const double cost = -log(frame[labels[i]]);
-			for (size_t j : step(d)) {
-				double from = (j == 0) ? entry[i] : previous[V(i, j - 1)];
-				if (j == d - 1) from = Min(from, previous[V(i, j)]);
-				current[V(i, j)] = from + cost;
+		started = true;
+		for (size_t s : step(segments.size())) {
+			const auto& segment = segments[s];
+			double cost = 0.0;
+			switch (segment.type) {
+			case SegmentType::Vowel: cost = -log(frame[segment.label]); break;
+			case SegmentType::Gap: cost = -log(frame[SilenceLabel]); break;
+			case SegmentType::Edge: cost = Min(-log(frame[SilenceLabel]), options.fillerCost); break;
+			case SegmentType::Join: cost = options.fillerCost; break;
+			}
+			const size_t length = last(s) - first[s] + 1;
+			for (size_t j : step(length)) {
+				double from = (j == 0) ? entry[s] : previous[first[s] + j - 1];
+				if (j == length - 1) from = Min(from, previous[last(s)]);
+				current[first[s] + j] = from + cost;
 			}
 		}
 		swap(previous, current);
 	}
 	computeEntry(previous);
-	return entry[n];
+	return entry[segments.size()];
 }

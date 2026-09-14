@@ -4,8 +4,8 @@
 
 struct VoiceCommand {
 	StringView text;
-	/// @brief 発音する母音の並び。小文字の母音は無声化などで聞こえなくてもよい
-	StringView vowels;
+	/// @brief 発音の並び。大文字は母音、小文字は無声化などで聞こえなくてもよい母音、_ は無声子音による無音
+	StringView pronunciation;
 	int32 action;
 };
 
@@ -16,23 +16,27 @@ struct VoiceCommand {
 struct CommandRecognizerOptions {
 	/// @brief 発話が終わったとみなす無音の長さ (フレーム)
 	size_t endSilenceFrames = 12;
+	/// @brief 発動してから次の発話を聞き始めるまでのフレーム数
+	size_t cooldownFrames = 30;
 	/// @brief 発話とみなす最小の有声フレーム数
 	size_t minVoicedFrames = 4;
 	/// @brief 判定に使う発話の最大の長さ (フレーム)
 	size_t maxUtteranceFrames = 180;
 	/// @brief 各母音が続く最小のフレーム数
-	size_t minVowelFrames = 2;
-	/// @brief どの母音にも当てはめないフレームの最大コスト
-	double fillerCost = 2.0;
+	size_t minVowelFrames = 3;
+	/// @brief 無声子音による無音が続く最小のフレーム数
+	size_t minGapFrames = 2;
+	/// @brief 母音と母音の間の、どの母音にも当てはめないフレームのコスト
+	double fillerCost = 1.5;
 	/// @brief 1 フレームあたりの平均コストがこれ以下なら発動する
-	double threshold = 0.6;
+	double threshold = 0.7;
 	/// @brief 必殺技の閾値
-	double specialThreshold = 0.9;
+	double specialThreshold = 0.7;
 	/// @brief 長いコマンドを優先する、コストの差の許容量
 	double longerPreference = 0.05;
 };
 
-/// @brief 発話の終わりごとに、コマンドの母音の並びへの当てはまりを比べて判定する
+/// @brief 発話の終わりごとに、コマンドの発音の並びへの当てはまりを比べて判定する
 class CommandRecognizer {
 public:
 	/// @brief フレームの間隔。フレームレートが高くても、この間隔より細かいフレームは捨てる
@@ -53,10 +57,11 @@ private:
 
 	CommandRecognizerOptions options;
 	uint64 nextFrameUs = 0;
+	size_t cooldown = 0;
 	Array<Frame> utterance;
 	size_t voicedFrames = 0;
 	size_t silentFrames = 0;
 
 	[[nodiscard]] int32 decide(int32 character) const;
-	[[nodiscard]] double alignmentCost(StringView vowels) const;
+	[[nodiscard]] double alignmentCost(StringView pronunciation) const;
 };
