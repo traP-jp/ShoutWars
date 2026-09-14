@@ -69,7 +69,7 @@ void Calibration::draw() const {
 
 	// MFCC のグラフ
 	RectF{ Arg::topLeft(120, 140), 1680.0, 360.0 }.draw(Palette::Black);
-	for (const auto [timeUs, mfcc] : *phoneme.getMFCCHistory()) {
+	for (const auto& [timeUs, mfcc] : phoneme.getMFCCHistory()) {
 		for (size_t i : step(12)) {
 			RectF{
 				Arg::topLeft(1800.0 - 1680.0 * (nowUs - timeUs) / (phoneme.mfccHistoryLife / 1.1), 140.0 + i * 30.0),

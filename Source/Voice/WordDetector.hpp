@@ -24,16 +24,16 @@ public:
 	/// @brief 現在の母音スコアを履歴に追加し、各母音の可能性をバッファーに追加する
 	/// @param scores 追加するスコア
 	/// @return 追加された各母音の可能性
-	HashTable<char32, bool> addScores(HashTable<char32, double> scores);
+	HashTable<char32, bool> addScores(HashTable<char32, double> scores, uint64 timeUs = Time::GetMicrosec());
 
 	/// @brief 各母音の可能性をバッファーの後ろから単語を逆順に調べ、検出したらバッファーを空にする
 	/// @param word 検出する単語 (母音のみ/スペース未対応)
 	/// @return 単語が検出されたかどうか
-	[[nodiscard]] bool detect(String word);
+	[[nodiscard]] bool detect(String word, uint64 timeUs = Time::GetMicrosec());
 
 	/// @brief 母音スコアの履歴から各母音の可能性を調べる
 	/// @return 各母音の可能性
-	[[nodiscard]] HashTable<char32, bool> vowelChances();
+	[[nodiscard]] HashTable<char32, bool> vowelChances(uint64 timeUs);
 
 	/// @brief 各母音の可能性のバッファーを取得する
 	/// @param limit 遡る最大時間のマイクロ秒 (0 で無限)

@@ -4,61 +4,6 @@
 # include <algorithm>
 # include <ranges>
 
-//音声コマンド
-//共通//////////////////////////////////////
-
-//「ガード」
-#define ガード1 U"AO"
-//「守れ」
-#define ガード2 U"AOE" // ガードに吸われる
-//「壊せ」
-#define ガード破壊共通 U"OAE"
-//玲////////////////////////////////////////
-
-//「殴れ」
-#define 玲_弱攻撃 U"AUE"
-//「キック」
-#define 玲_狂攻撃 U"IU"
-//「魚雷」
-#define 玲_特殊攻撃 U"OAI"
-//「龍虎水雷撃」
-#define 玲_必殺技 U"AIEI" //U"UOUIAIEI"
-//「刺せ」
-#define 玲_ガード破壊 U"AE"
-
-//ユウカ////////////////////////////////////
-
-//「殴れ」
-#define ユウカ_弱攻撃 U"AUE"
-//「キック」
-#define ユウカ_狂攻撃 U"IU"
-//「龍虎水雷撃」
-#define ユウカ_必殺技 U"AIEI" //U"UOUIAIEI"
-//「刺せ」
-#define ユウカ_ガード破壊 U"AE"
-//アイリ////////////////////////////////////
-
-//「撃て」
-#define アイリ_弱攻撃 U"UE"
-//「斬れ」
-#define アイリ_狂攻撃 U"IE"
-//「デッドリーアサルト」
-#define アイリ_必殺技 U"IAUO" //U"EOIAUO"
-//「連射」
-#define アイリ_特殊攻撃 U"EIA"
-//「刺せ」
-#define アイリ_ガード破壊 U"AE"
-//No.0////////////////////////////////////
-
-//「殴れ」
-#define No0_弱攻撃 U"AUE"
-//「キック」
-#define No0_狂攻撃 U"IU"
-//「龍虎水雷撃」
-#define No0_必殺技 U"AIEI" //U"UOUIAIEI"
-//「刺せ」
-#define No0_ガード破壊 U"AE"
-
 using namespace std;
 
 //マクロ
@@ -157,40 +102,7 @@ int Game::voice_command() {
 	if (KeyC.down()) return 5;
 	if (KeyE.down() && ((character == 0) || (character == 2))) return 6;
 # endif
-	HashTable<char32, double> scores;
-	for (const auto& [id, score] : getData().phoneme.estimate() | views::enumerate) {
-		const auto vowel = getData().vowels[id];
-		if (vowel != U' ') scores[vowel] = max(scores[vowel], pow(score, 2) * (score >= 0.0 ? 1.0 : -1.0));
-	}
-	wordDetector.addScores(scores);
-	if (getData().player[player_number] == 0) {
-		if (wordDetector.detect(玲_弱攻撃))return 1;
-		if (wordDetector.detect(玲_狂攻撃))return 2;
-		if (wordDetector.detect(玲_必殺技))return 3;
-		if (wordDetector.detect(玲_ガード破壊))return 5;
-		if (wordDetector.detect(玲_特殊攻撃))return 6;
-	}elif(getData().player[player_number] == 1) {
-		if (wordDetector.detect(ユウカ_弱攻撃))return 1;
-		if (wordDetector.detect(ユウカ_狂攻撃))return 2;
-		if (wordDetector.detect(ユウカ_必殺技))return 3;
-		if (wordDetector.detect(ユウカ_ガード破壊))return 5;
-	}elif(getData().player[player_number] == 2) {
-		if (wordDetector.detect(アイリ_弱攻撃))return 1;
-		if (wordDetector.detect(アイリ_狂攻撃))return 2;
-		if (wordDetector.detect(アイリ_必殺技))return 3;
-		if (wordDetector.detect(アイリ_ガード破壊))return 5;
-		if (wordDetector.detect(アイリ_特殊攻撃))return 6;
-	}
-	else {
-		if (wordDetector.detect(No0_弱攻撃))return 1;
-		if (wordDetector.detect(No0_狂攻撃))return 2;
-		if (wordDetector.detect(No0_必殺技))return 3;
-		if (wordDetector.detect(No0_ガード破壊))return 5;
-	}
-	if (wordDetector.detect(ガード1))return 4;
-	if (wordDetector.detect(ガード2))return 4;
-	if (wordDetector.detect(ガード破壊共通))return 5;
-	return 0;
+	return commandRecognizer.update(getData().phoneme.estimate(), getData().player[player_number]);
 }
 
 void Game::update_error_screen() {
@@ -1596,20 +1508,6 @@ void Game::draw() const {
 		draw_after_images();
 		draw_effects();
 
-		// WordDetector のパラメータ調整用
-		//double coolTime = wordDetector.coolTime;
-		//SimpleGUI::Slider(U"coolTime={}us"_fmt(coolTime), coolTime, 0.0, 1'000'000.0, Vec2(600, 20), 300, 500);
-		//wordDetector.coolTime = coolTime;
-		//double wordTimeout = wordDetector.wordTimeout;
-		//SimpleGUI::Slider(U"wordTimeout={}us"_fmt(wordTimeout), wordTimeout, 0.0, 1'000'000.0, Vec2(600, 60), 300, 500);
-		//wordDetector.wordTimeout = wordTimeout;
-		//double wordTimeLimit = wordDetector.wordTimeLimit;
-		//SimpleGUI::Slider(U"wordTimeLimit={}us"_fmt(wordTimeLimit), wordTimeLimit, 0.0, 10'000'000.0, Vec2(600, 100), 300, 500);
-		//wordDetector.wordTimeLimit = wordTimeLimit;
-		//double scoresHistoryLife = wordDetector.scoresHistoryLife;
-		//SimpleGUI::Slider(U"scoresHistoryLife={}us"_fmt(scoresHistoryLife), scoresHistoryLife, 0.0, 1'000'000.0, Vec2(600, 140), 300, 500);
-		//wordDetector.scoresHistoryLife = scoresHistoryLife;
-		//SimpleGUI::Slider(U"scoreThreshold={}"_fmt(wordDetector.scoreThreshold), wordDetector.scoreThreshold, -1.0, 1.0, Vec2(600, 180), 300, 500);
 
 		draw_settle();
 

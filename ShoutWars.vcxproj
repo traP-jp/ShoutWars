@@ -127,6 +127,7 @@
     <ClCompile Include="Source\Matching.cpp" />
     <ClCompile Include="Source\Result.cpp" />
     <ClCompile Include="Source\Title.cpp" />
+    <ClCompile Include="Source\Voice\CommandRecognizer.cpp" />
     <ClCompile Include="Source\Voice\MFCC.cpp" />
     <ClCompile Include="Source\Voice\MFCCAnalyzer.cpp" />
     <ClCompile Include="Source\Voice\Phoneme.cpp" />
@@ -256,6 +257,7 @@
     <ClInclude Include="Source\Matching.hpp" />
     <ClInclude Include="Source\Result.hpp" />
     <ClInclude Include="Source\Title.hpp" />
+    <ClInclude Include="Source\Voice\CommandRecognizer.hpp" />
     <ClInclude Include="Source\Voice\MFCC.hpp" />
     <ClInclude Include="Source\Voice\MFCCAnalyzer.hpp" />
     <ClInclude Include="Source\Voice\Phoneme.hpp" />
