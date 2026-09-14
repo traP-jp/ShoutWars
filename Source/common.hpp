@@ -1,7 +1,7 @@
 ﻿# pragma once
 # include <Siv3D.hpp>
 # include "Voice/Phoneme.hpp"
-# include "Multiplay/SyncClient.hpp"
+# include "Multiplay/Legacy/SyncClient.hpp"
 #define elif else if
 #define M_PI 3.14159265358979323846
 

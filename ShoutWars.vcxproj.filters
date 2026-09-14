@@ -162,13 +162,13 @@
     <ClCompile Include="Source\logo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Multiplay\APIClient.cpp">
+    <ClCompile Include="Source\Multiplay\Legacy\APIClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Multiplay\SyncClient.cpp">
+    <ClCompile Include="Source\Multiplay\Legacy\SyncClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Multiplay\RoomInfo.cpp">
+    <ClCompile Include="Source\Multiplay\Legacy\RoomInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Calibration.cpp">
@@ -500,13 +500,13 @@
     <ClInclude Include="Source\logo.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Multiplay\APIClient.hpp">
+    <ClInclude Include="Source\Multiplay\Legacy\APIClient.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Multiplay\SyncClient.hpp">
+    <ClInclude Include="Source\Multiplay\Legacy\SyncClient.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Multiplay\RoomInfo.hpp">
+    <ClInclude Include="Source\Multiplay\Legacy\RoomInfo.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Calibration.hpp">

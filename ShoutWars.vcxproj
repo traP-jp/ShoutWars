@@ -125,7 +125,7 @@
     <ClCompile Include="Source\logo.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matching.cpp" />
-    <ClCompile Include="Source\Multiplay\RoomInfo.cpp" />
+    <ClCompile Include="Source\Multiplay\Legacy\RoomInfo.cpp" />
     <ClCompile Include="Source\Result.cpp" />
     <ClCompile Include="Source\Title.cpp" />
     <ClCompile Include="Source\Voice\MFCC.cpp" />
@@ -136,8 +136,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Source\Multiplay\APIClient.cpp" />
-    <ClCompile Include="Source\Multiplay\SyncClient.cpp" />
+    <ClCompile Include="Source\Multiplay\Legacy\APIClient.cpp" />
+    <ClCompile Include="Source\Multiplay\Legacy\SyncClient.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="App\engine\texture\box-shadow\128.png" />
@@ -252,7 +252,7 @@
     <ClInclude Include="Source\GlowBorder.hpp" />
     <ClInclude Include="Source\logo.hpp" />
     <ClInclude Include="Source\Matching.hpp" />
-    <ClInclude Include="Source\Multiplay\RoomInfo.hpp" />
+    <ClInclude Include="Source\Multiplay\Legacy\RoomInfo.hpp" />
     <ClInclude Include="Source\Result.hpp" />
     <ClInclude Include="Source\Title.hpp" />
     <ClInclude Include="Source\Voice\MFCC.hpp" />
@@ -260,8 +260,8 @@
     <ClInclude Include="Source\Voice\Phoneme.hpp" />
     <ClInclude Include="Source\Voice\WordDetector.hpp" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="Source\Multiplay\APIClient.hpp" />
-    <ClInclude Include="Source\Multiplay\SyncClient.hpp" />
+    <ClInclude Include="Source\Multiplay\Legacy\APIClient.hpp" />
+    <ClInclude Include="Source\Multiplay\Legacy\SyncClient.hpp" />
   </ItemGroup>
   <Target Name="GenerateAppResources" BeforeTargets="ResourceCompile">
     <ItemGroup>
