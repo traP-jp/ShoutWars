@@ -4,7 +4,7 @@
 
 struct VoiceCommand {
 	StringView text;
-	/// @brief 発音の並び。大文字は母音、小文字は無声化などで聞こえなくてもよい母音、_ は無声子音による無音
+	/// @brief 発音の並び。大文字は母音、小文字は無声化などで聞こえなくてもよい母音、_ は無声子音による無音、- はあってもなくてもよい無音
 	StringView pronunciation;
 	int32 action;
 };
@@ -15,7 +15,7 @@ struct VoiceCommand {
 
 struct CommandRecognizerOptions {
 	/// @brief 発話が終わったとみなして判定する無音の長さ (フレーム)
-	size_t endSilenceFrames = 12;
+	size_t endSilenceFrames = 18;
 	/// @brief 早めに判定する無音の長さ (フレーム)。ここでは earlyThreshold を満たすときだけ発動する
 	size_t earlySilenceFrames = 4;
 	/// @brief 早めの判定で発動する、1 フレームあたりの平均コストの上限
@@ -34,6 +34,8 @@ struct CommandRecognizerOptions {
 	size_t minGapFrames = 2;
 	/// @brief 母音と母音の間の、どの母音にも当てはめないフレームのコスト
 	double fillerCost = 1.5;
+	/// @brief 母音と母音の間の、移り変わりの途中の母音のフレームに、その母音らしさのコストに加えるコスト
+	double transitionCost = 0.5;
 	/// @brief 1 フレームあたりの平均コストがこれ以下なら発動する
 	double threshold = 0.7;
 	/// @brief 別の行動のコマンドとのコストの差がこれ未満なら、取り違えを避けて発動しない

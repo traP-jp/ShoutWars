@@ -31,6 +31,17 @@ namespace {
 		size_t minFrames = 0;
 		bool skippable = true;
 	};
+
+	/// @brief 母音 a から b へ移るときに途中で通る母音 (無ければ SilenceLabel)
+	/// @remark 母音の三角形 い-え-あ-お-う-い の周りを近い向きに回ったとき、間にある 1 つの母音
+	size_t TransitionLabel(size_t a, size_t b) {
+		// あいうえお の順の、三角形の周りの位置
+		constexpr array<int32, 5> position = { 2, 0, 4, 1, 3 };
+		const int32 forward = (position[b] - position[a] + 5) % 5;
+		if (forward == 2) return static_cast<size_t>(ranges::find(position, (position[a] + 1) % 5) - position.begin());
+		if (forward == 3) return static_cast<size_t>(ranges::find(position, (position[a] + 4) % 5) - position.begin());
+		return SilenceLabel;
+	}
 }
 
 Array<VoiceCommand> VoiceCommandsOf(int32 character) {
@@ -48,7 +59,7 @@ Array<VoiceCommand> VoiceCommandsOf(int32 character) {
 		commands = {
 			{ U"撃て", U"U_E", 1 },
 			{ U"斬れ", U"IE", 2 },
-			{ U"デッドリーアサルト", U"E_OIA_AU_O", 3 },
+			{ U"デッドリーアサルト", U"E_OI-A_AU_O", 3 },
 			{ U"連射", U"Ei_A", 6 },
 		};
 		break;
@@ -143,23 +154,26 @@ int32 CommandRecognizer::decide(const Array<Frame>& frames, int32 character, dou
 double CommandRecognizer::alignmentCost(const Array<Frame>& frames, StringView pronunciation) const {
 	// 発話の前後 → 母音 → (母音間の子音 or 無声子音の無音) → 母音 ... → 発話の前後 と、区間を一列に並べる
 	Array<Segment> segments = { { SegmentType::Edge } };
-	bool gap = false;
+	Optional<bool> gapRequired;
+	size_t previousVowel = SilenceLabel;
 	for (const char32 c : pronunciation) {
-		if (c == U'_') {
-			gap = true;
+		if (c == U'_' || c == U'-') {
+			gapRequired = (c == U'_');
 			continue;
 		}
 		const auto label = StringView{ U"AIUEO" }.indexOf(ToUpper(c));
 		if (label == StringView::npos) continue;
 		if (segments.size() > 1) {
-			segments << Segment{ SegmentType::Join };
-			if (gap) {
-				segments << Segment{ SegmentType::Gap, SilenceLabel, options.minGapFrames, false };
-				segments << Segment{ SegmentType::Join };
+			const size_t transition = TransitionLabel(previousVowel, label);
+			segments << Segment{ SegmentType::Join, transition };
+			if (gapRequired) {
+				segments << Segment{ SegmentType::Gap, SilenceLabel, options.minGapFrames, !*gapRequired };
+				segments << Segment{ SegmentType::Join, transition };
 			}
 		}
 		segments << Segment{ SegmentType::Vowel, label, options.minVowelFrames, IsLower(c) };
-		gap = false;
+		gapRequired.reset();
+		previousVowel = label;
 	}
 	segments << Segment{ SegmentType::Edge };
 
@@ -192,7 +206,10 @@ double CommandRecognizer::alignmentCost(const Array<Frame>& frames, StringView p
 			case SegmentType::Vowel: cost = -log(frame[segment.label]); break;
 			case SegmentType::Gap: cost = -log(frame[SilenceLabel]); break;
 			case SegmentType::Edge: cost = Min(-log(frame[SilenceLabel]), options.fillerCost); break;
-			case SegmentType::Join: cost = options.fillerCost; break;
+			case SegmentType::Join:
+				cost = options.fillerCost;
+				if (segment.label != SilenceLabel) cost = Min(cost, -log(frame[segment.label]) + options.transitionCost);
+				break;
 			}
 			const size_t length = last(s) - first[s] + 1;
 			for (size_t j : step(length)) {
