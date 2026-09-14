@@ -71,6 +71,8 @@ class Matching : public App::Scene
 	bool character_changed = false;
 	double decide_button_size = 1.0;
 	bool opponent_decided = false;
+	//相手が部屋にいる
+	bool opponent_present = false;
 	//部屋に関して
 	std::string room_ID;
 	bool is_owner = false;

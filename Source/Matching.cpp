@@ -104,8 +104,9 @@ void Matching::updateRoom()
 		if (decided && !opponent_decided) decision_sound.playOneShot();
 		opponent_decided = decided;
 	}
+	opponent_present = (2 <= room.users().size());
 	//相手が抜けた
-	if (room.users().size() < 2) opponent_decided = false;
+	if (!opponent_present) opponent_decided = false;
 
 	//双方が確定したら、部屋主がキャラの組み合わせを確定させる
 	if (room.isOwner() && getData().decided_character && opponent_decided && !start_sent) {
@@ -319,12 +320,12 @@ void Matching::draw() const
 	if (is_owner) {
 		you_img.drawAt(360, 60);
 		character_glow[character_number].drawAt(true, { 360, 540 }, Palette::Silver);
-		stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
+		if (opponent_present) stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
 	}
 	else {
 		you_img.drawAt(1560, 60);
 		character_glow[character_number].drawAt(true, { 1560, 540 }, Palette::Silver, 1.0, true);
-		stand_char_img[opponent_character_number].drawAt(360, 540);
+		if (opponent_present) stand_char_img[opponent_character_number].drawAt(360, 540);
 	}
 	//キミに決めた！
 	if (getData().decided_character) {
@@ -334,7 +335,7 @@ void Matching::draw() const
 		decide_button_glow.drawAt(isDecideImageHovered, { 960, 540 }, Palette::White, decide_button_size);
 	}
 	//相手が確定したら表示
-	if (opponent_decided) {
+	if (opponent_present && opponent_decided) {
 		decided_img.drawAt(is_owner ? 1560 : 360, 60);
 	}
 
