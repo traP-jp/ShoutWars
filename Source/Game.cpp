@@ -64,8 +64,6 @@ using namespace std;
 //マクロ
 #define search(p1) int p1##_number = -1; for (int iter = 0; iter < max_##p1; iter++) { if (!p1[iter].exist) { p1[iter].exist = true; p1##_number = iter;break; } };
 
-#define debug_voice
-
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
 command_img(4),
@@ -123,9 +121,7 @@ player_flag(player_sum, true)
 	command_img.at(3) = Texture{ Unicode::Widen("../images/game/system/command_no0.png") };
 
 	//録音開始!
-#ifndef debug_voice
 	getData().phoneme.start();
-#endif
 
 	player[0].pos[0] = { 600.0,player_min_y };
 	player[1].pos[0] = { 1200,player_min_y };
@@ -151,7 +147,16 @@ int Game::getkey() {
 }
 
 int Game::voice_command() {
-#ifndef debug_voice
+# if defined(_DEBUG) || defined(DEBUG)
+	//デバッグ用に、声のコマンドをキーでも発動できるようにする
+	const int character = getData().player[player_number];
+	if (KeyB.down()) return 1;
+	if (KeyV.down()) return 2;
+	if (KeyF.down()) return 3;
+	if (KeyG.down()) return 4;
+	if (KeyC.down()) return 5;
+	if (KeyE.down() && ((character == 0) || (character == 2))) return 6;
+# endif
 	HashTable<char32, double> scores;
 	for (const auto& [id, score] : getData().phoneme.estimate() | views::enumerate) {
 		const auto vowel = getData().vowels[id];
@@ -185,14 +190,6 @@ int Game::voice_command() {
 	if (wordDetector.detect(ガード1))return 4;
 	if (wordDetector.detect(ガード2))return 4;
 	if (wordDetector.detect(ガード破壊共通))return 5;
-#else
-	if (KeyB.pressed()) return 1;
-	if (KeyV.pressed()) return 2;
-	if (KeyF.pressed()) return 3;
-	if (KeyG.pressed()) return 4;
-	if (KeyC.pressed()) return 5;
-	if (KeyE.pressed()) return 6;
-#endif
 	return 0;
 }
 
