@@ -112,7 +112,7 @@ namespace Multiplay
 		APIError InvalidResponse(const Error& error);
 	}
 
-	/// @brief 送信中の API 呼び出し。破棄すると通信を中断する
+	/// @brief 送信中の API 呼び出し。破棄した後に届いた応答は捨てられる
 	template <class Type>
 	class APICall
 	{
@@ -142,7 +142,10 @@ namespace Multiplay
 		[[nodiscard]]
 		std::expected<Type, APIError> get()
 		{
-			const auto response = detail::ReadResponse(std::exchange(m_call, nullptr)->get());
+			auto result = std::exchange(m_call, nullptr)->get();
+			m_elapsed = (result ? Optional<Duration>{ result->elapsed } : none);
+
+			const auto response = detail::ReadResponse(std::move(result));
 
 			if (not response)
 			{
@@ -159,11 +162,20 @@ namespace Multiplay
 			}
 		}
 
+		/// @brief 直前の get() で応答を受け取れていれば、リクエストを投げてから受け取り終えるまでの時間
+		[[nodiscard]]
+		Optional<Duration> elapsed() const noexcept
+		{
+			return m_elapsed;
+		}
+
 	private:
 
 		std::unique_ptr<IHTTPCall> m_call;
 
 		Decoder m_decode;
+
+		Optional<Duration> m_elapsed;
 	};
 
 	class APIClient

@@ -28,6 +28,9 @@ namespace Multiplay
 		HTTPStatusCode status = HTTPStatusCode::Invalid;
 
 		Blob body;
+
+		/// @brief リクエストを投げてから応答を受け取り終えるまで。呼び出し側のフレームに依存しないよう、通信するスレッドで測る
+		Duration elapsed;
 	};
 
 	enum class TransportError
@@ -36,7 +39,7 @@ namespace Multiplay
 		Network,
 	};
 
-	/// @brief 送信中の 1 リクエスト。破棄すると通信を中断する
+	/// @brief 送信中の 1 リクエスト。破棄した後に届いた応答は捨てられる
 	class IHTTPCall
 	{
 	public:

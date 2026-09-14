@@ -11,7 +11,7 @@ namespace Multiplay
 		[[nodiscard]]
 		bool IsTransient(const APIError& error)
 		{
-			static constexpr std::array<StringView, 5> Codes{ U"unavailable", U"timeout", U"network", U"already_synced", U"internal" };
+			static constexpr std::array<StringView, 4> Codes{ U"unavailable", U"timeout", U"network", U"internal" };
 			return std::ranges::contains(Codes, StringView{ error.code });
 		}
 	}
@@ -45,7 +45,8 @@ namespace Multiplay
 
 		if (m_sync.isReady())
 		{
-			onSynced(m_sync.get());
+			auto result = m_sync.get();
+			onSynced(std::move(result), m_sync.elapsed());
 		}
 		else if ((not m_sync.isValid()) && m_retryTimer.reachedZero())
 		{
@@ -156,9 +157,8 @@ namespace Multiplay
 		m_sync = m_api.sync(request, SyncTimeout);
 	}
 
-	void Room::onSynced(std::expected<SyncResponse, APIError> result)
+	void Room::onSynced(std::expected<SyncResponse, APIError> result, const Optional<Duration> elapsed)
 	{
-		const Duration elapsed = m_syncStopwatch.elapsed();
 		writeLog(elapsed, result);
 
 		if (not result)
@@ -187,7 +187,7 @@ namespace Multiplay
 			return;
 		}
 
-		m_rtts << (elapsed - result->held);
+		m_rtts << (*elapsed - result->held);
 		m_applied += (result->reports.size() + result->actions.size());
 		std::ranges::move(result->reports, std::back_inserter(m_receivedReports));
 		std::ranges::move(result->actions, std::back_inserter(m_receivedActions));
@@ -203,16 +203,18 @@ namespace Multiplay
 		sendStartIfRequested();
 	}
 
-	void Room::writeLog(const Duration elapsed, const std::expected<SyncResponse, APIError>& result)
+	void Room::writeLog(const Optional<Duration> elapsed, const std::expected<SyncResponse, APIError>& result)
 	{
 		if (not m_log)
 		{
 			return;
 		}
 
-		const auto ms = [](const Duration duration) { return U"{:.1f}"_fmt(duration.count() * 1000); };
+		const auto ms = [](const Optional<Duration> duration) { return (duration ? U"{:.1f}"_fmt(duration->count() * 1000) : U""); };
 		m_log.writeln(U"{},{},{},{},{},{}"_fmt(Time::GetMillisecSinceEpoch(), m_nextTick, ms(elapsed),
-			(result ? ms(result->held) : U""), (result ? ms(elapsed - result->held) : U""), (result ? U"" : result.error().code)));
+			ms(result ? Optional<Duration>{ result->held } : none),
+			ms(result ? Optional<Duration>{ *elapsed - result->held } : none),
+			(result ? U"" : result.error().code)));
 	}
 
 	void Room::sendStartIfRequested()

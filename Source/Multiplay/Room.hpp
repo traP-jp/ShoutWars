@@ -110,9 +110,9 @@ namespace Multiplay
 
 		void sendSync();
 
-		void onSynced(std::expected<SyncResponse, APIError> result);
+		void onSynced(std::expected<SyncResponse, APIError> result, Optional<Duration> elapsed);
 
-		void writeLog(Duration elapsed, const std::expected<SyncResponse, APIError>& result);
+		void writeLog(Optional<Duration> elapsed, const std::expected<SyncResponse, APIError>& result);
 
 		void sendStartIfRequested();
 
