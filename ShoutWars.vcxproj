@@ -143,6 +143,7 @@
     <ClCompile Include="Source\Multiplay\APIClient.cpp" />
     <ClCompile Include="Source\Multiplay\Room.cpp" />
     <ClCompile Include="Source\Multiplay\SimpleHTTPTransport.cpp" />
+    <ClCompile Include="Source\ServerConfig.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="App\engine\texture\box-shadow\128.png" />
@@ -271,6 +272,7 @@
     <ClInclude Include="Source\Multiplay\HTTPTransport.hpp" />
     <ClInclude Include="Source\Multiplay\Room.hpp" />
     <ClInclude Include="Source\Multiplay\SimpleHTTPTransport.hpp" />
+    <ClInclude Include="Source\ServerConfig.hpp" />
   </ItemGroup>
   <Target Name="GenerateAppResources" BeforeTargets="ResourceCompile">
     <ItemGroup>

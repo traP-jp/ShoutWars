@@ -177,6 +177,9 @@
     <ClCompile Include="Source\Multiplay\SimpleHTTPTransport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\ServerConfig.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Multiplay\Legacy\RoomInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -525,6 +528,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Multiplay\SimpleHTTPTransport.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\ServerConfig.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Multiplay\Legacy\RoomInfo.hpp">

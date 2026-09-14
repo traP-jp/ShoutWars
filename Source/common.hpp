@@ -2,11 +2,14 @@
 # include <Siv3D.hpp>
 # include "Voice/Phoneme.hpp"
 # include "Multiplay/Legacy/SyncClient.hpp"
+# include "ServerConfig.hpp"
 #define elif else if
 #define M_PI 3.14159265358979323846
 
 //XXX:Debug用
 //#define debug_voice
+
+inline constexpr StringView GameVersion = U"0.3";
 
 // シーンの名前
 enum class State
@@ -43,6 +46,7 @@ struct GameData
 	Array<char32> vowels = { U' ', U' ', U'A', U'A', U'I', U'I', U'U', U'U', U'E', U'E', U'O', U'O' };
 	
 	//通信用
+	Multiplay::APIClient api = LoadAPIClient(U"config.json", GameVersion);
 	std::unique_ptr<SyncClient> client;
 };
 
