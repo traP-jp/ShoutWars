@@ -1,27 +1,62 @@
 ﻿# pragma once
 
-# include "WordDetector.hpp"
 # include <Siv3D.hpp>
 
 struct VoiceCommand {
 	StringView text;
+	/// @brief 発音する母音の並び。小文字の母音は無声化などで聞こえなくてもよい
 	StringView vowels;
 	int32 action;
 };
 
-/// @brief キャラクターが使える音声コマンドを、判定する順に返す
+/// @brief キャラクターが使える音声コマンドを返す
 /// @param character キャラクター番号 (0:玲, 1:ユウカ, 2:アイリ, 3:No.0)
 [[nodiscard]] Array<VoiceCommand> VoiceCommandsOf(int32 character);
 
+struct CommandRecognizerOptions {
+	/// @brief 発話が終わったとみなす無音の長さ (フレーム)
+	size_t endSilenceFrames = 12;
+	/// @brief 発話とみなす最小の有声フレーム数
+	size_t minVoicedFrames = 4;
+	/// @brief 判定に使う発話の最大の長さ (フレーム)
+	size_t maxUtteranceFrames = 180;
+	/// @brief 各母音が続く最小のフレーム数
+	size_t minVowelFrames = 2;
+	/// @brief どの母音にも当てはめないフレームの最大コスト
+	double fillerCost = 2.0;
+	/// @brief 1 フレームあたりの平均コストがこれ以下なら発動する
+	double threshold = 0.6;
+	/// @brief 必殺技の閾値
+	double specialThreshold = 0.9;
+	/// @brief 長いコマンドを優先する、コストの差の許容量
+	double longerPreference = 0.05;
+};
+
+/// @brief 発話の終わりごとに、コマンドの母音の並びへの当てはまりを比べて判定する
 class CommandRecognizer {
 public:
+	/// @brief フレームの間隔。フレームレートが高くても、この間隔より細かいフレームは捨てる
+	static constexpr uint64 FrameIntervalUs = 1'000'000 / 60;
+
+	[[nodiscard]] explicit CommandRecognizer(const CommandRecognizerOptions& options = {});
+
 	/// @brief 音素の推定結果を与え、コマンドを判定する
-	/// @param phonemeScores Phoneme::estimate の結果
+	/// @param phonemeScores Phoneme::estimate の結果 (無音 2 つと、あいうえおの高低の 12 音素)
 	/// @param character キャラクター番号 (0:玲, 1:ユウカ, 2:アイリ, 3:No.0)
 	/// @param timeUs 現在時刻 (マイクロ秒)
 	/// @return 発動した行動 (0 は無し)
 	[[nodiscard]] int32 update(const Array<double>& phonemeScores, int32 character, uint64 timeUs = Time::GetMicrosec());
 
 private:
-	WordDetector wordDetector;
+	// あいうえお と 無音 の順の確率
+	using Frame = std::array<double, 6>;
+
+	CommandRecognizerOptions options;
+	uint64 nextFrameUs = 0;
+	Array<Frame> utterance;
+	size_t voicedFrames = 0;
+	size_t silentFrames = 0;
+
+	[[nodiscard]] int32 decide(int32 character) const;
+	[[nodiscard]] double alignmentCost(StringView vowels) const;
 };

@@ -189,9 +189,6 @@
     <ClCompile Include="Source\Voice\Phoneme.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Voice\WordDetector.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Voice\MFCC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -540,9 +537,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Voice\Phoneme.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Voice\WordDetector.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Voice\MFCC.hpp">
