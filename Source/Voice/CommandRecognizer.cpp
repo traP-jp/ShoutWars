@@ -93,8 +93,9 @@ int32 CommandRecognizer::update(const Array<double>& phonemeScores, int32 charac
 		if (utterance.front()[SilenceLabel] < 0.5) --voicedFrames;
 		utterance.pop_front();
 	}
-	if (silentFrames == options.endSilenceFrames && voicedFrames >= options.minVoicedFrames) {
-		const int32 action = decide(Array<Frame>(utterance.begin(), utterance.end() - silentFrames), character);
+	const bool early = (options.earlySilenceFrames && silentFrames == options.earlySilenceFrames);
+	if ((early || silentFrames == options.endSilenceFrames) && voicedFrames >= options.minVoicedFrames) {
+		const int32 action = decide(Array<Frame>(utterance.begin(), utterance.end() - silentFrames), character, early ? options.earlyThreshold : options.threshold);
 		if (action) {
 			utterance.clear();
 			voicedFrames = 0;
@@ -111,7 +112,7 @@ int32 CommandRecognizer::update(const Array<double>& phonemeScores, int32 charac
 	return 0;
 }
 
-int32 CommandRecognizer::decide(const Array<Frame>& frames, int32 character) const {
+int32 CommandRecognizer::decide(const Array<Frame>& frames, int32 character, double threshold) const {
 	double freeCost = 0.0;
 	for (const auto& frame : frames) freeCost += -log(*max_element(frame.begin(), frame.end()));
 
@@ -132,7 +133,7 @@ int32 CommandRecognizer::decide(const Array<Frame>& frames, int32 character) con
 	for (const auto& candidate : candidates) {
 		if (candidate.length > chosen->length && candidate.cost <= best->cost + options.longerPreference) chosen = &candidate;
 	}
-	if (chosen->cost > options.threshold) return 0;
+	if (chosen->cost > threshold) return 0;
 	for (const auto& candidate : candidates) {
 		if (candidate.command->action != chosen->command->action && candidate.cost < chosen->cost + options.ambiguityMargin) return 0;
 	}

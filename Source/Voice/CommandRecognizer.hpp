@@ -16,6 +16,10 @@ struct VoiceCommand {
 struct CommandRecognizerOptions {
 	/// @brief 発話が終わったとみなして判定する無音の長さ (フレーム)
 	size_t endSilenceFrames = 12;
+	/// @brief 早めに判定する無音の長さ (フレーム)。ここでは earlyThreshold を満たすときだけ発動する
+	size_t earlySilenceFrames = 4;
+	/// @brief 早めの判定で発動する、1 フレームあたりの平均コストの上限
+	double earlyThreshold = 0.3;
 	/// @brief 発動しなかった発話に、後の発話をつなげられる無音の長さ (フレーム)
 	size_t mergeSilenceFrames = 30;
 	/// @brief 発動してから次の発話を聞き始めるまでのフレーム数
@@ -64,6 +68,6 @@ private:
 	size_t voicedFrames = 0;
 	size_t silentFrames = 0;
 
-	[[nodiscard]] int32 decide(const Array<Frame>& frames, int32 character) const;
+	[[nodiscard]] int32 decide(const Array<Frame>& frames, int32 character, double threshold) const;
 	[[nodiscard]] double alignmentCost(const Array<Frame>& frames, StringView pronunciation) const;
 };
