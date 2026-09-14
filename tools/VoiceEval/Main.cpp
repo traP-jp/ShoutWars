@@ -183,8 +183,8 @@ namespace {
 
 	struct CalibrationOptions {
 		double gateScale = 1.25;
-		double silenceSeconds = 1.0;
-		double vowelSeconds = 1.0;
+		double silenceSeconds = 1.5;
+		double vowelSeconds = 1.5;
 	};
 
 	/// @brief キャリブレーション画面での長押し登録を、同じ環境音の中で再現する

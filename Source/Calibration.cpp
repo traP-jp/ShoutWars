@@ -26,7 +26,7 @@ void Calibration::update() {
 		if (phonemeRects[id].mouseOver()) {
 			Cursor::RequestStyle(CursorStyle::Hand);
 			if (MouseL.down()) isWaitingToSet = true;
-			if (isWaitingToSet && MouseL.pressedDuration() >= 1.2s) {
+			if (isWaitingToSet && MouseL.pressedDuration() >= 1.7s) {
 				isWaitingToSet = false;
 				phoneme.setMFCC(id);
 			}
@@ -93,7 +93,7 @@ void Calibration::draw() const {
 		}
 		if (!rect.mouseOver()) rect.drawFrame(4, Palette::White);
 		else if (!MouseL.pressed()) rect.drawFrame(12, Palette::White);
-		else if (MouseL.pressedDuration() < 1.2s) rect.drawFrame(12, Palette::Orange);
+		else if (MouseL.pressedDuration() < 1.7s) rect.drawFrame(12, Palette::Orange);
 		else rect.drawFrame(10, Palette::Limegreen);
 		font(phonemeNames[id]).draw(
 			30,

@@ -11,7 +11,7 @@ enum class PhonemeDistance {
 struct PhonemeOptions {
 	MFCCOptions mfcc;
 	/// @brief 0 なら登録した平均との距離で推定する
-	size_t k = 5;
+	size_t k = 11;
 	PhonemeDistance distance = PhonemeDistance::Cosine;
 	/// @brief ユークリッド距離を測る前に、登録した特徴量の分散で各次元を正規化する
 	bool standardize = true;
@@ -63,7 +63,7 @@ public:
 	/// @param timeUs 現在時刻 (マイクロ秒)
 	/// @param durationUs 遡る時間 (マイクロ秒)
 	/// @throw Error 履歴が空
-	void setMFCC(uint64 id, uint64 timeUs = Time::GetMicrosec(), uint64 durationUs = 1'000'000);
+	void setMFCC(uint64 id, uint64 timeUs = Time::GetMicrosec(), uint64 durationUs = 1'500'000);
 
 	/// @brief 登録した MFCC の平均を取得する
 	/// @param id 音素の ID (インデックス)
