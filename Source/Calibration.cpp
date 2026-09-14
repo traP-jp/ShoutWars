@@ -26,7 +26,7 @@ void Calibration::update() {
 		if (phonemeRects[id].mouseOver()) {
 			Cursor::RequestStyle(CursorStyle::Hand);
 			if (MouseL.down()) isWaitingToSet = true;
-			if (isWaitingToSet && MouseL.pressedDuration() >= 0.8s) {
+			if (isWaitingToSet && MouseL.pressedDuration() >= 1.2s) {
 				isWaitingToSet = false;
 				phoneme.setMFCC(id);
 			}
@@ -85,19 +85,20 @@ void Calibration::draw() const {
 	for (size_t id : step(12)) {
 		const auto& rect = phonemeRects[id];
 		rect.draw(Palette::Black);
+		const auto average = phoneme.averageMFCC(id);
 		for (size_t i : step(12)) {
 			RectF{
 				rect.x, rect.y + i * (rect.h / 12), rect.w, rect.h / 12
-			}.draw(HSV{ 510.0 - phoneme.mfccList[id].feature[i] * 2.0, 0.6 });
+			}.draw(HSV{ 510.0 - average.feature[i] * 2.0, 0.6 });
 		}
 		if (!rect.mouseOver()) rect.drawFrame(4, Palette::White);
 		else if (!MouseL.pressed()) rect.drawFrame(12, Palette::White);
-		else if (MouseL.pressedDuration() < 1.0s) rect.drawFrame(12, Palette::Orange);
+		else if (MouseL.pressedDuration() < 1.2s) rect.drawFrame(12, Palette::Orange);
 		else rect.drawFrame(10, Palette::Limegreen);
 		font(phonemeNames[id]).draw(
 			30,
 			Arg::topCenter(rect.bottomCenter() + Vec2{ 0, 20 }),
-			phonemeScores[id] >= 0.75 ? Palette::Limegreen : Palette::Orange
+			phonemeScores[id] >= 0.6 ? Palette::Limegreen : Palette::Orange
 		);
 	}
 	font(U"登録したい音素を雑音が入らないように気を付けて発音しながら緑に光るまで長押ししてください。").draw(30, 120, 545);

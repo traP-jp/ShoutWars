@@ -17,51 +17,49 @@ using namespace std;
  * - [uLipSync のアルゴリズム改善を行ってみた - 凹みTips](https://tips.hecomi.com/entry/2023/03/31/022324)
  */
 
-MFCCAnalyzer::MFCCAnalyzer(size_t mfccOrder, float preEmphasisCoefficient)
-	: mfccOrder(mfccOrder), preEmphasisCoefficient(preEmphasisCoefficient) {}
+MFCCAnalyzer::MFCCAnalyzer(const MFCCOptions& options) : options(options) {}
 
-MFCC MFCCAnalyzer::analyze(Array<float> f, uint32 sampleRate, size_t melChannels) const {
+MFCC MFCCAnalyzer::analyze(Array<float> f, uint32 sampleRate) const {
 	const auto frames = FFTSampleLength(countr_zero(f.size()) - 8);
+	const size_t melChannels = options.melChannels;
 
-	// pre-emphasis
-	for (size_t i : Range(f.size() - 1, 1, -1)) f[i] -= f[i - 1] * preEmphasisCoefficient;
+	for (size_t i = f.size() - 1; i >= 1; --i) f[i] -= static_cast<float>(f[i - 1] * options.preEmphasisCoefficient);
 
-	// hamming window
-	for (size_t i : Range(f.size() - 2, 1)) f[i] *= 0.54f - 0.46f * cos(2 * Math::Pi * i / (f.size() - 1));
-	f.front() = 0.0f;
-	f.back() = 0.0f;
+	if (options.hammingWindow) {
+		for (size_t i : step(f.size())) f[i] *= static_cast<float>(0.54 - 0.46 * cos(2 * Math::Pi * i / (f.size() - 1)));
+	}
+	else {
+		f.front() = 0.0f;
+		f.back() = 0.0f;
+	}
 
-	// normalize
-	const auto factor = ranges::max(f | views::transform([](auto x) { return abs(x); }));
-	if (factor >= 1e-8f) for (auto&& x : f) x *= 1.0f / factor;
-
-	// FFT
 	FFTResult fftResult;
 	FFT::Analyze(fftResult, f.data(), f.size(), sampleRate, frames);
 
-	// apply mel filter bank
-	const double melMax = freqToMel(sampleRate / 2);
-	const double melMin = freqToMel(0);
+	const double maxFrequency = options.maxFrequency > 0.0 ? options.maxFrequency : sampleRate / 2.0;
+	const double melMax = freqToMel(maxFrequency);
+	const double melMin = freqToMel(options.minFrequency);
 	const double deltaMel = (melMax - melMin) / (melChannels + 1);
-	Array<double> melPoints(melChannels + 2);
-	for (size_t i : step(melPoints.size())) melPoints[i] = melToFreq(melMin + i * deltaMel);
 	Array<size_t> bin(melChannels + 2);
-	for (size_t i : step(bin.size())) bin[i] = floor((f.size() + 1) * melPoints[i] / sampleRate);
+	for (size_t i : step(bin.size())) {
+		bin[i] = static_cast<size_t>(floor((f.size() + 1) * melToFreq(melMin + i * deltaMel) / sampleRate));
+	}
 	Array<double> melSpectrum(melChannels);
 	for (size_t i : step(melChannels)) {
-		for (size_t j : Range(bin[i], bin[i + 1] - 1)) {
+		for (size_t j = bin[i]; j < bin[i + 1]; ++j) {
 			melSpectrum[i] += fftResult.buffer[j] * (j - bin[i]) / (bin[i + 1] - bin[i]);
 		}
-		for (size_t j : Range(bin[i + 1], bin[i + 2] - 1)) {
+		for (size_t j = bin[i + 1]; j < bin[i + 2]; ++j) {
 			melSpectrum[i] += fftResult.buffer[j] * (bin[i + 2] - j) / (bin[i + 2] - bin[i + 1]);
 		}
+		// 無音で log(0) にならないようにする
+		melSpectrum[i] = log10(melSpectrum[i] + 1e-10);
 	}
 
-	// DCT
-	MFCC mfcc{ Array<double>(mfccOrder, 0.0) };
-	for (size_t i : Range(1, mfccOrder)) {
+	MFCC mfcc{ Array<double>(options.order, 0.0) };
+	for (size_t i : step(options.order)) {
 		for (size_t j : step(melChannels)) {
-			mfcc.feature[i - 1] += log10(abs(melSpectrum[j])) * cos(Math::Pi * i * (j + 0.5) / melChannels) * 10;
+			mfcc.feature[i] += melSpectrum[j] * cos(Math::Pi * (i + 1) * (j + 0.5) / melChannels) * 10;
 		}
 	}
 	return mfcc;
