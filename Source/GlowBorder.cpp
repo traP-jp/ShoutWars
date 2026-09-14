@@ -2,7 +2,7 @@
 
 void GlowBorder::init(const Texture& from_texture)
 {
-	outlineShader = HLSL{ U"Shader/outline.hlsl", U"PS" };
+	outlineShader = HLSL{ Resource(U"shaders/outline.hlsl"), U"PS" };
 	if (!outlineShader)
 		throw Error{ U"Failed to load outline shader" };
 

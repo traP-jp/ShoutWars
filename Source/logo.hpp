@@ -3,7 +3,7 @@
 
 class logo : public App::Scene
 {
-	const Texture fade_img{ U"../images/Siv3D_logo.png" };
+	const Texture fade_img{ Resource(U"images/Siv3D_logo.png") };
 	int logo_timer = 0;
 	bool first_time = true;
 public:
