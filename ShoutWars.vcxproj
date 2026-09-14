@@ -136,8 +136,13 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Source\Multiplay\Legacy\APIClient.cpp" />
+    <ClCompile Include="Source\Multiplay\Legacy\APIClient.cpp">
+      <ObjectFileName>$(IntDir)Legacy\</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="Source\Multiplay\Legacy\SyncClient.cpp" />
+    <ClCompile Include="Source\Multiplay\APIClient.cpp" />
+    <ClCompile Include="Source\Multiplay\Room.cpp" />
+    <ClCompile Include="Source\Multiplay\SimpleHTTPTransport.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="App\engine\texture\box-shadow\128.png" />
@@ -262,6 +267,10 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Source\Multiplay\Legacy\APIClient.hpp" />
     <ClInclude Include="Source\Multiplay\Legacy\SyncClient.hpp" />
+    <ClInclude Include="Source\Multiplay\APIClient.hpp" />
+    <ClInclude Include="Source\Multiplay\HTTPTransport.hpp" />
+    <ClInclude Include="Source\Multiplay\Room.hpp" />
+    <ClInclude Include="Source\Multiplay\SimpleHTTPTransport.hpp" />
   </ItemGroup>
   <Target Name="GenerateAppResources" BeforeTargets="ResourceCompile">
     <ItemGroup>
