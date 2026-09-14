@@ -415,26 +415,37 @@ void Game::update_player() {
 		}
 	}
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
-	for (int i = 0; i < player_sum; i++) {
-		if (i == player_number) continue;
-		if ((abs(player_reserved_pos[player_number].x - player_reserved_pos[i].x) < 70.0) && (abs(player_reserved_pos[player_number].y - player_reserved_pos[i].y) < 242.0)) {
-			//相手が動いている場合
-			if (player[i].status & 3) {
-				if (player[i].status == player[player_number].status) {
-					player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
-				}elif(player[player_number].status == 0) {
-					player_reserved_pos[player_number].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? -16.0 : 16.0;
-				}
-				else {
-					player_reserved_pos[player_number].x = player[player_number].pos[0].x;
-					player_reserved_pos[i].x = player[i].pos[0].x;
-				}
-				//自分だけが動いている場合
-			}
-			else {
-				player_reserved_pos[i].x += (player_reserved_pos[player_number].x < player_reserved_pos[i].x) ? 16.0 : -16.0;
+	//位置を決めるのは本人なので、押し合いでも自分のキャラだけを動かす。押した相手は、相手のクライアントが自分で押し出す
+	{
+		const double contact = 70.0;
+		//押す側がこの深さまでめり込むのを許す。接した位置で止めると、相手の画面で重ならず押せなくなる
+		const double push_depth = 20.0;
+		Vec2& self = player_reserved_pos[player_number];
+		const Vec2& other = player_reserved_pos[another_player_number];
+		const double self_x = self.x;
+		//ジャンプ中はすれ違えるようにする
+		const bool jumping = ((player[player_number].status | player[another_player_number].status) & 4);
+		if ((!jumping) && (abs(self.x - other.x) < contact) && (abs(self.y - other.y) < 242.0)) {
+			//重なり中の左右の見え方は通信の遅れで食い違うため、向きは動いている側の進行方向で決める
+			const auto direction = [](const Player& p) { return (p.status & 1) ? -1.0 : ((p.status & 2) ? 1.0 : 0.0); };
+			const double self_direction = direction(player[player_number]);
+			const double other_direction = direction(player[another_player_number]);
+			const bool pushing = (0.0 < (other.x - self.x) * self_direction);
+			const bool pushed = (0.0 < (self.x - other.x) * other_direction);
+			if (pushing && pushed) {
+				//向かい合ってぶつかったら進めない
+				self.x = player[player_number].pos[0].x;
+			}elif(pushing) {
+				self.x = other.x - self_direction * Max((other.x - self.x) * self_direction, contact - push_depth);
+			}elif(pushed) {
+				self.x = other.x + other_direction * contact;
+			}elif((self_direction == 0.0) && (other_direction == 0.0) && (player_number == 1)) {
+				//止まったまま重なったら片方だけが離れる。両方が動くと、見え方の食い違いで同じ向きに逃げ続ける
+				self.x = other.x + ((self.x < other.x) ? -contact : contact);
 			}
 		}
+		//相手は歩き始めの位置と進み具合から位置を計算するので、押し合いで動かした分を歩き始めの位置にも反映する
+		player[player_number].pos[1].x += (self.x - self_x);
 	}
 
 	//プレイヤーの向き
