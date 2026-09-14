@@ -13,7 +13,6 @@ struct Player {
 	Vec2 pos[2];
 	//ステータス(0:待機中,1:左移動,2:右移動,4ジャンプ,8:ガード,16:弱,32:狂,64:必殺,128:ガード破壊,256:特殊攻撃,512～:予備)
 	int status = 0;
-	int old_status = 0;
 	//HP(0:実質HP(確定),1:表示HP(未確定),2:表示HP(確定))
 	int hp[3] = { 1000,1000,1000 };
 	int ap = 0;
@@ -255,6 +254,10 @@ private:
 #else
 	bool is_connected = true;
 #endif
+	//相手から最後に届いた状態 (効果音を立ち上がりでだけ鳴らすため)
+	int received_status = 0;
+	//確認イベントで確定したガード状態
+	bool void_attack[player_sum] = { false };
 	int ping = 0;
 	int ping_timer = 0;
 	Array<Duration> rtt_samples;
@@ -283,9 +286,8 @@ private:
 	void showError(const Multiplay::APIError& error);
 	int voice_command();
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
-	void Json2ArrayPos(String str,Vec2 (& pos)[2]);
-	void Json2ArrayTimer(String str, int(&timer)[16]);
-	void Json2ArrayHP(String str, int(&hp)[3]);
+	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
+	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
 	inline int GameTimer();
 	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
 	//各キャラ専用関数
