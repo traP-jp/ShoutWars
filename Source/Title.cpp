@@ -24,10 +24,34 @@ Title::Title(const InitData& init) : IScene(init)
 	button1_glow.init(button1_img);
 	button2_glow.init(button2_img);
 	setting_glow.init(setting_img);
+
+	status_call = getData().server.api.status();
+}
+
+void Title::updateServerStatus()
+{
+	if (status_call.isReady()) {
+		const auto status = status_call.get();
+		if (status) {
+			status_text = U"{}/{} 部屋がプレイ中"_fmt(status->roomCount, status->roomLimit);
+		}elif(status.error().code == U"unavailable") {
+			//スリーブ明けの応答なので、すぐに問い合わせ直せば繋がる
+			status_text = U"サーバーに接続中…";
+			status_call = getData().server.api.status();
+			return;
+		}
+		else {
+			status_text = U"サーバーに接続できません";
+		}
+		status_timer.restart();
+	}elif((!status_call.isValid()) && status_timer.reachedZero()) {
+		status_call = getData().server.api.status();
+	}
 }
 
 void Title::update()
 {
+	updateServerStatus();
 	if (calc_mode == 0) {
 		if (isButton1Hovered = button1_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (isButton2Hovered = button2_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
@@ -176,6 +200,7 @@ void Title::draw() const
 	button1_glow.draw(isButton1Hovered, { 390, 500 });
 	button2_glow.draw(isButton2Hovered, { 1190, 500 });
 	setting_glow.drawAt(isSettingHovered, { 1852, 68 });
+	font(status_text).draw(TextStyle::Outline(0.2, ColorF{ 0.0 }), 36, Arg::bottomRight(1900, 1060), Palette::White);
 	if (calc_mode) {
 		Rect(0, 0, 1920, 1080).draw(ColorF{ 0,back_alpha });
 		calc_img.drawAt(960, animation_y);
