@@ -147,6 +147,8 @@ private:
 	const static int no0_special_attack_ap = 8;
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
+	//対戦の制限時間 (秒)。サーバーの対戦の期限 (20分) より短く取る
+	const static int match_seconds = 600;
 	const static int player_min_y = 650;
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
@@ -258,6 +260,8 @@ private:
 	int received_status = 0;
 	//確認イベントで確定したガード状態
 	bool void_attack[player_sum] = { false };
+	//対戦の残り時間 (秒)。開始の tick から数えるので全員で一致する
+	int remaining_seconds = match_seconds;
 	int ping = 0;
 	int ping_timer = 0;
 	Array<Duration> rtt_samples;
@@ -284,6 +288,7 @@ private:
 	void synchronizate_data();
 	void update_error_screen();
 	void showError(const Multiplay::APIError& error);
+	void finish_game(bool won);
 	int voice_command();
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
 	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);

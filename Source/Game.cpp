@@ -230,6 +230,12 @@ void Game::showError(const Multiplay::APIError& error) {
 	OutputLogFile("(" + error.code.narrow() + ")\n" + error.message.narrow());
 }
 
+void Game::finish_game(bool won) {
+	is_game_finished = true;
+	are_you_winnner = won;
+	settle_timer = GameTimer();
+}
+
 void Game::updateFadeIn(double) {
 	getData().room->update();
 }
@@ -1349,7 +1355,10 @@ void Game::synchronizate_data() {
 		}
 		//相互確認が必要な処理
 		//全員が同じ順番で適用するので、HP とガードはここでだけ確定させる
+		const uint64 end_tick = getData().start_tick + static_cast<uint64>(match_seconds / room.joined().tickDuration.count());
 		for (const auto& event : room.receiveActions()) {
+			//時間切れより後の確認イベントは適用しない
+			if (end_tick <= event.tick) break;
 			const int target = event.data.get<int32>();
 			const int attacker = (event.from == room.joined().userId) ? player_number : another_player_number;
 			int damage = 0;
@@ -1388,11 +1397,16 @@ void Game::synchronizate_data() {
 				player[target].hp[0] -= damage;
 			}
 			if (player[target].hp[0] <= 0) {
-				is_game_finished = true;
-				are_you_winnner = (target != player_number);
-				settle_timer = GameTimer();
+				finish_game(target != player_number);
 				//笹食ってる場合じゃねぇ！！
 				break;
+			}
+		}
+		if (const auto last_tick = room.lastTick()) {
+			remaining_seconds = Max(0, match_seconds - static_cast<int>((*last_tick - getData().start_tick) * room.joined().tickDuration.count()));
+			//時間切れは残り HP が多い方の勝ち。同じなら両者とも負け
+			if (!is_game_finished && (end_tick <= *last_tick)) {
+				finish_game(player[another_player_number].hp[0] < player[player_number].hp[0]);
 			}
 		}
 
@@ -1572,6 +1586,8 @@ void Game::draw() const {
 		draw_HP_bar();
 		draw_AP_bar();
 		draw_ping();
+		//残り時間
+		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 50, Palette::White);
 
 		draw_bullet();
 		draw_knife();

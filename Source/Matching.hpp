@@ -80,7 +80,7 @@ class Matching : public App::Scene
 	bool start_sent = false;
 
 	//制限時間
-	String remaining_time = U"10:00";
+	String remaining_time = U"05:00";
 
 	//エラーダイアログ関連
 	int error_mode = 0;

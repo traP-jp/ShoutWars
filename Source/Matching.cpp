@@ -128,8 +128,8 @@ void Matching::updateRoom()
 
 String Matching::CalcRemainingTime()
 {
-	//制限時間は部屋の作成から10分 (tick は部屋の作成時が 0)
-	int remaining_int_time = 600;
+	//制限時間は部屋の作成から5分 (tick は部屋の作成時が 0)。サーバーの部屋の期限 (10分) より短く取る
+	int remaining_int_time = 300;
 	if (const auto& room = getData().room; room && room->lastTick()) {
 		remaining_int_time -= static_cast<int>(*room->lastTick() * room->joined().tickDuration.count());
 	}
