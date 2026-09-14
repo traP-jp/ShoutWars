@@ -93,20 +93,27 @@ int32 CommandRecognizer::update(const Array<double>& phonemeScores, int32 charac
 		if (utterance.front()[SilenceLabel] < 0.5) --voicedFrames;
 		utterance.pop_front();
 	}
-	if (silentFrames < options.endSilenceFrames) return 0;
-
-	utterance.resize(utterance.size() - silentFrames);
-	const int32 action = (voicedFrames >= options.minVoicedFrames) ? decide(character) : 0;
-	utterance.clear();
-	voicedFrames = 0;
-	silentFrames = 0;
-	if (action) cooldown = options.cooldownFrames;
-	return action;
+	if (silentFrames == options.endSilenceFrames && voicedFrames >= options.minVoicedFrames) {
+		const int32 action = decide(Array<Frame>(utterance.begin(), utterance.end() - silentFrames), character);
+		if (action) {
+			utterance.clear();
+			voicedFrames = 0;
+			silentFrames = 0;
+			cooldown = options.cooldownFrames;
+			return action;
+		}
+	}
+	if (silentFrames >= Max(options.endSilenceFrames, options.mergeSilenceFrames)) {
+		utterance.clear();
+		voicedFrames = 0;
+		silentFrames = 0;
+	}
+	return 0;
 }
 
-int32 CommandRecognizer::decide(int32 character) const {
+int32 CommandRecognizer::decide(const Array<Frame>& frames, int32 character) const {
 	double freeCost = 0.0;
-	for (const auto& frame : utterance) freeCost += -log(*max_element(frame.begin(), frame.end()));
+	for (const auto& frame : frames) freeCost += -log(*max_element(frame.begin(), frame.end()));
 
 	struct Candidate {
 		const VoiceCommand* command;
@@ -116,7 +123,7 @@ int32 CommandRecognizer::decide(int32 character) const {
 	const auto commands = VoiceCommandsOf(character);
 	Array<Candidate> candidates;
 	for (const auto& command : commands) {
-		const double cost = (alignmentCost(command.pronunciation) - freeCost) / utterance.size();
+		const double cost = (alignmentCost(frames, command.pronunciation) - freeCost) / frames.size();
 		const size_t length = count_if(command.pronunciation.begin(), command.pronunciation.end(), [](char32 c) { return IsUpper(c); });
 		candidates << Candidate{ &command, cost, length };
 	}
@@ -129,7 +136,7 @@ int32 CommandRecognizer::decide(int32 character) const {
 	return (chosen->cost <= threshold) ? chosen->command->action : 0;
 }
 
-double CommandRecognizer::alignmentCost(StringView pronunciation) const {
+double CommandRecognizer::alignmentCost(const Array<Frame>& frames, StringView pronunciation) const {
 	// 発話の前後 → 母音 → (母音間の子音 or 無声子音の無音) → 母音 ... → 発話の前後 と、区間を一列に並べる
 	Array<Segment> segments = { { SegmentType::Edge } };
 	bool gap = false;
@@ -171,7 +178,7 @@ double CommandRecognizer::alignmentCost(StringView pronunciation) const {
 		}
 	};
 
-	for (const auto& frame : utterance) {
+	for (const auto& frame : frames) {
 		computeEntry(previous);
 		started = true;
 		for (size_t s : step(segments.size())) {

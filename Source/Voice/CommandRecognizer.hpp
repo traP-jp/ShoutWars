@@ -14,8 +14,10 @@ struct VoiceCommand {
 [[nodiscard]] Array<VoiceCommand> VoiceCommandsOf(int32 character);
 
 struct CommandRecognizerOptions {
-	/// @brief 発話が終わったとみなす無音の長さ (フレーム)
+	/// @brief 発話が終わったとみなして判定する無音の長さ (フレーム)
 	size_t endSilenceFrames = 12;
+	/// @brief 発動しなかった発話に、後の発話をつなげられる無音の長さ (フレーム)
+	size_t mergeSilenceFrames = 30;
 	/// @brief 発動してから次の発話を聞き始めるまでのフレーム数
 	size_t cooldownFrames = 30;
 	/// @brief 発話とみなす最小の有声フレーム数
@@ -62,6 +64,6 @@ private:
 	size_t voicedFrames = 0;
 	size_t silentFrames = 0;
 
-	[[nodiscard]] int32 decide(int32 character) const;
-	[[nodiscard]] double alignmentCost(StringView pronunciation) const;
+	[[nodiscard]] int32 decide(const Array<Frame>& frames, int32 character) const;
+	[[nodiscard]] double alignmentCost(const Array<Frame>& frames, StringView pronunciation) const;
 };
