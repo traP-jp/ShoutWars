@@ -62,7 +62,7 @@ namespace {
 
 	double RootMeanSquare(const float* samples, size_t length) {
 		double sum = 0.0;
-		for (size_t i : step(length)) sum += samples[i] * samples[i];
+		for (size_t i : step(length)) sum += static_cast<double>(samples[i]) * samples[i];
 		return length ? Math::Sqrt(sum / length) : 0.0;
 	}
 
