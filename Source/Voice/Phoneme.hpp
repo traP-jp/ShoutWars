@@ -15,8 +15,6 @@ struct PhonemeOptions {
 	PhonemeDistance distance = PhonemeDistance::Cosine;
 	/// @brief ユークリッド距離を測る前に、登録した特徴量の分散で各次元を正規化する
 	bool standardize = true;
-	/// @brief 直近何フレームのスペクトルを平均してから特徴量にするか
-	size_t smoothingFrames = 3;
 	/// @brief 先頭から何個の音素が、無音や息などの母音でない音か
 	size_t silentPhonemes = 2;
 	/// @brief 入力感度の閾値よりこの dB 以上大きいフレームは、母音でない音素に分類しない
@@ -86,7 +84,6 @@ protected:
 	Array<Array<Array<double>>> registeredSpectra;
 	/// @brief registeredSpectra から求めた特徴量
 	Array<Array<MFCC>> registered;
-	Array<Array<double>> recentSpectra;
 	std::map<uint64, Array<double>> spectrumHistory;
 	std::map<uint64, MFCC> mfccHistory;
 	Array<double> featureScale;

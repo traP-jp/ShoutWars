@@ -5,7 +5,7 @@
 
 struct MFCCOptions {
 	size_t order = 12;
-	size_t melChannels = 24;
+	size_t melChannels = 20;
 	double minFrequency = 150.0;
 	/// @brief 0 ならナイキスト周波数
 	double maxFrequency = 8000.0;

@@ -31,7 +31,6 @@ Phoneme::Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t 
 
 bool Phoneme::start() {
 	mic = Microphone{ StartImmediately::Yes };
-	recentSpectra.clear();
 	spectrumHistory.clear();
 	mfccHistory.clear();
 	return mic.isRecording();
@@ -47,12 +46,7 @@ Array<double> Phoneme::estimate(FFTSampleLength frames) {
 }
 
 Array<double> Phoneme::estimate(Array<float> samples, uint32 sampleRate, double rootMeanSquare, uint64 timeUs) {
-	recentSpectra << mfccAnalyzer.melSpectrum(std::move(samples), sampleRate);
-	if (recentSpectra.size() > Max<size_t>(options.smoothingFrames, 1)) recentSpectra.pop_front();
-	Array<double> spectrum(recentSpectra.front().size(), 0.0);
-	for (const auto& recent : recentSpectra) {
-		for (size_t i : step(spectrum.size())) spectrum[i] += recent[i] / recentSpectra.size();
-	}
+	auto spectrum = mfccAnalyzer.melSpectrum(std::move(samples), sampleRate);
 	const auto currentMFCC = mfccAnalyzer.cepstrum(spectrum);
 	const bool voiced = 20.0 * log10(rootMeanSquare / volumeThreshold) >= options.silenceMarginDb;
 	const auto expired = [this, timeUs](const auto& p) { return timeUs - p.first > mfccHistoryLife; };
