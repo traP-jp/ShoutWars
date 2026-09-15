@@ -95,6 +95,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -104,6 +108,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -113,6 +121,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -122,6 +134,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -131,6 +147,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -140,6 +160,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -149,6 +173,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -158,6 +186,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -167,6 +199,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -176,6 +212,10 @@
       <ForcedIncludeFiles></ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

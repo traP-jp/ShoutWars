@@ -96,8 +96,12 @@ void Phoneme::suppressNewSamples() {
 	const auto& buffer = mic.getBuffer();
 	const size_t bufferLength = mic.getBufferLength();
 	const size_t writePos = mic.posSample();
-	Array<float> fresh((writePos + bufferLength - micReadPos) % bufferLength);
-	for (size_t i : step(fresh.size())) fresh[i] = buffer[(micReadPos + i) % bufferLength].left;
+	// 雑音抑制が追いつかないときに溜め込むと、次のフレームがさらに重くなるので、古い音声は捨てる
+	constexpr size_t MaxBacklog = NoiseSuppressor::SampleRate / 10;
+	const size_t available = (writePos + bufferLength - micReadPos) % bufferLength;
+	const size_t skipped = available > MaxBacklog ? available - MaxBacklog : 0;
+	Array<float> fresh(available - skipped);
+	for (size_t i : step(fresh.size())) fresh[i] = buffer[(micReadPos + skipped + i) % bufferLength].left;
 	micReadPos = writePos;
 	suppressedSamples.append(noiseSuppressor->process(fresh));
 	constexpr size_t KeptSamples = 8192;
