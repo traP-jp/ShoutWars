@@ -8,4 +8,5 @@
 - `src/rnnoise_data.c` は、モデルに付いてくる生成ファイルから `#ifndef USE_WEIGHTS_FILE` の部分 (重みの配列) を取り除いたもの
 - 取得元から変えた箇所
   - `src/denoise.c`: `rnnoise_model_from_buffer` で `model->file` を初期化する (しないと `rnnoise_model_free` が不正なポインタを `fclose` して落ちる)
+  - `src/parse_lpcnet_weights.c`: 層の大きさの掛け算を `size_t` にしてから行う (CodeQL の `cpp/integer-multiplication-cast-to-long` への対応)
   - `src/write_weights.c`: `fopen(..., "w")` を `"wb"` にする (Windows ではテキストモードで改行が変換され、モデルが壊れる)。ゲームのビルドには含めない

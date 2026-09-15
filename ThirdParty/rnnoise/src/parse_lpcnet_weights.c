@@ -157,10 +157,10 @@ int linear_init(LinearLayer *layer, const WeightArray *arrays,
     }
   } else {
     if (weights != NULL) {
-      if ((layer->weights = find_array_check(arrays, weights, nb_inputs*nb_outputs*sizeof(layer->weights[0]))) == NULL) return 1;
+      if ((layer->weights = find_array_check(arrays, weights, (size_t)nb_inputs*nb_outputs*sizeof(layer->weights[0]))) == NULL) return 1;
     }
     if (float_weights != NULL) {
-      layer->float_weights = opt_array_check(arrays, float_weights, nb_inputs*nb_outputs*sizeof(layer->float_weights[0]), &err);
+      layer->float_weights = opt_array_check(arrays, float_weights, (size_t)nb_inputs*nb_outputs*sizeof(layer->float_weights[0]), &err);
       if (err) return 1;
     }
   }
@@ -190,7 +190,7 @@ int conv2d_init(Conv2dLayer *layer, const WeightArray *arrays,
     if ((layer->bias = find_array_check(arrays, bias, out_channels*sizeof(layer->bias[0]))) == NULL) return 1;
   }
   if (float_weights != NULL) {
-    layer->float_weights = opt_array_check(arrays, float_weights, in_channels*out_channels*ktime*kheight*sizeof(layer->float_weights[0]), &err);
+    layer->float_weights = opt_array_check(arrays, float_weights, (size_t)in_channels*out_channels*ktime*kheight*sizeof(layer->float_weights[0]), &err);
     if (err) return 1;
   }
   layer->in_channels = in_channels;
