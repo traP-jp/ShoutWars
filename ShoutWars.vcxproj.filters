@@ -198,6 +198,9 @@
     <ClCompile Include="Source\Voice\CommandRecognizer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Voice\VoiceVisualization.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Source\GlowBorder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -549,6 +552,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Voice\CommandRecognizer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Voice\VoiceVisualization.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\GlowBorder.hpp">

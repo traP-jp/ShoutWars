@@ -85,6 +85,7 @@
     <ClCompile Include="..\..\Source\Voice\NoiseSuppressor.cpp" />
     <ClCompile Include="..\..\Source\Voice\MFCCAnalyzer.cpp" />
     <ClCompile Include="..\..\Source\Voice\Phoneme.cpp" />
+    <ClCompile Include="..\..\Source\Voice\VoiceVisualization.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
