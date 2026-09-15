@@ -1622,7 +1622,9 @@ void Game::draw() const {
 		draw_AP_bar();
 		if (!cpu_room) draw_ping();
 		//残り時間
-		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 50, Palette::White);
+		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 120, Palette::White);
+		//ヒント (#20)
+		hint_font(U"技が出にくいときは、ゆっくり丁寧に叫ぶか、キャリブレーションをやり直してみてね").drawAt(TextStyle::Outline(0.2, ColorF{ 0.0 }), 30, Vec2{ 960, 50 }, Palette::White);
 
 		draw_bullet();
 		draw_knife();

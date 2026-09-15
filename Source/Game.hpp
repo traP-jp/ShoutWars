@@ -257,6 +257,7 @@ private:
 	struct torpedo torpedo[max_torpedo];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
+	Font hint_font{ FontMethod::MSDF, 48, Typeface::Heavy };
 	//画像////////////////////////////////////////////////////////////
 	const Texture background_img{ Resource(U"images/game/system/background.png")};
 	const Texture HP_bar_flame_img{ Resource(U"images/game/system/HP_bar_flame.png") };
