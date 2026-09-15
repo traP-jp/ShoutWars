@@ -66,7 +66,9 @@ class Matching : public App::Scene
 	bool isReturnImageHovered = false;
 
 	//キャラ選択関連
-	int character_number = 0;
+	//絵や技が揃ったキャラだけ選べる (0:玲, 1:ユウカ, 2:アイリ, 3:No.0)
+	static constexpr std::array<bool, 4> selectable_characters = { false, true, true, false };
+	int character_number = 1;
 	int opponent_character_number = 0;
 	bool character_changed = false;
 	double decide_button_size = 1.0;
