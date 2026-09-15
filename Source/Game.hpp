@@ -20,7 +20,8 @@ struct Player {
 	//HP(0:実質HP(確定),1:表示HP(未確定),2:表示HP(確定))
 	int hp[3] = { 1000,1000,1000 };
 	int ap = 0;
-	double speed = 80.0;
+	//歩く速さ (100 ミリ秒あたりの px)。声で言っている間に間合いが大きく変わらないよう、遅めにしている
+	double speed = 55.0;
 	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:ガード,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6),12:ガード破壊,13:進捗(12),14:特殊攻撃,15:進捗(14))
 	int timer[16] = {};
 
@@ -169,8 +170,8 @@ private:
 	const static int no0_special_attack_ap = 8;
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
-	//対戦の制限時間 (秒)。1〜2 分での決着を想定し、サーバーの対戦の期限 (20分) より短く取る
-	const static int match_seconds = 300;
+	//対戦の制限時間 (秒)。慣れた人がスムーズに進めて 2 分、初めて遊ぶ人は 5 分ほどかかる見込みなので余裕を持たせ、サーバーの対戦の期限 (20分) より短く取る
+	const static int match_seconds = 600;
 	const static int player_min_y = 650;
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
