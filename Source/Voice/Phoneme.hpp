@@ -83,6 +83,9 @@ public:
 	/// @param spectra 登録するフレームのメルスペクトル
 	void setSpectra(size_t id, Array<Array<double>> spectra);
 
+	/// @brief 登録した全ての音素を消す (入力感度の閾値は残す)
+	void clearMFCC();
+
 	/// @brief 直近に解析したフレームのメルスペクトルを取得する
 	/// @throw Error まだ解析していない
 	[[nodiscard]] const Array<double>& latestSpectrum() const;

@@ -101,6 +101,11 @@ void Phoneme::setSpectra(size_t id, Array<Array<double>> spectra) {
 	updateFeatures();
 }
 
+void Phoneme::clearMFCC() {
+	for (auto& spectra : registeredSpectra) spectra.clear();
+	updateFeatures();
+}
+
 const Array<double>& Phoneme::latestSpectrum() const {
 	if (spectrumHistory.empty()) throw Error{ U"Spectrum history is empty" };
 	return spectrumHistory.rbegin()->second;

@@ -82,6 +82,10 @@ namespace {
 }
 
 Calibration::Calibration(const InitData& init) : IScene(init), graphs(LoadGraphs(getData().phoneme.configPath)) {
+	//登録が消された段階 (展示用モードの起動時など) の古いグラフは出さない
+	for (auto&& [plan, graph] : std::views::zip(Plans, graphs)) {
+		if (plan.phonemeIds.any([&](size_t id) { return getData().phoneme.isMFCCUnset(id); })) graph.clear();
+	}
 	returnGlow.init(returnImage);
 	getData().phoneme.start();
 }
