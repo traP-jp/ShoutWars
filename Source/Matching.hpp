@@ -108,6 +108,8 @@ class Matching : public App::Scene
 	void drawErrorDialog() const;
 	void requestRoom();
 	void updateRoom();
+	bool isSelectable(int character) const;
+	void stepCharacter(int step);
 	void showError(const Multiplay::APIError& error);
 	String CalcRemainingTime();
 public:

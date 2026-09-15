@@ -129,8 +129,14 @@ void Matching::updateRoom()
 	//相手が抜けた
 	if (!opponent_present) opponent_decided = false;
 
-	//双方が確定したら、部屋主がキャラの組み合わせを確定させる
-	if (room.isOwner() && getData().decided_character && opponent_decided && !start_sent && (!vs_cpu || (CpuStartDelay <= cpu_wait.elapsed()))) {
+	//相手が確定したキャラを選んでいたら選び直す。ほぼ同時に同じキャラで確定したときは、部屋主を優先してゲストの確定を取り消す
+	if (!isSelectable(character_number) && !(room.isOwner() && getData().decided_character)) {
+		getData().decided_character = false;
+		stepCharacter(1);
+	}
+
+	//双方が別のキャラで確定したら、部屋主がキャラの組み合わせを確定させる (CPU 戦は、選べるキャラが 1 体しかなければ同じキャラ同士で戦う)
+	if (room.isOwner() && getData().decided_character && opponent_decided && (vs_cpu || (character_number != opponent_character_number)) && !start_sent && (!vs_cpu || (CpuStartDelay <= cpu_wait.elapsed()))) {
 		room.sendAction(U"start", JSON{ { U"owner", character_number }, { U"guest", opponent_character_number } });
 		room.start();
 		start_sent = true;
@@ -146,6 +152,19 @@ void Matching::updateRoom()
 		getData().before_scene = State::Matching;
 		changeScene(State::Game, 0.8s);
 	}
+}
+
+bool Matching::isSelectable(int character) const
+{
+	return selectable_characters[character] && !(opponent_decided && (opponent_character_number == character));
+}
+
+void Matching::stepCharacter(int step)
+{
+	do {
+		character_number = (character_number + step + 4) % 4;
+	} while (!isSelectable(character_number));
+	character_changed = true;
 }
 
 String Matching::CalcRemainingTime()
@@ -203,10 +222,10 @@ void Matching::update()
 	//確定したら変更不可
 	if (!getData().decided_character) {
 		//ホバーしたらカーソルを変える
-		if (selectable_characters[0] && select_char_shape1.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (selectable_characters[1] && select_char_shape2.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (selectable_characters[2] && select_char_shape3.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (selectable_characters[3] && select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (isSelectable(0) && select_char_shape1.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (isSelectable(1) && select_char_shape2.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (isSelectable(2) && select_char_shape3.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (isSelectable(3) && select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (random_select_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
 		if (isSettingImageHovered = setting_shape.mouseOver())
 			Cursor::RequestStyle(CursorStyle::Hand);
@@ -220,28 +239,28 @@ void Matching::update()
 		}
 
 		//キャラ選択
-		if (selectable_characters[0] && select_char_shape1.leftClicked()) {
+		if (isSelectable(0) && select_char_shape1.leftClicked()) {
 			if (character_number != 0) {
 				click_sound.playOneShot();
 				character_number = 0;
 				character_changed = true;
 			}
 		}
-		if (selectable_characters[1] && select_char_shape2.leftClicked()) {
+		if (isSelectable(1) && select_char_shape2.leftClicked()) {
 			if (character_number != 1) {
 				click_sound.playOneShot();
 				character_number = 1;
 				character_changed = true;
 			}
 		}
-		if (selectable_characters[2] && select_char_shape3.leftClicked()) {
+		if (isSelectable(2) && select_char_shape3.leftClicked()) {
 			if (character_number != 2) {
 				click_sound.playOneShot();
 				character_number = 2;
 				character_changed = true;
 			}
 		}
-		if (selectable_characters[3] && select_char_shape4.leftClicked()) {
+		if (isSelectable(3) && select_char_shape4.leftClicked()) {
 			if (character_number != 3) {
 				click_sound.playOneShot();
 				character_number = 3;
@@ -258,17 +277,11 @@ void Matching::update()
 		previous_confirm = confirm;
 		if (left_down) {
 			click_sound.playOneShot();
-			do {
-				character_number = (character_number + 3) % 4;
-			} while (!selectable_characters[character_number]);
-			character_changed = true;
+			stepCharacter(-1);
 		}
 		if (right_down) {
 			click_sound.playOneShot();
-			do {
-				character_number = (character_number + 1) % 4;
-			} while (!selectable_characters[character_number]);
-			character_changed = true;
+			stepCharacter(1);
 		}
 
 		//キャラ確定
@@ -299,10 +312,10 @@ void Matching::update()
 		copy_pos_y = -30;
 		copy_timer = (int)Time::GetMillisec();
 	}
-	if (random_select_shape.leftClicked()) {
+	if (!getData().decided_character && random_select_shape.leftClicked()) {
 		Array<int> selectable_numbers;
 		for (int i = 0; i < 4; i++) {
-			if (selectable_characters[i]) selectable_numbers << i;
+			if (isSelectable(i)) selectable_numbers << i;
 		}
 		int tmp_character_number = selectable_numbers.choice();
 		if (character_number != tmp_character_number) {
@@ -377,8 +390,8 @@ void Matching::draw() const
 	draw_select_char_img(3, 1035, 720, Palette::Yellowgreen);
 	draw_select_char_img(4, 1345, 720, Palette::Dodgerblue);
 # undef draw_select_char_img
-	for (auto&& [shape, selectable] : std::views::zip(std::array{ select_char_shape1, select_char_shape2, select_char_shape3, select_char_shape4 }, selectable_characters)) {
-		if (!selectable) shape.draw(ColorF{ 0.1, 0.85 });
+	for (auto&& [i, shape] : std::views::enumerate(std::array{ select_char_shape1, select_char_shape2, select_char_shape3, select_char_shape4 })) {
+		if (!isSelectable(static_cast<int>(i))) shape.draw(ColorF{ 0.1, 0.85 });
 	}
 	if (getData().decided_character) {
 		disabled_setting_img.drawAt(1852, 68);
