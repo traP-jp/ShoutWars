@@ -79,8 +79,8 @@ player_flag(player_sum, true)
 
 int Game::getkey() {
 	const Directions directions = PressedDirections();
-	//コントローラーでは右側のボタンでもジャンプできる
-	const bool jump = directions.up || ControllerFaceButtonPressed();
+	//ノートパソコンでは上キーが小さいことがあるので、スペースキーでもジャンプできる。コントローラーでは右側のボタンでもジャンプできる
+	const bool jump = directions.up || KeySpace.pressed() || ControllerFaceButtonPressed();
 	return (jump ? 1 : 0) | (directions.left ? 2 : 0) | (directions.down ? 4 : 0) | (directions.right ? 8 : 0);
 }
 
@@ -1521,6 +1521,7 @@ void Game::draw() const {
 		background_img.draw(0, 0);
 		commandFeedback.drawCommandList(command_img.at(getData().player[player_number]), Vec2{ 120, 145 });
 		voiceMonitor.draw();
+		controlsGuide.draw(Vec2{ 1790, 150 });
 		draw_HP_bar();
 		draw_AP_bar();
 		draw_ping();

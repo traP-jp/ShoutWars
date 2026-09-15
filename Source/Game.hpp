@@ -2,6 +2,7 @@
 # include "common.hpp"
 # include "Voice/CommandRecognizer.hpp"
 # include "CommandFeedback.hpp"
+# include "ControlsGuide.hpp"
 # include "PlayerInput.hpp"
 # include "VoiceMonitor.hpp"
 #include <vector>
@@ -227,6 +228,7 @@ private:
 	//声の届き方と、技が出た・出せなかったことを画面で知らせる
 	VoiceMonitor voiceMonitor{ RectF{ 640, 885, 640, 150 } };
 	CommandFeedback commandFeedback;
+	ControlsGuide controlsGuide;
 	//前のフレームの状態 (技が出た瞬間を知るため)
 	int previous_status[player_sum] = { 0 };
 
