@@ -450,6 +450,12 @@ void Game::update_player() {
 		const int other_number = 1 - i;
 		Vec2& self = player_reserved_pos[i];
 		const double self_x = self.x;
+		if (player[i].knockback != 0.0) {
+			const double max_step = knockback_speed * Scene::DeltaTime();
+			const double step = Clamp(player[i].knockback, -max_step, max_step);
+			self.x += step;
+			player[i].knockback -= step;
+		}
 		//相手のユウカの必殺技の溜めの間は、相手に引き寄せられる
 		{
 			const Player& other = player[other_number];
@@ -1347,8 +1353,10 @@ void Game::synchronizate_data() {
 			const int target = event.data.get<int32>();
 			const int attacker = (event.from == room.joined().userId) ? player_number : another_player_number;
 			int damage = 0;
+			int knockback = 0;
 			if (event.type == U"WeakAttack") {
 				damage = get_character_power(player[attacker].number, 0);
+				if (player[attacker].number == 2) knockback = airi_weak_attack_knockback;
 			}elif(event.type == U"StrongAttack") {
 				damage = get_character_power(player[attacker].number, 1);
 				//玲限定技
@@ -1358,6 +1366,7 @@ void Game::synchronizate_data() {
 				damage = get_character_power(player[attacker].number, 2);
 			}elif(event.type == U"UniqueAttack") {
 				damage = get_character_power(player[attacker].number, 3);
+				if (player[attacker].number == 2) knockback = airi_unique_attack_knockback;
 			}elif(event.type == U"Guard") {
 				void_attack[target] = true;
 				continue;
@@ -1385,6 +1394,8 @@ void Game::synchronizate_data() {
 			else {
 				//実質HPを確定
 				player[target].hp[0] -= damage;
+				//位置を決めるのは本人なので、押し戻しも当たった側の画面で動かす
+				if (is_local_player(target)) player[target].knockback += ((player[target].pos[0].x < player[attacker].pos[0].x) ? -1.0 : 1.0) * knockback;
 			}
 			if (player[target].hp[0] <= 0) {
 				finish_game(target != player_number);

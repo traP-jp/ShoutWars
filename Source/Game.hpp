@@ -51,6 +51,8 @@ struct Player {
 	double charge_glow = 0.0;
 	//相手を引き寄せる必殺技の溜めを始めてからの秒数 (溜めていなければ負)
 	double pull_seconds = -1.0;
+	//弾で押し戻される残りの距離 (px。正なら右へ)
+	double knockback = 0.0;
 
 	int img_number = 0;
 	int img_status = 0;
@@ -160,6 +162,10 @@ private:
 	const static int airi_uniqe_attack_ap = 1;
 	//強攻撃の後、動けるようになるまでに延ばす時間 (ミリ秒)。「切れ」は言う時間が短く発動しやすいので、連打しにくくする
 	const static int airi_strong_attack_recovery_ms = 150;
+	//弾が当たった相手を押し戻す距離 (px)。遠くから撃って近寄らせない、という遠距離の得を作る (ガードされたら押し戻さない)
+	//「撃て」は 1 発で、近接攻撃の間合い (230px) の内から外へ出すくらい押す。連射は 1 秒あたり数十発当たるので、1 発ずつは小さくし、歩いて近づく速さを削る程度にする
+	const static int airi_weak_attack_knockback = 150;
+	const static int airi_unique_attack_knockback = 4;
 	//No.0 (レイ）
 	//ダメージ量
 	const static int no0_weak_atttack = 5;
@@ -223,6 +229,8 @@ private:
 	const static int yuuka_special_pull_speed = 250;
 	const static int yuuka_special_pull_range = 900;
 	const static int yuuka_special_pull_stop = 120;
+	//押し戻されるときの速さ (px/秒)。一瞬で飛ばすと見失うので、少しの間に滑らせる
+	const static int knockback_speed = 1000;
 	const static int airi_knife_hover_ms = 1300;
 	//最大同時存在弾丸数は120
 	const static int max_bullet = 120;
