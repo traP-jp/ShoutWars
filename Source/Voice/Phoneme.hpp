@@ -67,12 +67,25 @@ public:
 	/// @brief 登録していない音素があるかを調べる
 	bool isMFCCUnset() const;
 
+	/// @brief 登録していない音素かを調べる
+	/// @param id 音素の ID (インデックス)
+	[[nodiscard]] bool isMFCCUnset(size_t id) const;
+
 	/// @brief 直近の音声で音素を登録する
 	/// @param id 登録する音素の ID (インデックス)
 	/// @param timeUs 現在時刻 (マイクロ秒)
 	/// @param durationUs 遡る時間 (マイクロ秒)
 	/// @throw Error 履歴が空
 	void setMFCC(uint64 id, uint64 timeUs = Time::GetMicrosec(), uint64 durationUs = 1'500'000);
+
+	/// @brief 集めたフレームのメルスペクトルで音素を登録する
+	/// @param id 登録する音素の ID (インデックス)
+	/// @param spectra 登録するフレームのメルスペクトル
+	void setSpectra(size_t id, Array<Array<double>> spectra);
+
+	/// @brief 直近に解析したフレームのメルスペクトルを取得する
+	/// @throw Error まだ解析していない
+	[[nodiscard]] const Array<double>& latestSpectrum() const;
 
 	/// @brief 登録した MFCC の平均を取得する
 	/// @param id 音素の ID (インデックス)
