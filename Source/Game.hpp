@@ -5,6 +5,8 @@
 # include "ControlsGuide.hpp"
 # include "PlayerInput.hpp"
 # include "VoiceMonitor.hpp"
+# include "CpuBrain.hpp"
+# include "GlowBorder.hpp"
 #include <vector>
 #include <cmath>
 #include <string>
@@ -20,9 +22,10 @@ struct Player {
 	//HP(0:実質HP(確定),1:表示HP(未確定),2:表示HP(確定))
 	int hp[3] = { 1000,1000,1000 };
 	int ap = 0;
-	double speed = 80.0;
+	//歩く速さ (100 ミリ秒あたりの px)。声で言っている間に間合いが大きく変わらないよう、遅めにしている
+	double speed = 55.0;
 	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:ガード,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6),12:ガード破壊,13:進捗(12),14:特殊攻撃,15:進捗(14))
-	int timer[16];
+	int timer[16] = {};
 
 	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺,5:ガード,6:ガード破壊,7:特殊攻撃)
 	bool se[8] = { false };
@@ -49,6 +52,8 @@ struct Player {
 	double charge_glow = 0.0;
 	//相手を引き寄せる必殺技の溜めを始めてからの秒数 (溜めていなければ負)
 	double pull_seconds = -1.0;
+	//弾で押し戻される残りの距離 (px。正なら右へ)
+	double knockback = 0.0;
 
 	int img_number = 0;
 	int img_status = 0;
@@ -61,6 +66,8 @@ struct Player {
 struct bullet {
 	Vec2 pos;
 	Vec2 old_pos;
+	//前回の当たり判定のときの横の位置。撃った直後は撃ったキャラの位置
+	double swept_from_x = 0.0;
 	double angle;
 	double old_angle;
 	int timer;
@@ -158,6 +165,10 @@ private:
 	const static int airi_uniqe_attack_ap = 1;
 	//強攻撃の後、動けるようになるまでに延ばす時間 (ミリ秒)。「切れ」は言う時間が短く発動しやすいので、連打しにくくする
 	const static int airi_strong_attack_recovery_ms = 150;
+	//弾が当たった相手を押し戻す距離 (px)。遠くから撃って近寄らせない、という遠距離の得を作る (ガードされたら押し戻さない)
+	//「撃て」は 1 発で、近接攻撃の間合い (230px) の内から外へ出すくらい押す。連射は 1 秒あたり数十発当たるので、1 発ずつは小さくし、歩いて近づく速さを削る程度にする
+	const static int airi_weak_attack_knockback = 150;
+	const static int airi_unique_attack_knockback = 4;
 	//No.0 (レイ）
 	//ダメージ量
 	const static int no0_weak_atttack = 5;
@@ -169,9 +180,12 @@ private:
 	const static int no0_special_attack_ap = 8;
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
-	//対戦の制限時間 (秒)。1〜2 分での決着を想定し、サーバーの対戦の期限 (20分) より短く取る
-	const static int match_seconds = 300;
+	//対戦の制限時間 (秒)。慣れた人がスムーズに進めて 2 分、初めて遊ぶ人は 5 分ほどかかる見込みなので余裕を持たせ、サーバーの対戦の期限 (20分) より短く取る
+	const static int match_seconds = 600;
 	const static int player_min_y = 650;
+	//キャラが動ける横の範囲
+	const static int stage_min_x = 50;
+	const static int stage_max_x = 1850;
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
 	const static int player_max_ap = 500;
@@ -183,6 +197,8 @@ private:
 	const static int melee_bottom = 60;
 	//弾やナイフの当たり判定の縦の半径
 	const static int projectile_radius = 10;
+	//弾の当たり判定の横の半径
+	const static int bullet_hit_half_width = 40;
 	//アイリのナイフの狙う高さ (相手の位置からのずれ)。体の中心を狙うと少し跳ぶだけで下を抜けるので、胸の高さを狙う
 	const static int knife_aim_y = -100;
 	//着地してからジャンプと攻撃ができない時間 (ミリ秒)。跳び続けて攻撃をよけ続けることに代償を付ける (ガードはできる)
@@ -215,9 +231,12 @@ private:
 	const static int yuuka_special_top = -220;
 	const static int yuuka_special_bottom = 60;
 	//ユウカの必殺技の溜めの間に、相手を引き寄せる速さ (px/秒)、届く距離、止める距離
-	const static int yuuka_special_pull_speed = 250;
+	//引き寄せは歩き (約 470px/秒) より遅いので、早めに気付いて歩いて離れ続ければ逃げられるが、気付くのが遅いと逃げきれない (500px 離れていれば 0.7 秒ほどで歩き出せば逃げられる)
+	const static int yuuka_special_pull_speed = 320;
 	const static int yuuka_special_pull_range = 900;
 	const static int yuuka_special_pull_stop = 120;
+	//押し戻されるときの速さ (px/秒)。一瞬で飛ばすと見失うので、少しの間に滑らせる
+	const static int knockback_speed = 1000;
 	const static int airi_knife_hover_ms = 1300;
 	//最大同時存在弾丸数は120
 	const static int max_bullet = 120;
@@ -261,6 +280,7 @@ private:
 	const Texture knives_img{ Resource(U"images/game/system/knives.png") };
 	const Texture occation_img{ Resource(U"images/game/system/occation.png") };
 	const Texture torpedo_img{ Resource(U"images/game/system/torpedo.png") };
+	const Texture return_img{ Resource(U"images/common/return.png") };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	std::vector<Texture> command_img;
@@ -285,6 +305,9 @@ private:
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
+	const Rect return_shape{ 20,20,80,80 };
+	GlowBorder return_glow;
+	bool is_return_hovered = false;
 	//特殊変数////////////////////////////////////////////////////////
 	CommandRecognizer commandRecognizer;
 	//声の届き方と、技が出た・出せなかったことを画面で知らせる
@@ -307,6 +330,9 @@ private:
 	//プレイヤー関連
 	int player_number = 0;
 	int another_player_number = 1;
+	//CPU と対戦するときの部屋 (相手は CPU で、手元で動かす)。通信対戦では nullptr
+	Multiplay::LocalRoom* cpu_room = nullptr;
+	Optional<CpuBrain> cpu_brain;
 	//時間
 	int internal_timer = 0;
 	//描画用変数
@@ -369,13 +395,28 @@ private:
 	void update_error_screen();
 	void showError(const Multiplay::APIError& error);
 	void finish_game(bool won);
+	/// @brief 対戦を始める。fade_ms の間、黒から画面をフェードインしてから動き出す
+	void start_match(int fade_ms);
 	int voice_command();
 	void handle_started_moves();
 	[[nodiscard]] bool is_guard_cooling_down(int cnt, int now_time) const;
 	[[nodiscard]] bool is_landing_recovery(int cnt, int now_time) const;
 	/// @brief 走ってかがんでいて、弾やナイフが頭の上を抜けるか (走りの姿勢で頭が下がるのは玲とユウカだけで、アイリと No.0 はかがまない)
 	[[nodiscard]] bool is_ducking(int cnt) const;
-	[[nodiscard]] bool can_start_attack(int now_time) const;
+	[[nodiscard]] bool can_start_attack(int cnt, int now_time) const;
+	/// @brief 位置や状態を手元で決めるプレイヤーか (自分と CPU。通信相手は相手のクライアントが決める)
+	[[nodiscard]] bool is_local_player(int cnt) const;
+	/// @brief 手元で動かすプレイヤーからの確認イベントを送る
+	void send_action(int sender, StringView type, int target);
+	/// @brief 左右移動を始める (押している間、毎フレーム呼ぶ)。direction は 1:左, 2:右
+	void start_walk(int cnt, int direction, int now_time);
+	/// @brief 相手のユウカの必殺技の溜めで、x にいる cnt が引き寄せられているなら、引き寄せられる向き (-1:左, 1:右)
+	[[nodiscard]] Optional<double> pull_direction(int cnt, double x, int now_time) const;
+	[[nodiscard]] CpuView make_cpu_view(int now_time) const;
+	/// @brief ジャンプを始める。跳べなければ false
+	bool start_jump(int cnt, int now_time);
+	/// @brief 技を始める (action は CommandRecognizer の番号 1:弱攻撃, 2:強攻撃, 3:必殺技, 4:ガード, 5:ガード破壊, 6:特殊攻撃)。出せなければ false
+	bool start_move(int cnt, int action, int now_time);
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
 	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
@@ -398,6 +439,11 @@ private:
 	/// @brief 縦の範囲 [top, bottom] が、target_y にいるキャラの食らい判定に重なるか
 	[[nodiscard]] static bool overlaps_hurtbox(double target_y, double top, double bottom) {
 		return (target_y + hurtbox_top < bottom) && (top < target_y + hurtbox_bottom);
+	}
+	/// @brief 前回の当たり判定から今までに弾が横に通った範囲に、target_x にいるキャラが重なるか
+	/// @remark 弾は 1 フレームに 50px ほど進むのですり抜けないように、また銃口はキャラの前に離れているので、撃った直後はキャラの位置から数えて、至近距離の相手にも当たるようにする
+	[[nodiscard]] static bool bullet_passes(const struct bullet& b, double target_x) {
+		return (Min(b.swept_from_x, b.pos.x) - bullet_hit_half_width < target_x) && (target_x < Max(b.swept_from_x, b.pos.x) + bullet_hit_half_width);
 	}
 	/// @brief attacker_y にいるキャラの近接攻撃が、縦方向で target_y にいるキャラに届くか
 	[[nodiscard]] static bool melee_reaches(double attacker_y, double target_y) {

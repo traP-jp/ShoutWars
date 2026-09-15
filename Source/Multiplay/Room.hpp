@@ -1,10 +1,10 @@
 ﻿# pragma once
-# include "APIClient.hpp"
+# include "IRoom.hpp"
 
 namespace Multiplay
 {
 	/// @brief 参加した部屋との同期。構築した時点から同期を始める
-	class Room
+	class Room : public IRoom
 	{
 	public:
 
@@ -12,54 +12,54 @@ namespace Multiplay
 		Room(APIClient api, Joined joined, FilePathView logDirectory = U"");
 
 		/// @brief 毎フレーム呼ぶ
-		void update();
+		void update() override;
 
 		/// @brief 次の同期で送る。同じ type の報告は最後のものだけが送られる
-		void sendReport(StringView type, const JSON& data);
+		void sendReport(StringView type, const JSON& data) override;
 
 		/// @brief 次の同期で送る。サーバーが受け取るまで送り直す
-		void sendAction(StringView type, const JSON& data);
+		void sendAction(StringView type, const JSON& data) override;
 
 		/// @brief 部屋主のみ有効
 		void setRoomInfo(const JSON& roomInfo);
 
 		/// @brief 部屋主のみ有効。開始したかどうかは isStarted() で分かる
-		void start();
+		void start() override;
 
 		[[nodiscard]]
-		Array<Event> receiveReports();
+		Array<Event> receiveReports() override;
 
 		[[nodiscard]]
-		Array<Event> receiveActions();
+		Array<Event> receiveActions() override;
 
 		[[nodiscard]]
-		const Joined& joined() const noexcept;
+		const Joined& joined() const noexcept override;
 
 		/// @brief 参加順。先頭が部屋主
 		[[nodiscard]]
-		const Array<User>& users() const noexcept;
+		const Array<User>& users() const noexcept override;
 
 		[[nodiscard]]
-		bool isOwner() const;
+		bool isOwner() const override;
 
 		[[nodiscard]]
 		bool isStarted() const noexcept;
 
 		/// @brief 受信した最後のレコードの tick 番号
 		[[nodiscard]]
-		Optional<uint64> lastTick() const noexcept;
+		Optional<uint64> lastTick() const noexcept override;
 
 		/// @brief 前回の呼び出し以降に測った通信の往復時間 (サーバーでの保留を除く)
 		[[nodiscard]]
-		Array<Duration> receiveRTTs();
+		Array<Duration> receiveRTTs() override;
 
 		/// @brief 最後に同期を送ってからの経過時間
 		[[nodiscard]]
-		Duration timeSinceLastSync() const;
+		Duration timeSinceLastSync() const override;
 
 		/// @brief 値があれば同期は止まっている
 		[[nodiscard]]
-		const Optional<APIError>& error() const noexcept;
+		const Optional<APIError>& error() const noexcept override;
 
 	private:
 

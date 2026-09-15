@@ -171,6 +171,9 @@
     <ClCompile Include="Source\Multiplay\Room.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Multiplay\LocalRoom.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Multiplay\SimpleHTTPTransport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -205,6 +208,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\CommandFeedback.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CpuBrain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\PlayerInput.cpp">
@@ -536,6 +542,12 @@
     <ClInclude Include="Source\Multiplay\Room.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Multiplay\IRoom.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Multiplay\LocalRoom.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Multiplay\SimpleHTTPTransport.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -573,6 +585,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\CommandFeedback.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\CpuBrain.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\PlayerInput.hpp">

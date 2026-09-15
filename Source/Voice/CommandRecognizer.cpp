@@ -119,6 +119,7 @@ int32 CommandRecognizer::update(const Array<double>& phonemeScores, int32 charac
 			cooldown = options.cooldownFrames;
 			return action;
 		}
+		if (!early) ++unmatchedCount;
 	}
 	if (silentFrames >= Max(options.endSilenceFrames, options.mergeSilenceFrames)) {
 		utterance.clear();

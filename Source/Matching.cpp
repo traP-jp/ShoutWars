@@ -8,6 +8,10 @@ namespace
 {
 	//シーンの切り替えと Game の読み込みより長く取る
 	constexpr Duration StartDelay = 2s;
+	//CPU と対戦するとき、自分がキャラを確定してから、CPU が参加する・CPU がキャラを確定する・対戦を始めるまでの時間。一瞬で進むと何が起きたか分からないので間を置く
+	constexpr Duration CpuJoinDelay = 0.6s;
+	constexpr Duration CpuDecideDelay = 1.4s;
+	constexpr Duration CpuStartDelay = 2.4s;
 }
 
 Matching::Matching(const InitData& init) : IScene(init)
@@ -24,7 +28,8 @@ Matching::Matching(const InitData& init) : IScene(init)
 	setting_glow.init(setting_img);
 	return_glow.init(return_img);
 
-	is_owner = (getData().room_mode == 0);
+	vs_cpu = (getData().room_mode == 2);
+	is_owner = (getData().room_mode != 1);
 	room_ID = getData().room_ID;
 
 	//設定画面から戻ってきた場合は同じ部屋を使い続ける
@@ -33,6 +38,12 @@ Matching::Matching(const InitData& init) : IScene(init)
 
 void Matching::requestRoom()
 {
+	if (vs_cpu) {
+		getData().room_ID.clear();
+		room_ID.clear();
+		getData().room = std::make_unique<Multiplay::LocalRoom>();
+		return;
+	}
 	if (is_owner) {
 		getData().room_ID.clear();
 		room_ID.clear();
@@ -88,6 +99,23 @@ void Matching::updateRoom()
 	}
 
 	room.sendReport(U"lobby", JSON{ { U"character", character_number }, { U"decided", getData().decided_character } });
+	//CPU と対戦するときは、自分がキャラを確定したら、CPU が参加して自分と違うキャラを選んで確定する
+	if (auto* local = dynamic_cast<Multiplay::LocalRoom*>(&room); local && getData().decided_character) {
+		if (!cpu_wait.isStarted()) cpu_wait.start();
+		if (!local->hasCpu() && (CpuJoinDelay <= cpu_wait.elapsed())) {
+			Array<int> others;
+			for (int i = 0; i < 4; i++) {
+				if (selectable_characters[i] && (i != character_number)) others << i;
+			}
+			//選べるキャラが 1 体しかなければ、同じキャラ同士で戦う
+			const int cpu_character = others.isEmpty() ? character_number : others.choice();
+			local->addCpu();
+			local->sendCpuReport(U"lobby", JSON{ { U"character", cpu_character }, { U"decided", false } });
+		}
+		if (local->hasCpu() && !opponent_decided && (CpuDecideDelay <= cpu_wait.elapsed())) {
+			local->sendCpuReport(U"lobby", JSON{ { U"character", opponent_character_number }, { U"decided", true } });
+		}
+	}
 
 	for (const auto& event : room.receiveReports()) {
 		if (event.type != U"lobby") continue;
@@ -102,7 +130,7 @@ void Matching::updateRoom()
 	if (!opponent_present) opponent_decided = false;
 
 	//双方が確定したら、部屋主がキャラの組み合わせを確定させる
-	if (room.isOwner() && getData().decided_character && opponent_decided && !start_sent) {
+	if (room.isOwner() && getData().decided_character && opponent_decided && !start_sent && (!vs_cpu || (CpuStartDelay <= cpu_wait.elapsed()))) {
 		room.sendAction(U"start", JSON{ { U"owner", character_number }, { U"guest", opponent_character_number } });
 		room.start();
 		start_sent = true;
@@ -112,7 +140,8 @@ void Matching::updateRoom()
 		if (event.type != U"start") continue;
 		getData().player[0] = event.data[U"owner"].get<int32>();
 		getData().player[1] = event.data[U"guest"].get<int32>();
-		getData().start_tick = event.tick + static_cast<uint64>(StartDelay / room.joined().tickDuration);
+		//CPU 戦は読み込みを待ち合わせる相手がいないので、すぐ始める
+		getData().start_tick = event.tick + (vs_cpu ? 0 : static_cast<uint64>(StartDelay / room.joined().tickDuration));
 		gotoGame = true;
 		getData().before_scene = State::Matching;
 		changeScene(State::Game, 0.8s);
@@ -251,7 +280,7 @@ void Matching::update()
 	}
 
 	//ホバーしたらカーソルを変える
-	if (RoomID_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	if (!vs_cpu && RoomID_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 	if (isReturnImageHovered = return_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 
 	//戻る
@@ -263,7 +292,7 @@ void Matching::update()
 	}
 
 	//部屋IDをコピー
-	if (RoomID_shape.leftClicked()) {
+	if (!vs_cpu && RoomID_shape.leftClicked()) {
 		Clipboard::SetText(Unicode::FromUTF8(room_ID));
 		copied_se.playOneShot();
 		copy_mode = 1;
@@ -306,7 +335,7 @@ void Matching::update()
 		}
 		copy_pos_y = (int)(50.0 - EaseInExpo(now_rate) * 80.0);
 	}
-	remaining_time = CalcRemainingTime();
+	if (!vs_cpu) remaining_time = CalcRemainingTime();
 	//通信
 	updateRoom();
 }
@@ -359,15 +388,19 @@ void Matching::draw() const
 	}
 
 	//ルームIDを表示
-	RoomID_shape.draw(Palette::Black);
-	font(Unicode::FromUTF8(room_ID)).drawAt(960, 70, Palette::White);
+	if (!vs_cpu) {
+		RoomID_shape.draw(Palette::Black);
+		font(Unicode::FromUTF8(room_ID)).drawAt(960, 70, Palette::White);
+	}
 	//残り時間
-	timer_shape.draw(Palette::White);
-	font2(remaining_time).drawAt(960, 1000, Palette::Red);
+	if (!vs_cpu) {
+		timer_shape.draw(Palette::White);
+		font2(remaining_time).drawAt(960, 1000, Palette::Red);
+	}
 	//コピー通知
 	if (copy_mode)copied_img.drawAt(960, copy_pos_y);
 	//通信中
-	if (joining.isValid() || start_sent)connecting_img.drawAt(1500, 950);
+	if (joining.isValid() || (start_sent && !vs_cpu))connecting_img.drawAt(1500, 950);
 
 	//エラーダイアログ
 	if (error_mode)drawErrorDialog();
@@ -399,7 +432,7 @@ void Matching::drawFadeIn(double t) const
 	if (!bgm.isPlaying()) bgm.play();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, 1.0 - t });
-	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t });
+	if (!vs_cpu) connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t });
 }
 
 void Matching::updateFadeOut(double)
@@ -413,5 +446,5 @@ void Matching::drawFadeOut(double t) const
 	if (bgm.isPlaying()) bgm.stop();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, t });
-	if (gotoGame)connecting_img.drawAt(1500, 950, ColorF{ 1, t });
+	if (gotoGame && !vs_cpu)connecting_img.drawAt(1500, 950, ColorF{ 1, t });
 }

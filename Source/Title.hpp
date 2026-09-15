@@ -8,6 +8,7 @@ class Title : public App::Scene
 private:
 	//画像////////////////////////////////////////////////////////////
 	const Texture background_img{ Resource(U"images/title/background.png") };
+	const Texture button_vs_cpu_img{ Resource(U"images/title/button_vs_cpu.png") };
 	const Texture button1_img{ Resource(U"images/title/button1.png") };
 	const Texture button2_img{ Resource(U"images/title/button2.png") };
 	const Texture calc_img{ Resource(U"images/title/calc.png") };
@@ -27,13 +28,17 @@ private:
 	Font font{ FontMethod::MSDF, 72 };
 
 	//shape////////////////////////////////////////////////////////////
-	const RectF button1_shape{ 390,500,340,440 };
-	const RectF button2_shape{ 1190,500,340,440 };
+	//左から CPU と対戦、部屋を作る、部屋に入る
+	const RectF button_vs_cpu_shape{ 225,500,340,440 };
+	const RectF button1_shape{ 790,500,340,440 };
+	const RectF button2_shape{ 1355,500,340,440 };
 
 	//境界線の描画用////////////////////////////////////////////////////
+	GlowBorder button_vs_cpu_glow;
 	GlowBorder button1_glow;
 	GlowBorder button2_glow;
 	GlowBorder setting_glow;
+	bool isButtonVsCpuHovered = false;
 	bool isButton1Hovered = false;
 	bool isButton2Hovered = false;
 	bool isSettingHovered = false;
@@ -67,6 +72,10 @@ private:
 	Multiplay::APICall<Multiplay::ServerStatus> status_call;
 	Timer status_timer{ 5s };
 	String status_text = U"サーバーに接続中…";
+	//サーバーに繋がるか (繋がらなければ部屋を作る・入るボタンを押せない)
+	bool server_available = false;
+	//部屋を作る・入るボタンのグレーアウトの濃さ (0 で消える)
+	double room_buttons_gray = 1.0;
 
 	int key_num();
 	void updateServerStatus();
@@ -76,6 +85,7 @@ public:
 	Title(const InitData& init);
 
 	void update() override;
+	void updateFadeIn(double t) override;
 	void draw() const override;
 	void drawFadeIn(double t) const override;
 	void drawFadeOut(double t) const override;

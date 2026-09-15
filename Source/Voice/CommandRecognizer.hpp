@@ -62,7 +62,11 @@ public:
 	/// @return 発動した行動 (0 は無し)
 	[[nodiscard]] int32 update(const Array<double>& phonemeScores, int32 character, uint64 timeUs = Time::GetMicrosec());
 
+	/// @brief 言い終えたのに、どのコマンドにも当てはまらなかった発話の数 (続けて言い直してつながった発話も、途切れるたびに数える)
+	[[nodiscard]] size_t unmatchedUtterances() const noexcept { return unmatchedCount; }
+
 private:
+	size_t unmatchedCount = 0;
 	// あいうえお と 無音 の順の確率
 	using Frame = std::array<double, 6>;
 
