@@ -469,6 +469,7 @@ void Game::update_player() {
 		if (intent.walk) start_walk(cpu, intent.walk, now_time);
 		if (intent.jump) start_jump(cpu, now_time);
 		if (intent.move) start_move(cpu, intent.move, now_time);
+		if (intent.unmatched) commandFeedback.unmatched(cpu, false);
 	}
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
 	//位置を決めるのは本人なので、引き寄せや押し合いでは手元で動かすプレイヤー (自分と CPU) だけを動かす。通信相手は、相手のクライアントが自分で動く
@@ -532,7 +533,12 @@ void Game::update_player() {
 		if (player[i].status & 3)player[i].direction = (player[i].status & 1);
 	}
 	//技とかの起爆/////////////////////////////////////////////////////////////////////////////////
-	if (int got_voice = voice_command()) {
+	const int got_voice = voice_command();
+	if (shown_unmatched_utterances[0] < static_cast<int64>(commandRecognizer.unmatchedUtterances())) {
+		shown_unmatched_utterances[0] = static_cast<int64>(commandRecognizer.unmatchedUtterances());
+		commandFeedback.unmatched(player_number, true);
+	}
+	if (got_voice) {
 		if ((got_voice == 3) && !player[player_number].special_attack) {
 			commandFeedback.blocked(3, true);
 		}elif(!start_move(player_number, got_voice, now_time)) {
@@ -1312,6 +1318,8 @@ void Game::synchronizate_data() {
 		room.sendReport(U"PlayerInfoTimer", JSON{ { U"sent", GameTimer() }, { U"timer", Array<int32>(std::begin(me.timer), std::end(me.timer)) } });
 		room.sendReport(U"PlayerInfoAP", me.ap);
 		room.sendReport(U"PlayerInfoSpecialAttack", me.special_attack);
+		//「？」は見た目だけなので確認は要らないが、取りこぼしても次で分かるよう、回数を毎フレーム送る
+		room.sendReport(U"PlayerUnmatched", shown_unmatched_utterances[0]);
 		room.update();
 		if (room.error()) {
 			showError(*room.error());
@@ -1369,6 +1377,11 @@ void Game::synchronizate_data() {
 			}
 			if (event.type == U"PlayerInfoSpecialAttack") {
 				player[another_player_number].special_attack = (event.data).get<bool>();
+			}
+			if (event.type == U"PlayerUnmatched") {
+				const int64 count = event.data.get<int64>();
+				if (shown_unmatched_utterances[1] < count) commandFeedback.unmatched(another_player_number, false);
+				shown_unmatched_utterances[1] = count;
 			}
 		}
 		//相互確認が必要な処理
@@ -1623,8 +1636,7 @@ void Game::draw() const {
 		if (!cpu_room) draw_ping();
 		//残り時間
 		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 120, Palette::White);
-		//ヒント (#20)
-		hint_font(U"技が出にくいときは、ゆっくり丁寧に叫ぶか、キャリブレーションをやり直してみてね").drawAt(TextStyle::Outline(0.2, ColorF{ 0.0 }), 30, Vec2{ 960, 50 }, Palette::White);
+		commandFeedback.drawVoiceHint(Vec2{ 960, 50 });
 
 		draw_bullet();
 		draw_knife();
@@ -1634,6 +1646,7 @@ void Game::draw() const {
 		draw_after_images();
 		draw_effects();
 		commandFeedback.drawMoveNames(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
+		commandFeedback.drawUnmatchedMarks(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
 
 
 		if (cpu_room && !is_game_finished) return_glow.draw(is_return_hovered, return_shape.pos);

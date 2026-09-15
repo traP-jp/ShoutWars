@@ -257,7 +257,6 @@ private:
 	struct torpedo torpedo[max_torpedo];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
-	Font hint_font{ FontMethod::MSDF, 48, Typeface::Heavy };
 	//画像////////////////////////////////////////////////////////////
 	const Texture background_img{ Resource(U"images/game/system/background.png")};
 	const Texture HP_bar_flame_img{ Resource(U"images/game/system/HP_bar_flame.png") };
@@ -364,6 +363,8 @@ private:
 #endif
 	//相手から最後に届いた状態 (効果音を立ち上がりでだけ鳴らすため)
 	int received_status = 0;
+	//声がコマンドに当てはまらなかった回数のうち、「？」を出した分 (0:自分, 1:相手から届いた分)
+	int64 shown_unmatched_utterances[player_sum] = { 0 };
 	//確認イベントで確定したガード状態
 	bool void_attack[player_sum] = { false };
 	//対戦の残り時間 (秒)。開始の tick から数えるので全員で一致する
