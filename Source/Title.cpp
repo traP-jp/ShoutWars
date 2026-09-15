@@ -21,6 +21,7 @@ Title::Title(const InitData& init) : IScene(init)
 	shape_of_number[0] = Rect{ 660 + 225,140 + 641,150,80 };
 
 	//境界線の初期化
+	button_vs_cpu_glow.init(button_vs_cpu_img);
 	button1_glow.init(button1_img);
 	button2_glow.init(button2_img);
 	setting_glow.init(setting_img);
@@ -32,6 +33,7 @@ void Title::updateServerStatus()
 {
 	if (status_call.isReady()) {
 		const auto status = status_call.get();
+		server_available = static_cast<bool>(status);
 		if (status) {
 			status_text = U"{}/{} 部屋がプレイ中"_fmt(status->roomCount, status->roomLimit);
 		}elif(status.error().code == U"unavailable") {
@@ -92,10 +94,15 @@ void Title::update()
 		return;
 	}
 	if (calc_mode == 0) {
-		if (isButton1Hovered = button1_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (isButton2Hovered = button2_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		isButtonVsCpuHovered = button_vs_cpu_shape.mouseOver();
+		isButton1Hovered = server_available && button1_shape.mouseOver();
+		isButton2Hovered = server_available && button2_shape.mouseOver();
+		if (isButtonVsCpuHovered || isButton1Hovered || isButton2Hovered) Cursor::RequestStyle(CursorStyle::Hand);
 		if (isSettingHovered = setting_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (button1_shape.leftClicked() && !requireCalibration()) {
+		if (button_vs_cpu_shape.leftClicked() && !requireCalibration()) {
+			decision_sound.playOneShot();
+		}
+		if (server_available && button1_shape.leftClicked() && !requireCalibration()) {
 			getData().room_mode = 0;
 			decision_sound.playOneShot();
 			getData().before_scene = State::Title;
@@ -108,7 +115,7 @@ void Title::update()
 			changeScene(State::Calibration, 0.5s);
 		}
 		//電卓出現
-		if (button2_shape.leftClicked() && !requireCalibration()) {
+		if (server_available && button2_shape.leftClicked() && !requireCalibration()) {
 			click_sound.playOneShot();
 			calc_mode = 1;
 			animation_timer = (int)Time::GetMillisec();
@@ -236,8 +243,14 @@ int Title::key_num()
 void Title::draw() const
 {
 	background_img.draw(0, 0);
-	button1_glow.draw(isButton1Hovered, { 390, 500 });
-	button2_glow.draw(isButton2Hovered, { 1190, 500 });
+	button_vs_cpu_glow.draw(isButtonVsCpuHovered, button_vs_cpu_shape.pos);
+	button1_glow.draw(isButton1Hovered, button1_shape.pos);
+	button2_glow.draw(isButton2Hovered, button2_shape.pos);
+	//サーバーに繋がらないときは、部屋を作る・入るボタンをグレーアウトする
+	if (!server_available) {
+		button1_shape.draw(ColorF{ 0.1, 0.85 });
+		button2_shape.draw(ColorF{ 0.1, 0.85 });
+	}
 	setting_glow.drawAt(isSettingHovered, { 1852, 68 });
 	font(status_text).draw(TextStyle::Outline(0.2, ColorF{ 0.0 }), 36, Arg::bottomRight(1900, 1060), Palette::White);
 	if (calc_mode) {
