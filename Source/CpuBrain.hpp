@@ -40,6 +40,12 @@ struct CpuIntent {
 /// 初めて遊ぶ人は操作がおぼつかないので、対戦の序盤はさらにゆっくり動き、技も控えめにする
 class CpuBrain {
 public:
+	/// @brief 設定ファイルに cpuSkill が無いときの基準の強さ
+	static constexpr double DefaultBaseSkill = 0.35;
+
+	/// @param base_skill 基準の強さ (0〜1)。HP の差や相手の声の当てはまらなさで、ここから上下する
+	[[nodiscard]] explicit CpuBrain(double base_skill);
+
 	[[nodiscard]] CpuIntent update(const CpuView& view);
 
 private:
@@ -54,6 +60,7 @@ private:
 		int end_ms = 0;
 	};
 
+	double base_skill;
 	Array<CpuView> history;
 	Optional<Speech> speech;
 	Stroke stroke;
@@ -81,3 +88,6 @@ private:
 	[[nodiscard]] int fireSpeech(const CpuView& view, const CpuView& seen, double skill);
 	[[nodiscard]] int walk(const CpuView& view, const CpuView& seen, double skill);
 };
+
+/// @brief 設定ファイルの cpuSkill (0〜1) を読む。無ければ CpuBrain::DefaultBaseSkill
+[[nodiscard]] double LoadCpuBaseSkill(FilePathView configPath);

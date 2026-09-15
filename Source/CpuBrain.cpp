@@ -67,6 +67,17 @@ namespace {
 	}
 }
 
+CpuBrain::CpuBrain(double base_skill) : base_skill(base_skill) {
+	if (!InRange(base_skill, 0.0, 1.0)) throw Error{ U"The CPU base skill must be between 0 and 1, but was {}"_fmt(base_skill) };
+}
+
+double LoadCpuBaseSkill(FilePathView configPath) {
+	const JSON config = JSON::Load(configPath);
+	if (!config.isObject() || !config.contains(U"cpuSkill")) return CpuBrain::DefaultBaseSkill;
+	if (!config[U"cpuSkill"].isNumber()) throw Error{ U"cpuSkill in the config file must be a number." };
+	return config[U"cpuSkill"].get<double>();
+}
+
 CpuIntent CpuBrain::update(const CpuView& view) {
 	if (!match_start_ms) {
 		match_start_ms = view.now_ms;
@@ -95,7 +106,7 @@ CpuIntent CpuBrain::update(const CpuView& view) {
 
 double CpuBrain::skill(const CpuView& view) const {
 	const double hp_lead = static_cast<double>(view.self.hp - view.opponent.hp) / view.max_hp;
-	return Clamp(0.35 - 0.8 * hp_lead - 0.1 * frustration, 0.1, 1.0);
+	return Clamp(base_skill - 0.8 * hp_lead - 0.1 * frustration, 0.1, 1.0);
 }
 
 /// @return 対戦の始めは 0、WarmupMs 経つと 1

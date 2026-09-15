@@ -76,7 +76,8 @@ player_flag(player_sum, true)
 
 	internal_timer = (int)Time::GetMillisec();
 	cpu_room = dynamic_cast<Multiplay::LocalRoom*>(getData().room.get());
-	if (cpu_room) cpu_brain.emplace();
+	//対戦ごとに読むので、設定ファイルを書き換えれば次の対戦から変わる
+	if (cpu_room) cpu_brain.emplace(LoadCpuBaseSkill(U"config.json"));
 }
 
 CpuView Game::make_cpu_view(int now_time) const {
