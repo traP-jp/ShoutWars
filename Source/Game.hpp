@@ -22,7 +22,7 @@ struct Player {
 	int ap = 0;
 	double speed = 80.0;
 	//Playerに関する時間(0:左右移動,1:進捗(0),2:ジャンプ,3:ガード,4:弱,5:狂,6:必殺,7:進捗(1),8:進捗(3),9:進捗(4),10:進捗(5),11:進捗(6),12:ガード破壊,13:進捗(12),14:特殊攻撃,15:進捗(14))
-	int timer[16];
+	int timer[16] = {};
 
 	//Playerに関するse(0:左右移動,1:ジャンプ,2:弱,3:狂,4:必殺,5:ガード,6:ガード破壊,7:特殊攻撃)
 	bool se[8] = { false };
@@ -307,6 +307,8 @@ private:
 	//プレイヤー関連
 	int player_number = 0;
 	int another_player_number = 1;
+	//CPU と対戦するときの部屋 (相手は CPU で、手元で動かす)。通信対戦では nullptr
+	Multiplay::LocalRoom* cpu_room = nullptr;
 	//時間
 	int internal_timer = 0;
 	//描画用変数
@@ -375,7 +377,17 @@ private:
 	[[nodiscard]] bool is_landing_recovery(int cnt, int now_time) const;
 	/// @brief 走ってかがんでいて、弾やナイフが頭の上を抜けるか (走りの姿勢で頭が下がるのは玲とユウカだけで、アイリと No.0 はかがまない)
 	[[nodiscard]] bool is_ducking(int cnt) const;
-	[[nodiscard]] bool can_start_attack(int now_time) const;
+	[[nodiscard]] bool can_start_attack(int cnt, int now_time) const;
+	/// @brief 位置や状態を手元で決めるプレイヤーか (自分と CPU。通信相手は相手のクライアントが決める)
+	[[nodiscard]] bool is_local_player(int cnt) const;
+	/// @brief 手元で動かすプレイヤーからの確認イベントを送る
+	void send_action(int sender, StringView type, int target);
+	/// @brief 左右移動を始める (押している間、毎フレーム呼ぶ)。direction は 1:左, 2:右
+	void start_walk(int cnt, int direction, int now_time);
+	/// @brief ジャンプを始める。跳べなければ false
+	bool start_jump(int cnt, int now_time);
+	/// @brief 技を始める (action は CommandRecognizer の番号 1:弱攻撃, 2:強攻撃, 3:必殺技, 4:ガード, 5:ガード破壊, 6:特殊攻撃)。出せなければ false
+	bool start_move(int cnt, int action, int now_time);
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
 	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);

@@ -75,6 +75,7 @@ player_flag(player_sum, true)
 	player[1].number = getData().player[1];
 
 	internal_timer = (int)Time::GetMillisec();
+	cpu_room = dynamic_cast<Multiplay::LocalRoom*>(getData().room.get());
 }
 
 int Game::getkey() {
@@ -105,7 +106,7 @@ void Game::handle_started_moves() {
 	constexpr std::array<std::pair<int, int32>, 6> moves = { { { 16, 1 }, { 32, 2 }, { 64, 3 }, { 8, 4 }, { 128, 5 }, { 256, 6 } } };
 	for (int i = 0; i < player_sum; i++) {
 #ifndef debug_mode
-		const int started = (i == player_number) ? (player[i].status & ~previous_status[i]) : received_started_status;
+		const int started = is_local_player(i) ? (player[i].status & ~previous_status[i]) : received_started_status;
 #else
 		const int started = player[i].status & ~previous_status[i];
 #endif
@@ -131,8 +132,74 @@ bool Game::is_landing_recovery(int cnt, int now_time) const {
 	return now_time - player[cnt].landing_time < landing_recovery_ms;
 }
 
-bool Game::can_start_attack(int now_time) const {
-	return ((player[player_number].status & attack_blocking_status) == 0) && !is_landing_recovery(player_number, now_time);
+bool Game::can_start_attack(int cnt, int now_time) const {
+	return ((player[cnt].status & attack_blocking_status) == 0) && !is_landing_recovery(cnt, now_time);
+}
+
+bool Game::is_local_player(int cnt) const {
+	return (cnt == player_number) || (cpu_room && (cnt == another_player_number));
+}
+
+void Game::send_action(int sender, StringView type, int target) {
+	if (sender == player_number) {
+		getData().room->sendAction(type, target);
+	}elif(cpu_room && (sender == another_player_number)) {
+		cpu_room->sendCpuAction(type, target);
+	}
+}
+
+void Game::start_walk(int cnt, int direction, int now_time) {
+	if (player[cnt].status & move_blocking_status) return;
+	player[cnt].status |= direction;
+	player[cnt].timer[0] = now_time;
+	player[cnt].timer[1] = 0;
+	player[cnt].pos[1].x = player[cnt].pos[0].x;
+	if (player[cnt].number == 2)
+		player[cnt].walking = !player[cnt].walking;
+}
+
+bool Game::start_jump(int cnt, int now_time) {
+	if ((player[cnt].status & jump_blocking_status) || is_landing_recovery(cnt, now_time)) return false;
+	jump_se.playOneShot();
+	player[cnt].status |= 4;
+	player[cnt].timer[2] = now_time;
+	player[cnt].timer[7] = 0;
+	player[cnt].pos[1].y = player[cnt].pos[0].y;
+	return true;
+}
+
+bool Game::start_move(int cnt, int action, int now_time) {
+	Player& p = player[cnt];
+	if (action == 4) {
+		if ((p.status & guard_blocking_status) || is_guard_cooling_down(cnt, now_time)) return false;
+		guard_se.playOneShot();
+		p.se[5] = true;
+		p.status |= 8;
+		p.timer[3] = now_time;
+#ifndef debug_mode
+		send_action(cnt, U"Guard", cnt);
+#endif
+		return true;
+	}
+	//技ごとの状態のビット・開始時刻を入れるタイマー・効果音のフラグ
+	struct Move { int bit; int timer; int se; };
+	static constexpr std::array<Move, 7> moves = { { {}, { 16, 4, 2 }, { 32, 5, 3 }, { 64, 6, 4 }, {}, { 128, 12, 6 }, { 256, 14, 7 } } };
+	if ((action < 1) || (6 < action)) throw Error{ U"Unknown move: {}"_fmt(action) };
+	//特殊攻撃があるのは玲とアイリだけ (他のキャラは状態を下ろすアニメーションが無く、動けなくなる)
+	const bool has_move = (action != 6) || (p.number == 0) || (p.number == 2);
+	if (!has_move || !can_start_attack(cnt, now_time) || ((action == 3) && !p.special_attack)) return false;
+	const Move& move = moves[action];
+	if (action == 3) {
+		bom_se.playOneShot();
+		p.ap = 0;
+		p.special_attack = false;
+	}elif(action != 6) {
+		shot_se.playOneShot();
+	}
+	p.se[move.se] = true;
+	p.status |= move.bit;
+	p.timer[move.timer] = now_time;
+	return true;
 }
 
 void Game::update_error_screen() {
@@ -320,7 +387,7 @@ void Game::update_player() {
 				player_reserved_pos[i].x = player[i].pos[1].x + ((player[i].status & 1) ? -1.0 : 1.0) * player[i].speed * player[i].timer[1] / 100;
 			}
 			else {
-				if (i == player_number) {
+				if (is_local_player(i)) {
 					player[i].status ^= (player[i].status & 1) ? 1 : 2;
 				}
 				else {
@@ -348,74 +415,68 @@ void Game::update_player() {
 	//ジャンプは押した瞬間だけ受け付ける
 	const bool jump_pressed = (gotkey & 1) && !previous_jump_input;
 	previous_jump_input = (gotkey & 1);
-	if (gotkey) {
-		//左右移動
-		if ((player[player_number].status & move_blocking_status) == 0) {
-			if (gotkey & 10) {
-				player[player_number].status |= (gotkey & 2) ? 1 : 2;
-				player[player_number].timer[0] = now_time;
-				player[player_number].timer[1] = 0;
-				player[player_number].pos[1].x = player[player_number].pos[0].x;
-				if (player[player_number].number == 2)
-					player[player_number].walking = !player[player_number].walking;
-			}
-		}
-		//ジャンプ
-		if (jump_pressed && ((player[player_number].status & jump_blocking_status) == 0) && !is_landing_recovery(player_number, now_time)) {
-			jump_se.playOneShot();
-			player[player_number].status |= 4;
-			player[player_number].timer[2] = now_time;
-			player[player_number].timer[7] = 0;
-			player[player_number].pos[1].y = player[player_number].pos[0].y;
+	if (gotkey & 10) start_walk(player_number, (gotkey & 2) ? 1 : 2, now_time);
+	if (jump_pressed) start_jump(player_number, now_time);
+	//CPU の操作は、押し合いと向きを決めるより前に行う。歩きは 100 ミリ秒ごとに止まって入力で続くので、後にすると止まった瞬間に相手の方を向いてしまう
+# if defined(_DEBUG) || defined(DEBUG)
+	//CPU の頭脳ができるまでの動作確認用に、テンキーで CPU を動かす (4/6:左右, 8:ジャンプ, 1:弱, 2:強, 3:必殺, 5:ガード, 7:ガード破壊, 9:特殊)
+	if (cpu_room) {
+		const int cpu = another_player_number;
+		if (KeyNum4.pressed() || KeyNum6.pressed()) start_walk(cpu, KeyNum4.pressed() ? 1 : 2, now_time);
+		if (KeyNum8.down()) start_jump(cpu, now_time);
+		for (const auto& [key, action] : { std::pair{ KeyNum1, 1 }, { KeyNum2, 2 }, { KeyNum3, 3 }, { KeyNum5, 4 }, { KeyNum7, 5 }, { KeyNum9, 6 } }) {
+			if (key.down()) start_move(cpu, action, now_time);
 		}
 	}
+# endif
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
-	//相手のユウカの必殺技の溜めの間は、相手に引き寄せられる。位置を決めるのは本人なので、引き寄せられる側が自分で動く
-	{
-		const Player& other = player[another_player_number];
-		const int t = now_time - other.timer[6];
-		if ((other.number == 1) && (other.status & 64) && (t < 200 + yuuka_special_windup_ms)) {
-			Vec2& self = player_reserved_pos[player_number];
-			const double distance = other.pos[0].x - self.x;
-			if ((yuuka_special_pull_stop < abs(distance)) && (abs(distance) < yuuka_special_pull_range)) {
-				const double step = ((distance < 0.0) ? -1.0 : 1.0) * Min(abs(distance) - yuuka_special_pull_stop, yuuka_special_pull_speed * Scene::DeltaTime());
-				self.x += step;
-				//相手は歩き始めの位置と進み具合から位置を計算するので、引き寄せた分を歩き始めの位置にも反映する
-				player[player_number].pos[1].x += step;
-			}
-		}
-	}
-	//位置を決めるのは本人なので、押し合いでも自分のキャラだけを動かす。押した相手は、相手のクライアントが自分で押し出す
-	{
-		const double contact = 70.0;
-		//押す側がこの深さまでめり込むのを許す。接した位置で止めると、相手の画面で重ならず押せなくなる
-		const double push_depth = 20.0;
-		Vec2& self = player_reserved_pos[player_number];
-		const Vec2& other = player_reserved_pos[another_player_number];
+	//位置を決めるのは本人なので、引き寄せや押し合いでは手元で動かすプレイヤー (自分と CPU) だけを動かす。通信相手は、相手のクライアントが自分で動く
+	for (int i = 0; i < player_sum; i++) {
+		if (!is_local_player(i)) continue;
+		const int other_number = 1 - i;
+		Vec2& self = player_reserved_pos[i];
 		const double self_x = self.x;
-		//ジャンプ中はすれ違えるようにする
-		const bool jumping = ((player[player_number].status | player[another_player_number].status) & 4);
-		if ((!jumping) && (abs(self.x - other.x) < contact) && (abs(self.y - other.y) < 242.0)) {
-			//重なり中の左右の見え方は通信の遅れで食い違うため、向きは動いている側の進行方向で決める
-			const auto direction = [](const Player& p) { return (p.status & 1) ? -1.0 : ((p.status & 2) ? 1.0 : 0.0); };
-			const double self_direction = direction(player[player_number]);
-			const double other_direction = direction(player[another_player_number]);
-			const bool pushing = (0.0 < (other.x - self.x) * self_direction);
-			const bool pushed = (0.0 < (self.x - other.x) * other_direction);
-			if (pushing && pushed) {
-				//向かい合ってぶつかったら進めない
-				self.x = player[player_number].pos[0].x;
-			}elif(pushing) {
-				self.x = other.x - self_direction * Max((other.x - self.x) * self_direction, contact - push_depth);
-			}elif(pushed) {
-				self.x = other.x + other_direction * contact;
-			}elif((self_direction == 0.0) && (other_direction == 0.0) && (player_number == 1)) {
-				//止まったまま重なったら片方だけが離れる。両方が動くと、見え方の食い違いで同じ向きに逃げ続ける
-				self.x = other.x + ((self.x < other.x) ? -contact : contact);
+		//相手のユウカの必殺技の溜めの間は、相手に引き寄せられる
+		{
+			const Player& other = player[other_number];
+			const int t = now_time - other.timer[6];
+			if ((other.number == 1) && (other.status & 64) && (t < 200 + yuuka_special_windup_ms)) {
+				const double distance = other.pos[0].x - self.x;
+				if ((yuuka_special_pull_stop < abs(distance)) && (abs(distance) < yuuka_special_pull_range)) {
+					self.x += ((distance < 0.0) ? -1.0 : 1.0) * Min(abs(distance) - yuuka_special_pull_stop, yuuka_special_pull_speed * Scene::DeltaTime());
+				}
 			}
 		}
-		//相手は歩き始めの位置と進み具合から位置を計算するので、押し合いで動かした分を歩き始めの位置にも反映する
-		player[player_number].pos[1].x += (self.x - self_x);
+		//押し合い
+		{
+			const double contact = 70.0;
+			//押す側がこの深さまでめり込むのを許す。接した位置で止めると、相手の画面で重ならず押せなくなる
+			const double push_depth = 20.0;
+			const Vec2& other = player_reserved_pos[other_number];
+			//ジャンプ中はすれ違えるようにする
+			const bool jumping = ((player[i].status | player[other_number].status) & 4);
+			if ((!jumping) && (abs(self.x - other.x) < contact) && (abs(self.y - other.y) < 242.0)) {
+				//重なり中の左右の見え方は通信の遅れで食い違うため、向きは動いている側の進行方向で決める
+				const auto direction = [](const Player& p) { return (p.status & 1) ? -1.0 : ((p.status & 2) ? 1.0 : 0.0); };
+				const double self_direction = direction(player[i]);
+				const double other_direction = direction(player[other_number]);
+				const bool pushing = (0.0 < (other.x - self.x) * self_direction);
+				const bool pushed = (0.0 < (self.x - other.x) * other_direction);
+				if (pushing && pushed) {
+					//向かい合ってぶつかったら進めない
+					self.x = player[i].pos[0].x;
+				}elif(pushing) {
+					self.x = other.x - self_direction * Max((other.x - self.x) * self_direction, contact - push_depth);
+				}elif(pushed) {
+					self.x = other.x + other_direction * contact;
+				}elif((self_direction == 0.0) && (other_direction == 0.0) && (i == 1)) {
+					//止まったまま重なったら片方だけが離れる。両方が動くと、見え方の食い違いで同じ向きに逃げ続ける
+					self.x = other.x + ((self.x < other.x) ? -contact : contact);
+				}
+			}
+		}
+		//相手は歩き始めの位置と進み具合から位置を計算するので、動かした分を歩き始めの位置にも反映する
+		player[i].pos[1].x += (self.x - self_x);
 	}
 
 	//プレイヤーの向き
@@ -432,80 +493,11 @@ void Game::update_player() {
 	}
 	//技とかの起爆/////////////////////////////////////////////////////////////////////////////////
 	if (int got_voice = voice_command()) {
-		//弱攻撃
-		if (got_voice == 1) {
-			if (can_start_attack(now_time)) {
-				shot_se.playOneShot();
-				player[player_number].se[2] = true;
-				player[player_number].status |= 16;
-				player[player_number].timer[4] = now_time;
-			}
-			else {
-				commandFeedback.blocked(1);
-			}
-			//狂攻撃
-		}elif(got_voice == 2) {
-			if (can_start_attack(now_time)) {
-				shot_se.playOneShot();
-				player[player_number].se[3] = true;
-				player[player_number].status |= 32;
-				player[player_number].timer[5] = now_time;
-			}
-			else {
-				commandFeedback.blocked(2);
-			}
-			//必殺技
-		}elif((got_voice == 3) && (player[player_number].special_attack)) {
-			if (can_start_attack(now_time)) {
-				bom_se.playOneShot();
-				player[player_number].se[4] = true;
-				player[player_number].status |= 64;
-				player[player_number].timer[6] = now_time;
-				player[player_number].ap = 0;
-				player[player_number].special_attack = false;
-			}
-			else {
-				commandFeedback.blocked(3);
-			}
-		}elif(got_voice == 3) {
+		if ((got_voice == 3) && !player[player_number].special_attack) {
 			commandFeedback.blocked(3, true);
-			//ガード
-		}elif(got_voice == 4) {
-			if (((player[player_number].status & guard_blocking_status) == 0) && !is_guard_cooling_down(player_number, now_time)) {
-				guard_se.playOneShot();
-				player[player_number].se[5] = true;
-				player[player_number].status |= 8;
-				player[player_number].timer[3] = now_time;
-#ifndef debug_mode
-				getData().room->sendAction(U"Guard", player_number);
-#endif
-			}
-			else {
-				commandFeedback.blocked(4);
-			}
-			//ガード破壊
-		}elif(got_voice == 5) {
-			if (can_start_attack(now_time)) {
-				shot_se.playOneShot();
-				player[player_number].se[6] = true;
-				player[player_number].status |= 128;
-				player[player_number].timer[12] = now_time;
-			}
-			else {
-				commandFeedback.blocked(5);
-			}
-			//特殊攻撃
-		}elif(got_voice == 6) {
-			if (can_start_attack(now_time)) {
-				player[player_number].se[7] = true;
-				player[player_number].status |= 256;
-				player[player_number].timer[14] = now_time;
-			}
-			else {
-				commandFeedback.blocked(6);
-			}
+		}elif(!start_move(player_number, got_voice, now_time)) {
+			commandFeedback.blocked(got_voice);
 		}
-
 	}
 
 	//技とかの処理/////////////////////////////////////////////////////////////////////////////////
@@ -540,8 +532,7 @@ void Game::update_player() {
 								player[i].guard_broken_time = now_time;
 							}
 #ifndef debug_mode
-							if (cnt == player_number)
-								getData().room->sendAction(U"DestroyGuard", i);
+							send_action(cnt, U"DestroyGuard", i);
 #endif
 							player[i].hp[1] -= destroy_guard_damage;
 							player[cnt].ap += destroy_guard_ap;
@@ -557,8 +548,7 @@ void Game::update_player() {
 				player[cnt].status ^= 8;
 #ifndef debug_mode
 				//相手の時計で先に解除されないよう、ガードした本人だけが送る
-				if (cnt == player_number)
-					getData().room->sendAction(U"VoidGuard", cnt);
+				send_action(cnt, U"VoidGuard", cnt);
 #endif
 			}
 		}
@@ -651,8 +641,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					}
 					else {
 #ifndef debug_mode
-						if (cnt == player_number)
-							getData().room->sendAction(U"StrongAttackBomb", another_player_number);
+						send_action(cnt, U"StrongAttackBomb", another_player_number);
 #endif
 						player[another_player_number].hp[1] -= rei_strong_attack_bomb;
 						player[cnt].ap += rei_strong_attack_ap;
@@ -749,8 +738,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						}
 						else {
 #ifndef debug_mode
-							if (cnt == player_number)
-								getData().room->sendAction(U"WeakAttack", j);
+							send_action(cnt, U"WeakAttack", j);
 #endif
 							player[j].hp[1] -= rei_weak_atttack;
 							player[cnt].ap += rei_weak_atttack_ap;
@@ -766,8 +754,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					}
 					else {
 #ifndef debug_mode
-						if (cnt == player_number)
-							getData().room->sendAction(U"StrongAttack", j);
+						send_action(cnt, U"StrongAttack", j);
 #endif
 						player[j].hp[1] -= rei_strong_attack;
 						player[cnt].ap += rei_strong_attack_ap;
@@ -795,8 +782,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					}
 					else {
 #ifndef debug_mode
-						if (cnt == player_number)
-							getData().room->sendAction(U"SpecialAttack", j);
+						send_action(cnt, U"SpecialAttack", j);
 #endif
 						player[j].hp[1] -= rei_special_attack;
 						player[j].ap += rei_special_attack_ap;
@@ -841,8 +827,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				}
 				else {
 #ifndef debug_mode
-					if (cnt == player_number)
-						getData().room->sendAction(U"UniqueAttack", j);
+					send_action(cnt, U"UniqueAttack", j);
 #endif
 					player[j].hp[1] -= rei_uniqe_attack;
 					player[cnt].ap += rei_uniqe_attack_ap;
@@ -924,8 +909,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						}
 						else {
 #ifndef debug_mode
-							if (cnt == player_number)
-								getData().room->sendAction(U"WeakAttack", i);
+							send_action(cnt, U"WeakAttack", i);
 #endif
 							player[i].hp[1] -= yuuka_weak_atttack;
 							player[cnt].ap += yuuka_weak_atttack_ap;
@@ -962,8 +946,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							}
 							else {
 #ifndef debug_mode
-								if (cnt == player_number)
-									getData().room->sendAction(U"StrongAttack", i);
+								send_action(cnt, U"StrongAttack", i);
 #endif
 								player[i].hp[1] -= yuuka_strong_attack;
 								player[cnt].ap += yuuka_strong_attack_ap;
@@ -981,8 +964,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							}
 							else {
 #ifndef debug_mode
-								if (cnt == player_number)
-									getData().room->sendAction(U"SpecialAttack", i);
+								send_action(cnt, U"SpecialAttack", i);
 #endif
 								player[i].hp[1] -= yuuka_special_attack;
 								player[i].ap += yuuka_special_attack_ap;
@@ -1015,8 +997,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						//弱
 						if (bullet[i].mode == 0) {
 #ifndef debug_mode
-							if (cnt == player_number)
-								getData().room->sendAction(U"WeakAttack", j);
+							send_action(cnt, U"WeakAttack", j);
 #endif
 							player[j].hp[1] -= airi_weak_atttack;
 							player[cnt].ap += airi_weak_atttack_ap;
@@ -1024,8 +1005,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						}
 						else {
 #ifndef debug_mode
-							if (cnt == player_number)
-								getData().room->sendAction(U"UniqueAttack", j);
+							send_action(cnt, U"UniqueAttack", j);
 #endif
 							player[j].hp[1] -= airi_uniqe_attack;
 							player[cnt].ap += airi_uniqe_attack_ap;
@@ -1082,8 +1062,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				}
 				else {
 #ifndef debug_mode
-					if (cnt == player_number)
-						getData().room->sendAction(U"SpecialAttack", target);
+					send_action(cnt, U"SpecialAttack", target);
 #endif
 					player[target].hp[1] -= airi_special_attack;
 					player[target].ap += airi_special_attack_ap;
@@ -1116,8 +1095,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						}
 						else {
 #ifndef debug_mode
-							if (cnt == player_number)
-								getData().room->sendAction(U"StrongAttack", i);
+							send_action(cnt, U"StrongAttack", i);
 #endif
 							player[i].hp[1] -= airi_strong_attack;
 							player[cnt].ap += airi_strong_attack_ap;
@@ -1218,8 +1196,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						}
 						else {
 #ifndef debug_mode
-							if (cnt == player_number)
-								getData().room->sendAction(U"WeakAttack", i);
+							send_action(cnt, U"WeakAttack", i);
 #endif
 							player[i].hp[1] -= no0_weak_atttack;
 							player[cnt].ap += no0_weak_atttack_ap;
@@ -1249,8 +1226,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 						}
 						else {
 #ifndef debug_mode
-							if (cnt == player_number)
-								getData().room->sendAction(U"StrongAttack", i);
+							send_action(cnt, U"StrongAttack", i);
 #endif
 							player[i].hp[1] -= no0_strong_attack;
 							player[cnt].ap += no0_strong_attack_ap;
