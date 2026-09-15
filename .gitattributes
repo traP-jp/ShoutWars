@@ -176,3 +176,12 @@ Inflate.service.js      linguist-vendored
 Inflate.wasm            linguist-vendored
 OpenSiv3D/**            linguist-vendored
 resources/engine/**     linguist-vendored
+
+# Machine Learning Models
+*.bin                   filter=lfs diff=lfs merge=lfs -text
+
+# Third Party
+ThirdParty/**                             linguist-vendored
+ThirdParty/rnnoise/src/rnnoise_data.c     linguist-generated
+ThirdParty/rnnoise/src/rnnoise_data.h     linguist-generated
+ThirdParty/rnnoise/src/rnnoise_tables.c   linguist-generated
