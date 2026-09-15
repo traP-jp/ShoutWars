@@ -219,15 +219,22 @@ void Matching::update()
 				character_changed = true;
 			}
 		}
-		// キーボード入力でも選択できるように
-		if (KeyLeft.down()) {
+		// キーボードやコントローラーでも選択できるように
+		const Directions directions = PressedDirections();
+		const bool confirm = KeyEnter.pressed() || ControllerFaceButtonPressed();
+		const bool left_down = directions.left && !previous_directions.left;
+		const bool right_down = directions.right && !previous_directions.right;
+		const bool confirm_down = confirm && !previous_confirm;
+		previous_directions = directions;
+		previous_confirm = confirm;
+		if (left_down) {
 			click_sound.playOneShot();
 			do {
 				character_number = (character_number + 3) % 4;
 			} while (!selectable_characters[character_number]);
 			character_changed = true;
 		}
-		if (KeyRight.down()) {
+		if (right_down) {
 			click_sound.playOneShot();
 			do {
 				character_number = (character_number + 1) % 4;
@@ -236,7 +243,7 @@ void Matching::update()
 		}
 
 		//キャラ確定
-		if (decide_button_shape.leftClicked() || KeyEnter.down()) {
+		if (decide_button_shape.leftClicked() || confirm_down) {
 			decision_sound.playOneShot();
 			getData().decided_character = true;
 		}

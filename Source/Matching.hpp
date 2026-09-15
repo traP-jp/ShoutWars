@@ -1,6 +1,7 @@
 ﻿# pragma once
 # include "common.hpp"
 # include "GlowBorder.hpp"
+# include "PlayerInput.hpp"
 
 class Matching : public App::Scene
 {
@@ -70,6 +71,9 @@ class Matching : public App::Scene
 	int character_number = 1;
 	int opponent_character_number = 0;
 	bool character_changed = false;
+	//前のフレームのコントローラーとキーボードの入力 (押した瞬間だけ選択を動かすため)
+	Directions previous_directions;
+	bool previous_confirm = false;
 	double decide_button_size = 1.0;
 	bool opponent_decided = false;
 	//相手が部屋にいる

@@ -2,6 +2,7 @@
 # include "common.hpp"
 # include "Voice/CommandRecognizer.hpp"
 # include "CommandFeedback.hpp"
+# include "PlayerInput.hpp"
 # include "VoiceMonitor.hpp"
 #include <vector>
 #include <cmath>

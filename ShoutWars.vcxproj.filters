@@ -207,6 +207,9 @@
     <ClCompile Include="Source\CommandFeedback.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\PlayerInput.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Source\GlowBorder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -567,6 +570,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\CommandFeedback.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\PlayerInput.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\GlowBorder.hpp">

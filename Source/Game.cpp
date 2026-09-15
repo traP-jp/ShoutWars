@@ -78,17 +78,10 @@ player_flag(player_sum, true)
 }
 
 int Game::getkey() {
-	int retkey = 0;
-	retkey |= 1 * KeyW.pressed();
-	retkey |= 2 * KeyA.pressed();
-	retkey |= 4 * KeyS.pressed();
-	retkey |= 8 * KeyD.pressed();
-
-	retkey |= 1 * KeyUp.pressed();
-	retkey |= 2 * KeyLeft.pressed();
-	retkey |= 4 * KeyDown.pressed();
-	retkey |= 8 * KeyRight.pressed();
-	return retkey;
+	const Directions directions = PressedDirections();
+	//コントローラーでは右側のボタンでもジャンプできる
+	const bool jump = directions.up || ControllerFaceButtonPressed();
+	return (jump ? 1 : 0) | (directions.left ? 2 : 0) | (directions.down ? 4 : 0) | (directions.right ? 8 : 0);
 }
 
 int Game::voice_command() {
