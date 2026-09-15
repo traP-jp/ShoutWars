@@ -404,6 +404,8 @@ void Matching::draw() const
 	if (!vs_cpu) {
 		RoomID_shape.draw(Palette::Black);
 		font(Unicode::FromUTF8(room_ID)).drawAt(960, 70, Palette::White);
+		//押せば部屋 ID をコピーできることを、マウスを乗せている間だけ真下に出す
+		if (RoomID_shape.mouseOver()) font2(U"クリックでコピー").drawAt(28, Vec2{ 960, RoomID_shape.bottomY() + 24 }, Palette::White);
 	}
 	//残り時間
 	if (!vs_cpu) {
