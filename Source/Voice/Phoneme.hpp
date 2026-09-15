@@ -1,6 +1,7 @@
 ﻿# pragma once
 
 # include "MFCCAnalyzer.hpp"
+# include "NoiseSuppressor.hpp"
 # include <Siv3D.hpp>
 
 enum class PhonemeDistance {
@@ -19,6 +20,10 @@ struct PhonemeOptions {
 	size_t silentPhonemes = 2;
 	/// @brief 入力感度の閾値よりこの dB 以上大きいフレームは、母音でない音素に分類しない
 	double silenceMarginDb = 10.0;
+	/// @brief マイクの音声の雑音を抑制する RNNoise の重み (空なら抑制しない)
+	FilePath noiseSuppressionWeights;
+	/// @brief 雑音を抑制した音声に、抑制前の音声を混ぜる割合
+	double noiseSuppressionDryMix = 0.1;
 };
 
 class Phoneme {
@@ -36,6 +41,7 @@ public:
 	[[nodiscard]] explicit Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t n, uint64 mfccHistoryLife = 2'200'000uLL, const PhonemeOptions& options = {});
 
 	/// @brief 録音を開始する (録音中の場合は再開する)
+	/// @remark 雑音を抑制するときは 48 kHz で録音する。48 kHz で録音できないマイクでは抑制しない
 	/// @return 録音の開始に成功したかどうか
 	bool start();
 
@@ -54,6 +60,9 @@ public:
 	/// @param timeUs 現在時刻 (マイクロ秒)
 	/// @return それぞれの音素らしさ (大きいほどその音素らしい)
 	[[nodiscard]] Array<double> estimate(Array<float> samples, uint32 sampleRate, double rootMeanSquare, uint64 timeUs);
+
+	/// @brief 推定に使う直近 20 ms の音量 (雑音を抑制しているときは抑制後の音量)
+	[[nodiscard]] double rootMeanSquare() const;
 
 	/// @brief 登録していない音素があるかを調べる
 	bool isMFCCUnset() const;
@@ -87,8 +96,12 @@ protected:
 	std::map<uint64, Array<double>> spectrumHistory;
 	std::map<uint64, MFCC> mfccHistory;
 	Array<double> featureScale;
+	std::unique_ptr<NoiseSuppressor> noiseSuppressor;
+	size_t micReadPos = 0;
+	Array<float> suppressedSamples;
 
 	[[nodiscard]] Array<float> latestSamples(FFTSampleLength frames) const;
+	void suppressNewSamples();
 	[[nodiscard]] Array<double> silenceScores() const;
 	[[nodiscard]] Array<double> averageScores(const MFCC& mfcc) const;
 	[[nodiscard]] Array<double> nearestNeighborScores(const MFCC& mfcc, bool loud) const;

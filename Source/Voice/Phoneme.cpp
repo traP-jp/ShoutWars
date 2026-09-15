@@ -30,7 +30,18 @@ Phoneme::Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t 
 }
 
 bool Phoneme::start() {
-	mic = Microphone{ StartImmediately::Yes };
+	noiseSuppressor.reset();
+	suppressedSamples.clear();
+	mic = options.noiseSuppressionWeights
+		? Microphone{ unspecified, NoiseSuppressor::SampleRate, SecondsF{ 1.0 }, Loop::Yes, StartImmediately::Yes }
+		: Microphone{};
+	if (mic.isRecording()) {
+		noiseSuppressor = make_unique<NoiseSuppressor>(Blob{ options.noiseSuppressionWeights }, options.noiseSuppressionDryMix);
+		micReadPos = mic.posSample();
+	}
+	else {
+		mic = Microphone{ StartImmediately::Yes };
+	}
 	spectrumHistory.clear();
 	mfccHistory.clear();
 	return mic.isRecording();
@@ -42,7 +53,16 @@ void Phoneme::stop() {
 
 Array<double> Phoneme::estimate(FFTSampleLength frames) {
 	if (!mic.isRecording()) return silenceScores();
-	return estimate(latestSamples(frames), mic.getSampleRate(), mic.rootMeanSquare(), Time::GetMicrosec());
+	if (noiseSuppressor) suppressNewSamples();
+	return estimate(latestSamples(frames), mic.getSampleRate(), rootMeanSquare(), Time::GetMicrosec());
+}
+
+double Phoneme::rootMeanSquare() const {
+	if (!noiseSuppressor) return mic.rootMeanSquare();
+	const size_t length = Min<size_t>(NoiseSuppressor::SampleRate / 50, suppressedSamples.size());
+	double sum = 0.0;
+	for (size_t i : step(length)) sum += Math::Square(static_cast<double>(suppressedSamples[suppressedSamples.size() - length + i]));
+	return length ? Math::Sqrt(sum / length) : 0.0;
 }
 
 Array<double> Phoneme::estimate(Array<float> samples, uint32 sampleRate, double rootMeanSquare, uint64 timeUs) {
@@ -72,6 +92,18 @@ void Phoneme::setMFCC(uint64 id, uint64 timeUs, uint64 durationUs) {
 	updateFeatures();
 }
 
+void Phoneme::suppressNewSamples() {
+	const auto& buffer = mic.getBuffer();
+	const size_t bufferLength = mic.getBufferLength();
+	const size_t writePos = mic.posSample();
+	Array<float> fresh((writePos + bufferLength - micReadPos) % bufferLength);
+	for (size_t i : step(fresh.size())) fresh[i] = buffer[(micReadPos + i) % bufferLength].left;
+	micReadPos = writePos;
+	suppressedSamples.append(noiseSuppressor->process(fresh));
+	constexpr size_t KeptSamples = 8192;
+	if (suppressedSamples.size() > KeptSamples) suppressedSamples.erase(suppressedSamples.begin(), suppressedSamples.end() - KeptSamples);
+}
+
 MFCC Phoneme::averageMFCC(size_t id) const {
 	MFCC average{ Array<double>(options.mfcc.order, 0.0) };
 	for (const auto& mfcc : registered[id]) {
@@ -94,6 +126,11 @@ const map<uint64, MFCC>& Phoneme::getMFCCHistory() const {
 
 Array<float> Phoneme::latestSamples(FFTSampleLength frames) const {
 	Array<float> f(256uLL << FromEnum(frames), 0.0f);
+	if (noiseSuppressor) {
+		const size_t length = Min(f.size(), suppressedSamples.size());
+		std::copy(suppressedSamples.end() - length, suppressedSamples.end(), f.end() - length);
+		return f;
+	}
 	const auto& buffer = mic.getBuffer();
 	const size_t writePos = mic.posSample();
 	for (size_t pos : step(f.size())) {

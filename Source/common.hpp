@@ -37,7 +37,7 @@ struct GameData
 	int player[2] = { 0,3 };
 
 	// 音素認識用 (音素: [0:無, 1:息, 2:ア, 3:あ, 4:イ, 5:い, 6:ウ, 7:う, 8:エ, 9:え, 10:オ, 11:お])
-	Phoneme phoneme{ U"config.json", 0.01, 12 };
+	Phoneme phoneme{ U"config.json", 0.01, 12, 2'200'000uLL, PhonemeOptions{ .noiseSuppressionWeights = Resource(U"models/rnnoise.bin") } };
 	
 	//通信用
 	ServerConfig server = LoadServerConfig(U"config.json", GameVersion);

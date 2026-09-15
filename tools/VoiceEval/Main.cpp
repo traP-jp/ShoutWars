@@ -3,6 +3,7 @@
 # include <random>
 # include <ranges>
 # include "Voice/CommandRecognizer.hpp"
+# include "Voice/NoiseSuppressor.hpp"
 # include "Voice/Phoneme.hpp"
 
 SIV3D_SET(EngineOption::Renderer::Headless);
@@ -13,6 +14,7 @@ SIV3D_SET(EngineOption::Renderer::Headless);
 // 単語判定: end, early, earlythr, merge, transition, cooldown, minvoiced, minvowel, mingap, filler, thr, ambiguity, longer (CommandRecognizerOptions)
 // conditions=clean,snr10 (評価する条件), mode=dump (フレームごとのスコアを frames.csv に書き出す)
 // margin (入力感度の閾値より何 dB 大きければ無音に分類しないか)
+// denoise (RNNoise の重みのパス。指定すると混ぜた音声を雑音抑制してから解析する), drymix (抑制前の音声を混ぜる割合)
 // gate (入力感度を環境音の音量の何倍にするか), silence / vowel (無音 / 母音を何秒登録するか), distance=cosine|euclidean
 
 namespace {
@@ -22,6 +24,12 @@ namespace {
 	constexpr size_t RMSLength = SampleRate / 50;
 	constexpr uint64 ClockOffsetUs = 10'000'000;
 	constexpr double DetectionGraceSeconds = 0.8;
+
+	struct Denoising {
+		Blob weights;
+		double dryMix = 0.1;
+	};
+	Optional<Denoising> StreamDenoising;
 
 	// ゲームのキャリブレーション画面の並び: [0:無, 1:息, 2:あ(高), 3:あ(低), ...]
 	constexpr std::array<char32, 12> PhonemeVowels = { U' ', U' ', U'A', U'A', U'I', U'I', U'U', U'U', U'E', U'E', U'O', U'O' };
@@ -153,6 +161,12 @@ namespace {
 
 		Array<float> build() {
 			for (auto& sample : samples) sample = Clamp(sample, -1.0f, 1.0f);
+			if (StreamDenoising) {
+				NoiseSuppressor suppressor{ StreamDenoising->weights, StreamDenoising->dryMix };
+				auto suppressed = suppressor.process(samples);
+				suppressed.resize(samples.size(), 0.0f);
+				return suppressed;
+			}
 			return std::move(samples);
 		}
 
@@ -436,6 +450,15 @@ namespace {
 			else if (key == U"order") options.mfcc.order = Parse<size_t>(value);
 			else if (key == U"preemph") options.mfcc.preEmphasisCoefficient = Parse<double>(value);
 			else if (key == U"margin") options.silenceMarginDb = Parse<double>(value);
+			else if (key == U"denoise") {
+				if (!StreamDenoising) StreamDenoising.emplace();
+				StreamDenoising->weights = Blob{ value };
+				if (StreamDenoising->weights.isEmpty()) throw Error{ U"RNNoise の重みを読めません: {}"_fmt(value) };
+			}
+			else if (key == U"drymix") {
+				if (!StreamDenoising) throw Error{ U"drymix は denoise より後に指定してください" };
+				StreamDenoising->dryMix = Parse<double>(value);
+			}
 			else if (key == U"gate") calibration.gateScale = Parse<double>(value);
 			else if (key == U"silence") calibration.silenceSeconds = Parse<double>(value);
 			else if (key == U"vowel") calibration.vowelSeconds = Parse<double>(value);

@@ -105,10 +105,10 @@ void Calibration::draw() const {
 
 	// 入力感度
 	double rootThreshold = sqrt(phoneme.volumeThreshold);
-	RectF{ Arg::bottomRight(1700.0, 940.0), 80.0, sqrt(phoneme.mic.rootMeanSquare()) * 360.0 }.draw(Palette::White);
+	RectF{ Arg::bottomRight(1700.0, 940.0), 80.0, sqrt(phoneme.rootMeanSquare()) * 360.0 }.draw(Palette::White);
 	RectF{ Arg::rightCenter(1700.0, 940.0 - rootThreshold * 360.0), 80.0, 4.0 }.draw(Palette::Skyblue);
 	RectF{ Arg::bottomRight(1700.0, 940.0), 80.0, 360.0 }.drawFrame(
-		4, phoneme.mic.rootMeanSquare() < phoneme.volumeThreshold ? Palette::Orange : Palette::Lime
+		4, phoneme.rootMeanSquare() < phoneme.volumeThreshold ? Palette::Orange : Palette::Lime
 	);
 	SimpleGUI::VerticalSlider(rootThreshold, 0.0, 1.0, Vec2{ 1740.0, 565.0 }, 390.0);
 	phoneme.volumeThreshold = pow(rootThreshold, 2.0);
