@@ -100,7 +100,10 @@ void Title::update()
 		if (isButtonVsCpuHovered || isButton1Hovered || isButton2Hovered) Cursor::RequestStyle(CursorStyle::Hand);
 		if (isSettingHovered = setting_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (button_vs_cpu_shape.leftClicked() && !requireCalibration()) {
+			getData().room_mode = 2;
 			decision_sound.playOneShot();
+			getData().before_scene = State::Title;
+			changeScene(State::Matching, 0.8s);
 		}
 		if (server_available && button1_shape.leftClicked() && !requireCalibration()) {
 			getData().room_mode = 0;

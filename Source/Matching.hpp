@@ -81,6 +81,8 @@ class Matching : public App::Scene
 	//部屋に関して
 	std::string room_ID;
 	bool is_owner = false;
+	//CPU と対戦する (部屋 ID や部屋の制限時間は無い)
+	bool vs_cpu = false;
 	Multiplay::APICall<Multiplay::Joined> joining;
 	bool start_sent = false;
 

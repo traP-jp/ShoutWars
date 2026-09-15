@@ -24,7 +24,8 @@ Matching::Matching(const InitData& init) : IScene(init)
 	setting_glow.init(setting_img);
 	return_glow.init(return_img);
 
-	is_owner = (getData().room_mode == 0);
+	vs_cpu = (getData().room_mode == 2);
+	is_owner = (getData().room_mode != 1);
 	room_ID = getData().room_ID;
 
 	//設定画面から戻ってきた場合は同じ部屋を使い続ける
@@ -33,6 +34,12 @@ Matching::Matching(const InitData& init) : IScene(init)
 
 void Matching::requestRoom()
 {
+	if (vs_cpu) {
+		getData().room_ID.clear();
+		room_ID.clear();
+		getData().room = std::make_unique<Multiplay::LocalRoom>();
+		return;
+	}
 	if (is_owner) {
 		getData().room_ID.clear();
 		room_ID.clear();
@@ -88,6 +95,17 @@ void Matching::updateRoom()
 	}
 
 	room.sendReport(U"lobby", JSON{ { U"character", character_number }, { U"decided", getData().decided_character } });
+	//CPU と対戦するときは、自分がキャラを確定したら、CPU が参加して自分と違うキャラを選んで確定する
+	if (auto* local = dynamic_cast<Multiplay::LocalRoom*>(&room); local && getData().decided_character && !local->hasCpu()) {
+		Array<int> others;
+		for (int i = 0; i < 4; i++) {
+			if (selectable_characters[i] && (i != character_number)) others << i;
+		}
+		//選べるキャラが 1 体しかなければ、同じキャラ同士で戦う
+		const int cpu_character = others.isEmpty() ? character_number : others.choice();
+		local->addCpu();
+		local->sendCpuReport(U"lobby", JSON{ { U"character", cpu_character }, { U"decided", true } });
+	}
 
 	for (const auto& event : room.receiveReports()) {
 		if (event.type != U"lobby") continue;
@@ -251,7 +269,7 @@ void Matching::update()
 	}
 
 	//ホバーしたらカーソルを変える
-	if (RoomID_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	if (!vs_cpu && RoomID_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 	if (isReturnImageHovered = return_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 
 	//戻る
@@ -263,7 +281,7 @@ void Matching::update()
 	}
 
 	//部屋IDをコピー
-	if (RoomID_shape.leftClicked()) {
+	if (!vs_cpu && RoomID_shape.leftClicked()) {
 		Clipboard::SetText(Unicode::FromUTF8(room_ID));
 		copied_se.playOneShot();
 		copy_mode = 1;
@@ -306,7 +324,7 @@ void Matching::update()
 		}
 		copy_pos_y = (int)(50.0 - EaseInExpo(now_rate) * 80.0);
 	}
-	remaining_time = CalcRemainingTime();
+	if (!vs_cpu) remaining_time = CalcRemainingTime();
 	//通信
 	updateRoom();
 }
@@ -359,11 +377,15 @@ void Matching::draw() const
 	}
 
 	//ルームIDを表示
-	RoomID_shape.draw(Palette::Black);
-	font(Unicode::FromUTF8(room_ID)).drawAt(960, 70, Palette::White);
+	if (!vs_cpu) {
+		RoomID_shape.draw(Palette::Black);
+		font(Unicode::FromUTF8(room_ID)).drawAt(960, 70, Palette::White);
+	}
 	//残り時間
-	timer_shape.draw(Palette::White);
-	font2(remaining_time).drawAt(960, 1000, Palette::Red);
+	if (!vs_cpu) {
+		timer_shape.draw(Palette::White);
+		font2(remaining_time).drawAt(960, 1000, Palette::Red);
+	}
 	//コピー通知
 	if (copy_mode)copied_img.drawAt(960, copy_pos_y);
 	//通信中

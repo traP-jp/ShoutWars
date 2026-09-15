@@ -2,6 +2,7 @@
 # include <Siv3D.hpp>
 # include "Voice/Phoneme.hpp"
 # include "Multiplay/Room.hpp"
+# include "Multiplay/LocalRoom.hpp"
 # include "ServerConfig.hpp"
 #define elif else if
 #define M_PI 3.14159265358979323846
@@ -27,7 +28,7 @@ struct GameData
 	bool decided_character = false;
 	//Config画面に遷移する前のシーン
 	State before_scene = State::Title;
-	//0:ルーム作成,1:ルーム参加
+	//0:ルーム作成,1:ルーム参加,2:CPU と対戦
 	int room_mode = 0;
 	//ID
 	std::string room_ID;
@@ -41,7 +42,7 @@ struct GameData
 	
 	//通信用
 	ServerConfig server = LoadServerConfig(U"config.json", GameVersion);
-	std::unique_ptr<Multiplay::Room> room;
+	std::unique_ptr<Multiplay::IRoom> room;
 	//ゲームを開始する tick
 	uint64 start_tick = 0;
 };

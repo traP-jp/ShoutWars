@@ -143,6 +143,7 @@
     </ClCompile>
     <ClCompile Include="Source\Multiplay\APIClient.cpp" />
     <ClCompile Include="Source\Multiplay\CurlTransport.cpp" />
+    <ClCompile Include="Source\Multiplay\LocalRoom.cpp" />
     <ClCompile Include="Source\Multiplay\Room.cpp" />
     <ClCompile Include="Source\Multiplay\SimpleHTTPTransport.cpp" />
     <ClCompile Include="Source\ServerConfig.cpp" />
@@ -276,6 +277,8 @@
     <ClInclude Include="Source\Multiplay\APIClient.hpp" />
     <ClInclude Include="Source\Multiplay\CurlTransport.hpp" />
     <ClInclude Include="Source\Multiplay\HTTPTransport.hpp" />
+    <ClInclude Include="Source\Multiplay\IRoom.hpp" />
+    <ClInclude Include="Source\Multiplay\LocalRoom.hpp" />
     <ClInclude Include="Source\Multiplay\Room.hpp" />
     <ClInclude Include="Source\Multiplay\SimpleHTTPTransport.hpp" />
     <ClInclude Include="Source\ServerConfig.hpp" />
