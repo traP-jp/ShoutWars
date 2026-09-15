@@ -65,6 +65,8 @@ struct Player {
 struct bullet {
 	Vec2 pos;
 	Vec2 old_pos;
+	//前回の当たり判定のときの横の位置。撃った直後は撃ったキャラの位置
+	double swept_from_x = 0.0;
 	double angle;
 	double old_angle;
 	int timer;
@@ -194,6 +196,8 @@ private:
 	const static int melee_bottom = 60;
 	//弾やナイフの当たり判定の縦の半径
 	const static int projectile_radius = 10;
+	//弾の当たり判定の横の半径
+	const static int bullet_hit_half_width = 40;
 	//アイリのナイフの狙う高さ (相手の位置からのずれ)。体の中心を狙うと少し跳ぶだけで下を抜けるので、胸の高さを狙う
 	const static int knife_aim_y = -100;
 	//着地してからジャンプと攻撃ができない時間 (ミリ秒)。跳び続けて攻撃をよけ続けることに代償を付ける (ガードはできる)
@@ -425,6 +429,11 @@ private:
 	/// @brief 縦の範囲 [top, bottom] が、target_y にいるキャラの食らい判定に重なるか
 	[[nodiscard]] static bool overlaps_hurtbox(double target_y, double top, double bottom) {
 		return (target_y + hurtbox_top < bottom) && (top < target_y + hurtbox_bottom);
+	}
+	/// @brief 前回の当たり判定から今までに弾が横に通った範囲に、target_x にいるキャラが重なるか
+	/// @remark 弾は 1 フレームに 50px ほど進むのですり抜けないように、また銃口はキャラの前に離れているので、撃った直後はキャラの位置から数えて、至近距離の相手にも当たるようにする
+	[[nodiscard]] static bool bullet_passes(const struct bullet& b, double target_x) {
+		return (Min(b.swept_from_x, b.pos.x) - bullet_hit_half_width < target_x) && (target_x < Max(b.swept_from_x, b.pos.x) + bullet_hit_half_width);
 	}
 	/// @brief attacker_y にいるキャラの近接攻撃が、縦方向で target_y にいるキャラに届くか
 	[[nodiscard]] static bool melee_reaches(double attacker_y, double target_y) {

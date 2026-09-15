@@ -615,6 +615,7 @@ void Game::call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[], int ty
 			if (bullet_number != -1) {
 				bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 140 + ((type == 1) ? 55 : 0),what<int>(type,-115,-66,-90) };
 				bullet[bullet_number].old_pos = bullet[bullet_number].pos;
+				bullet[bullet_number].swept_from_x = player_reserved_pos[cnt].x;
 				bullet[bullet_number].direction = !player[cnt].direction;
 				bullet[bullet_number].angle = (bullet[bullet_number].direction ? 0.0 : M_PI);
 				bullet[bullet_number].timer = now_time;
@@ -750,7 +751,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			//弱攻撃
 			if (bullet[i].type <= 1) {
 				//頭を下げればぶつかりません～♪
-				if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && !is_ducking(j) && overlaps_hurtbox(player_reserved_pos[j].y, bullet[i].pos.y - projectile_radius, bullet[i].pos.y + projectile_radius)) {
+				if (bullet_passes(bullet[i], player_reserved_pos[j].x) && !is_ducking(j) && overlaps_hurtbox(player_reserved_pos[j].y, bullet[i].pos.y - projectile_radius, bullet[i].pos.y + projectile_radius)) {
 					if ((player[j].event & 1) == 0) {
 						player[j].event |= 1;
 						if (player[j].status & 8) {
@@ -812,6 +813,7 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				}
 			}
 		}
+		bullet[i].swept_from_x = bullet[i].pos.x;
 	}
 
 	//魚雷の移動+当たり判定
@@ -1007,7 +1009,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((bullet[i].pos.x < 0) || (bullet[i].pos.x > 1920))bullet[i].exist = false;
 		for (int j = 0; j < player_sum; j++) {
 			if (j == cnt)continue;
-			if ((abs(player_reserved_pos[j].x - bullet[i].pos.x) < 40.0) && !is_ducking(j) && overlaps_hurtbox(player_reserved_pos[j].y, bullet[i].pos.y - projectile_radius, bullet[i].pos.y + projectile_radius)) {
+			if (bullet_passes(bullet[i], player_reserved_pos[j].x) && !is_ducking(j) && overlaps_hurtbox(player_reserved_pos[j].y, bullet[i].pos.y - projectile_radius, bullet[i].pos.y + projectile_radius)) {
 				if ((player[j].event & 1) == 0) {
 					player[j].event |= 1;
 					if (player[j].status & 8) {
@@ -1037,6 +1039,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				}
 			}
 		}
+		bullet[i].swept_from_x = bullet[i].pos.x;
 	}
 	//ナイフの移動・当たり判定処理
 	for (int i = 0; i < max_knife; i++) {
@@ -1157,6 +1160,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				if (bullet_number != -1) {
 					bullet[bullet_number].pos = player_reserved_pos[cnt] + Vec2{ sign(!player[cnt].direction) * 60,-77 };
 					bullet[bullet_number].old_pos = bullet[bullet_number].pos;
+					bullet[bullet_number].swept_from_x = player_reserved_pos[cnt].x;
 					bullet[bullet_number].direction = !player[cnt].direction;
 					bullet[bullet_number].angle = (bullet[bullet_number].direction ? 0.0 : M_PI);
 					bullet[bullet_number].timer = now_time;
