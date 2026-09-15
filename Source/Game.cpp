@@ -167,6 +167,15 @@ void Game::send_action(int sender, StringView type, int target) {
 	}
 }
 
+Optional<double> Game::pull_direction(int cnt, double x, int now_time) const {
+	const Player& other = player[1 - cnt];
+	const int t = now_time - other.timer[6];
+	if ((other.number != 1) || !(other.status & 64) || (200 + yuuka_special_windup_ms <= t)) return none;
+	const double distance = other.pos[0].x - x;
+	if ((abs(distance) <= yuuka_special_pull_stop) || (yuuka_special_pull_range <= abs(distance))) return none;
+	return (distance < 0.0) ? -1.0 : 1.0;
+}
+
 void Game::start_walk(int cnt, int direction, int now_time) {
 	if (player[cnt].status & move_blocking_status) return;
 	player[cnt].status |= direction;
@@ -458,15 +467,8 @@ void Game::update_player() {
 			player[i].knockback -= step;
 		}
 		//相手のユウカの必殺技の溜めの間は、相手に引き寄せられる
-		{
-			const Player& other = player[other_number];
-			const int t = now_time - other.timer[6];
-			if ((other.number == 1) && (other.status & 64) && (t < 200 + yuuka_special_windup_ms)) {
-				const double distance = other.pos[0].x - self.x;
-				if ((yuuka_special_pull_stop < abs(distance)) && (abs(distance) < yuuka_special_pull_range)) {
-					self.x += ((distance < 0.0) ? -1.0 : 1.0) * Min(abs(distance) - yuuka_special_pull_stop, yuuka_special_pull_speed * Scene::DeltaTime());
-				}
-			}
+		if (const auto toward = pull_direction(i, self.x, now_time)) {
+			self.x += *toward * Min(abs(player[other_number].pos[0].x - self.x) - yuuka_special_pull_stop, yuuka_special_pull_speed * Scene::DeltaTime());
 		}
 		//押し合い
 		{
@@ -1045,11 +1047,18 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 	//ナイフの移動・当たり判定処理
 	for (int i = 0; i < max_knife; i++) {
 		if (!knife[i].exist)continue;
+		//ナイフを投げた側の相手を狙う
+		const int target = (cnt == player_number) ? another_player_number : player_number;
 		//待機
 		if (knife[i].mode == 0) {
 			if (now_time - knife[i].timer[0] > airi_knife_hover_ms) {
 				knife[i].mode = 1;
 				knife[i].timer[1] = now_time;
+				//飛び始めるときに、相手の今の位置を狙い直す。浮いている間に動いても逃げられないが、飛んでくる間に動けばよけられる
+				//(遠くにいるほど届くまでに間があるので、位置によっては操作でよけられる。必殺技は基本はガードで防ぎ、うまく操作すればよけられることもある、という立ち位置)
+				knife[i].goal_pos = player_reserved_pos[target] + Vec2{ 0, knife_aim_y };
+				knife[i].distance = knife[i].goal_pos.distanceFrom(knife[i].pos);
+				knife[i].time = knife[i].distance / 1.8;
 				knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
 			}
 			//発射
@@ -1075,8 +1084,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			//画面外に出たら退場
 			if ((t > knife[i].time) && ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920) || (knife[i].pos.y < 0) || (knife[i].pos.y > 1080)))
 				knife[i].exist = false;
-			//当たり判定処理 (ナイフを投げた側の相手に当てる)
-			const int target = (cnt == player_number) ? another_player_number : player_number;
+			//当たり判定処理
 			int distance_x = abs(player_reserved_pos[target].x - knife[i].pos.x);
 			int distance_y = abs(player_reserved_pos[target].y + knife_aim_y - knife[i].pos.y);
 			const bool knife_in_hurtbox = overlaps_hurtbox(player_reserved_pos[target].y, knife[i].pos.y - projectile_radius, knife[i].pos.y + projectile_radius);
@@ -1193,9 +1201,6 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[], int 
 		knife[knife_number].mode = 0;
 		knife[knife_number].horming = true;
 		knife[knife_number].img_number = i;
-		knife[knife_number].goal_pos = player_reserved_pos[(cnt == player_number) ? another_player_number : player_number] + Vec2{ 0, knife_aim_y };
-		knife[knife_number].distance = sqrt(pow(knife[knife_number].goal_pos.x - knife[knife_number].pos.x, 2) + pow(knife[knife_number].goal_pos.y - knife[knife_number].pos.y, 2));
-		knife[knife_number].time = knife[knife_number].distance / 1.8;
 		set_angle += M_PI / 7.0;
 	}
 }

@@ -230,7 +230,8 @@ private:
 	const static int yuuka_special_top = -220;
 	const static int yuuka_special_bottom = 60;
 	//ユウカの必殺技の溜めの間に、相手を引き寄せる速さ (px/秒)、届く距離、止める距離
-	const static int yuuka_special_pull_speed = 250;
+	//引き寄せは歩き (約 470px/秒) より遅いので、早めに気付いて歩いて離れ続ければ逃げられるが、気付くのが遅いと逃げきれない (500px 離れていれば 0.7 秒ほどで歩き出せば逃げられる)
+	const static int yuuka_special_pull_speed = 320;
 	const static int yuuka_special_pull_range = 900;
 	const static int yuuka_special_pull_stop = 120;
 	//押し戻されるときの速さ (px/秒)。一瞬で飛ばすと見失うので、少しの間に滑らせる
@@ -402,6 +403,8 @@ private:
 	void send_action(int sender, StringView type, int target);
 	/// @brief 左右移動を始める (押している間、毎フレーム呼ぶ)。direction は 1:左, 2:右
 	void start_walk(int cnt, int direction, int now_time);
+	/// @brief 相手のユウカの必殺技の溜めで、x にいる cnt が引き寄せられているなら、引き寄せられる向き (-1:左, 1:右)
+	[[nodiscard]] Optional<double> pull_direction(int cnt, double x, int now_time) const;
 	[[nodiscard]] CpuView make_cpu_view(int now_time) const;
 	/// @brief ジャンプを始める。跳べなければ false
 	bool start_jump(int cnt, int now_time);
