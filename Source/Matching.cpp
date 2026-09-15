@@ -27,13 +27,6 @@ Matching::Matching(const InitData& init) : IScene(init)
 	is_owner = (getData().room_mode == 0);
 	room_ID = getData().room_ID;
 
-	//資格を満たしていなければ部屋を作らない
-	if (getData().phoneme.isMFCCUnset()) {
-		error_ID = 7;
-		error_mode = 1;
-		return;
-	}
-
 	//設定画面から戻ってきた場合は同じ部屋を使い続ける
 	if (!getData().room) requestRoom();
 }
@@ -390,8 +383,6 @@ void Matching::drawErrorDialog() const
 		suneo_img.drawAt(960, error_pos_y);
 	}elif(error_ID == 6) {
 		timeout_img.drawAt(960, error_pos_y);
-	}elif(error_ID == 7) {
-		calibration_img.drawAt(960, error_pos_y);
 	}
 }
 
