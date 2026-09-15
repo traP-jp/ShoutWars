@@ -8,6 +8,10 @@ namespace
 {
 	//シーンの切り替えと Game の読み込みより長く取る
 	constexpr Duration StartDelay = 2s;
+	//CPU と対戦するとき、自分がキャラを確定してから、CPU が参加する・CPU がキャラを確定する・対戦を始めるまでの時間。一瞬で進むと何が起きたか分からないので間を置く
+	constexpr Duration CpuJoinDelay = 0.6s;
+	constexpr Duration CpuDecideDelay = 1.4s;
+	constexpr Duration CpuStartDelay = 2.4s;
 }
 
 Matching::Matching(const InitData& init) : IScene(init)
@@ -96,15 +100,21 @@ void Matching::updateRoom()
 
 	room.sendReport(U"lobby", JSON{ { U"character", character_number }, { U"decided", getData().decided_character } });
 	//CPU と対戦するときは、自分がキャラを確定したら、CPU が参加して自分と違うキャラを選んで確定する
-	if (auto* local = dynamic_cast<Multiplay::LocalRoom*>(&room); local && getData().decided_character && !local->hasCpu()) {
-		Array<int> others;
-		for (int i = 0; i < 4; i++) {
-			if (selectable_characters[i] && (i != character_number)) others << i;
+	if (auto* local = dynamic_cast<Multiplay::LocalRoom*>(&room); local && getData().decided_character) {
+		if (!cpu_wait.isStarted()) cpu_wait.start();
+		if (!local->hasCpu() && (CpuJoinDelay <= cpu_wait.elapsed())) {
+			Array<int> others;
+			for (int i = 0; i < 4; i++) {
+				if (selectable_characters[i] && (i != character_number)) others << i;
+			}
+			//選べるキャラが 1 体しかなければ、同じキャラ同士で戦う
+			const int cpu_character = others.isEmpty() ? character_number : others.choice();
+			local->addCpu();
+			local->sendCpuReport(U"lobby", JSON{ { U"character", cpu_character }, { U"decided", false } });
 		}
-		//選べるキャラが 1 体しかなければ、同じキャラ同士で戦う
-		const int cpu_character = others.isEmpty() ? character_number : others.choice();
-		local->addCpu();
-		local->sendCpuReport(U"lobby", JSON{ { U"character", cpu_character }, { U"decided", true } });
+		if (local->hasCpu() && !opponent_decided && (CpuDecideDelay <= cpu_wait.elapsed())) {
+			local->sendCpuReport(U"lobby", JSON{ { U"character", opponent_character_number }, { U"decided", true } });
+		}
 	}
 
 	for (const auto& event : room.receiveReports()) {
@@ -120,7 +130,7 @@ void Matching::updateRoom()
 	if (!opponent_present) opponent_decided = false;
 
 	//双方が確定したら、部屋主がキャラの組み合わせを確定させる
-	if (room.isOwner() && getData().decided_character && opponent_decided && !start_sent) {
+	if (room.isOwner() && getData().decided_character && opponent_decided && !start_sent && (!vs_cpu || (CpuStartDelay <= cpu_wait.elapsed()))) {
 		room.sendAction(U"start", JSON{ { U"owner", character_number }, { U"guest", opponent_character_number } });
 		room.start();
 		start_sent = true;
