@@ -132,6 +132,11 @@
     <ClCompile Include="Source\Voice\NoiseSuppressor.cpp" />
     <ClCompile Include="Source\Voice\MFCCAnalyzer.cpp" />
     <ClCompile Include="Source\Voice\Phoneme.cpp" />
+    <ClCompile Include="Source\Voice\VoiceVisualization.cpp" />
+    <ClCompile Include="Source\VoiceMonitor.cpp" />
+    <ClCompile Include="Source\CommandFeedback.cpp" />
+    <ClCompile Include="Source\PlayerInput.cpp" />
+    <ClCompile Include="Source\ControlsGuide.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -262,6 +267,11 @@
     <ClInclude Include="Source\Voice\NoiseSuppressor.hpp" />
     <ClInclude Include="Source\Voice\MFCCAnalyzer.hpp" />
     <ClInclude Include="Source\Voice\Phoneme.hpp" />
+    <ClInclude Include="Source\Voice\VoiceVisualization.hpp" />
+    <ClInclude Include="Source\VoiceMonitor.hpp" />
+    <ClInclude Include="Source\CommandFeedback.hpp" />
+    <ClInclude Include="Source\PlayerInput.hpp" />
+    <ClInclude Include="Source\ControlsGuide.hpp" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Source\Multiplay\APIClient.hpp" />
     <ClInclude Include="Source\Multiplay\CurlTransport.hpp" />

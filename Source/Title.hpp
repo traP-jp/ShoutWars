@@ -13,6 +13,7 @@ private:
 	const Texture calc_img{ Resource(U"images/title/calc.png") };
 	const Texture connecting_img{ Resource(U"images/common/connecting.png") };
 	const Texture setting_img{ Resource(U"images/common/setting.png") };
+	const Texture calibration_img{ Resource(U"images/matching/calibration.png") };
 
 	//音声素材////////////////////////////////////////////////////////
 	const Audio bgm{ Resource(U"audioes/zun_mgcr.mp3") , Loop::Yes };
@@ -43,6 +44,8 @@ private:
 	//const RectF shape_of_0{ 225,841,150,80 };
 	const Rect decide_shape{ 660 + 395,140 + 641,150,80 };
 	const Circle setting_shape{ 1852,68,48 };
+	const Rect calibration_OK_shape{ 680,464,240,105 };
+	const Rect calibration_Yes_shape{ 1010,464,240,105 };
 	//内部変数/////////////////////////////////////////////////////////
 	//0:通常,1:出現アニメーション,2:表示中,3:消失アニメーション
 	int calc_mode = 0;
@@ -50,6 +53,11 @@ private:
 	int animation_timer = 0;
 	double back_alpha = 0.0;
 	bool setting_flag = false;
+	//キャリブレーションを促すダイアログ 0:非表示,1:出現アニメーション,2:表示中
+	int calibration_dialog_mode = 0;
+	int calibration_dialog_timer = 0;
+	int calibration_dialog_y = 1400;
+	double calibration_back_alpha = 0.0;
 	bool clip_flag = true;
 
 	std::string room_ID;
@@ -62,6 +70,8 @@ private:
 
 	int key_num();
 	void updateServerStatus();
+	bool requireCalibration();
+	void updateCalibrationDialog();
 public:
 	Title(const InitData& init);
 

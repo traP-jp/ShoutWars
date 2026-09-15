@@ -27,13 +27,6 @@ Matching::Matching(const InitData& init) : IScene(init)
 	is_owner = (getData().room_mode == 0);
 	room_ID = getData().room_ID;
 
-	//資格を満たしていなければ部屋を作らない
-	if (getData().phoneme.isMFCCUnset()) {
-		error_ID = 7;
-		error_mode = 1;
-		return;
-	}
-
 	//設定画面から戻ってきた場合は同じ部屋を使い続ける
 	if (!getData().room) requestRoom();
 }
@@ -181,10 +174,10 @@ void Matching::update()
 	//確定したら変更不可
 	if (!getData().decided_character) {
 		//ホバーしたらカーソルを変える
-		if (select_char_shape1.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (select_char_shape2.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (select_char_shape3.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (selectable_characters[0] && select_char_shape1.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (selectable_characters[1] && select_char_shape2.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (selectable_characters[2] && select_char_shape3.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (selectable_characters[3] && select_char_shape4.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (random_select_shape.mouseOver())Cursor::RequestStyle(CursorStyle::Hand);
 		if (isSettingImageHovered = setting_shape.mouseOver())
 			Cursor::RequestStyle(CursorStyle::Hand);
@@ -198,58 +191,59 @@ void Matching::update()
 		}
 
 		//キャラ選択
-		if (select_char_shape1.leftClicked()) {
+		if (selectable_characters[0] && select_char_shape1.leftClicked()) {
 			if (character_number != 0) {
 				click_sound.playOneShot();
 				character_number = 0;
 				character_changed = true;
 			}
 		}
-		if (select_char_shape2.leftClicked()) {
+		if (selectable_characters[1] && select_char_shape2.leftClicked()) {
 			if (character_number != 1) {
 				click_sound.playOneShot();
 				character_number = 1;
 				character_changed = true;
 			}
 		}
-		if (select_char_shape3.leftClicked()) {
+		if (selectable_characters[2] && select_char_shape3.leftClicked()) {
 			if (character_number != 2) {
 				click_sound.playOneShot();
 				character_number = 2;
 				character_changed = true;
 			}
 		}
-		if (select_char_shape4.leftClicked()) {
+		if (selectable_characters[3] && select_char_shape4.leftClicked()) {
 			if (character_number != 3) {
 				click_sound.playOneShot();
 				character_number = 3;
 				character_changed = true;
 			}
 		}
-		// キーボード入力でも選択できるように
-		if (KeyLeft.down()) {
+		// キーボードやコントローラーでも選択できるように
+		const Directions directions = PressedDirections();
+		const bool confirm = KeyEnter.pressed() || ControllerFaceButtonPressed();
+		const bool left_down = directions.left && !previous_directions.left;
+		const bool right_down = directions.right && !previous_directions.right;
+		const bool confirm_down = confirm && !previous_confirm;
+		previous_directions = directions;
+		previous_confirm = confirm;
+		if (left_down) {
 			click_sound.playOneShot();
-			if (character_number > 0) {
-				character_number--;
-			}
-			else {
-				character_number = 3;
-			}
+			do {
+				character_number = (character_number + 3) % 4;
+			} while (!selectable_characters[character_number]);
 			character_changed = true;
 		}
-		if (KeyRight.down()) {
+		if (right_down) {
 			click_sound.playOneShot();
-			if (character_number < 3) {
-				character_number++;
-			}
-			else {
-				character_number = 0;
-			}
+			do {
+				character_number = (character_number + 1) % 4;
+			} while (!selectable_characters[character_number]);
 			character_changed = true;
 		}
 
 		//キャラ確定
-		if (decide_button_shape.leftClicked() || KeyEnter.down()) {
+		if (decide_button_shape.leftClicked() || confirm_down) {
 			decision_sound.playOneShot();
 			getData().decided_character = true;
 		}
@@ -277,7 +271,11 @@ void Matching::update()
 		copy_timer = (int)Time::GetMillisec();
 	}
 	if (random_select_shape.leftClicked()) {
-		int tmp_character_number = Random(0, 3);
+		Array<int> selectable_numbers;
+		for (int i = 0; i < 4; i++) {
+			if (selectable_characters[i]) selectable_numbers << i;
+		}
+		int tmp_character_number = selectable_numbers.choice();
 		if (character_number != tmp_character_number) {
 			click_sound.playOneShot();
 			character_number = tmp_character_number;
@@ -350,6 +348,9 @@ void Matching::draw() const
 	draw_select_char_img(3, 1035, 720, Palette::Yellowgreen);
 	draw_select_char_img(4, 1345, 720, Palette::Dodgerblue);
 # undef draw_select_char_img
+	for (auto&& [shape, selectable] : std::views::zip(std::array{ select_char_shape1, select_char_shape2, select_char_shape3, select_char_shape4 }, selectable_characters)) {
+		if (!selectable) shape.draw(ColorF{ 0.1, 0.85 });
+	}
 	if (getData().decided_character) {
 		disabled_setting_img.drawAt(1852, 68);
 	}
@@ -389,8 +390,6 @@ void Matching::drawErrorDialog() const
 		suneo_img.drawAt(960, error_pos_y);
 	}elif(error_ID == 6) {
 		timeout_img.drawAt(960, error_pos_y);
-	}elif(error_ID == 7) {
-		calibration_img.drawAt(960, error_pos_y);
 	}
 }
 

@@ -58,7 +58,7 @@ Array<VoiceCommand> VoiceCommandsOf(int32 character) {
 	case 2:
 		commands = {
 			{ U"撃て", U"U_E", 1 },
-			{ U"斬れ", U"IE", 2 },
+			{ U"切れ", U"IE", 2 },
 			{ U"デッドリーアサルト", U"E_OI-A_AU_O", 3 },
 			{ U"連射", U"Ei_A", 6 },
 		};
@@ -72,6 +72,11 @@ Array<VoiceCommand> VoiceCommandsOf(int32 character) {
 		break;
 	}
 	return commands.append(CommonCommands);
+}
+
+Optional<size_t> VowelOfPhoneme(size_t phonemeId) {
+	const size_t label = PhonemeLabels.at(phonemeId);
+	return (label == SilenceLabel) ? none : Optional<size_t>{ label };
 }
 
 CommandRecognizer::CommandRecognizer(const CommandRecognizerOptions& options) : options(options) {}

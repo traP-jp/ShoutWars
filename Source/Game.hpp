@@ -1,6 +1,10 @@
 ﻿# pragma once
 # include "common.hpp"
 # include "Voice/CommandRecognizer.hpp"
+# include "CommandFeedback.hpp"
+# include "ControlsGuide.hpp"
+# include "PlayerInput.hpp"
+# include "VoiceMonitor.hpp"
 #include <vector>
 #include <cmath>
 #include <string>
@@ -221,6 +225,12 @@ private:
 	const Rect Yes_shape{ 1010,464,240,105 };
 	//特殊変数////////////////////////////////////////////////////////
 	CommandRecognizer commandRecognizer;
+	//声の届き方と、技が出た・出せなかったことを画面で知らせる
+	VoiceMonitor voiceMonitor{ RectF{ 640, 885, 640, 150 } };
+	CommandFeedback commandFeedback;
+	ControlsGuide controlsGuide;
+	//前のフレームの状態 (技が出た瞬間を知るため)
+	int previous_status[player_sum] = { 0 };
 
 	//変数////////////////////////////////////////////////////////////
 	//プレイヤーが存在するか
@@ -290,6 +300,7 @@ private:
 	void showError(const Multiplay::APIError& error);
 	void finish_game(bool won);
 	int voice_command();
+	void notify_started_moves();
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
 	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);

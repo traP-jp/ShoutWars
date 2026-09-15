@@ -49,14 +49,53 @@ void Title::updateServerStatus()
 	}
 }
 
+//キャリブレーションしていなければ、ゲームを始める代わりにダイアログを出す
+bool Title::requireCalibration()
+{
+	if (!getData().phoneme.isMFCCUnset()) return false;
+	click_sound.playOneShot();
+	calibration_dialog_mode = 1;
+	calibration_dialog_timer = (int)Time::GetMillisec();
+	return true;
+}
+
+void Title::updateCalibrationDialog()
+{
+	if (calibration_dialog_mode == 1) {
+		int now_time = (int)Time::GetMillisec();
+		if (now_time - calibration_dialog_timer <= 200) {
+			calibration_dialog_y = 1400 - 1040 * (now_time - calibration_dialog_timer) / 200;
+			calibration_back_alpha = 0.8 * (now_time - calibration_dialog_timer) / 200;
+		}
+		else {
+			calibration_dialog_y = 360;
+			calibration_back_alpha = 0.8;
+			calibration_dialog_mode = 2;
+		}
+		return;
+	}
+	if (calibration_OK_shape.mouseOver() || calibration_Yes_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	//閉じたらそのままキャリブレーション画面へ
+	if (calibration_OK_shape.leftClicked() || calibration_Yes_shape.leftClicked()) {
+		click_sound.playOneShot();
+		setting_flag = true;
+		getData().before_scene = State::Title;
+		changeScene(State::Calibration, 0.5s);
+	}
+}
+
 void Title::update()
 {
 	updateServerStatus();
+	if (calibration_dialog_mode) {
+		updateCalibrationDialog();
+		return;
+	}
 	if (calc_mode == 0) {
 		if (isButton1Hovered = button1_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (isButton2Hovered = button2_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (isSettingHovered = setting_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
-		if (button1_shape.leftClicked()) {
+		if (button1_shape.leftClicked() && !requireCalibration()) {
 			getData().room_mode = 0;
 			decision_sound.playOneShot();
 			getData().before_scene = State::Title;
@@ -69,7 +108,7 @@ void Title::update()
 			changeScene(State::Calibration, 0.5s);
 		}
 		//電卓出現
-		if (button2_shape.leftClicked()) {
+		if (button2_shape.leftClicked() && !requireCalibration()) {
 			click_sound.playOneShot();
 			calc_mode = 1;
 			animation_timer = (int)Time::GetMillisec();
@@ -208,6 +247,10 @@ void Title::draw() const
 			//数字の表示
 			font(Unicode::FromUTF8(room_ID)).drawAt(660 + 300, 140 + 250, Palette::Black);
 		}
+	}
+	if (calibration_dialog_mode) {
+		Rect(0, 0, 1920, 1080).draw(ColorF{ 0,calibration_back_alpha });
+		calibration_img.drawAt(960, calibration_dialog_y);
 	}
 }
 

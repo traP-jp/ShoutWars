@@ -5,6 +5,7 @@
 # include "Voice/CommandRecognizer.hpp"
 # include "Voice/NoiseSuppressor.hpp"
 # include "Voice/Phoneme.hpp"
+# include "Voice/VoiceVisualization.hpp"
 
 SIV3D_SET(EngineOption::Renderer::Headless);
 
@@ -316,6 +317,25 @@ namespace {
 		}
 	}
 
+	/// @brief 母音とコマンドの録音の、声のある範囲の各フレームの MFCC を書き出す
+	void DumpMFCC(const Array<Take>& takes, const Array<float>& floor, const MFCCOptions& options, TextWriter& writer) {
+		const MFCCAnalyzer analyzer{ options };
+		for (const Take& take : takes) {
+			if (take.group != U"vowel" && take.group != U"command") continue;
+			const size_t lead = Seconds(0.5);
+			StreamBuilder builder{ floor, lead + take.samples.size() };
+			builder.place(take.samples, lead);
+			const auto stream = builder.build();
+			ForEachFrame(stream, 0, stream.size(), [&](size_t pos, Array<float> window, double rms) {
+				const size_t center = pos - WindowLength / 2;
+				if (center < lead + take.activeBegin || lead + take.activeEnd < center) return;
+				const auto mfcc = analyzer.cepstrum(analyzer.melSpectrum(std::move(window), SampleRate));
+				const HSV color = VowelColor(mfcc);
+				writer << U"{},{},{},{},{:.1f},{:.3f},{:.5f}"_fmt(take.line, take.style, take.take, mfcc.feature.map([](double c) { return U"{:.4f}"_fmt(c); }).join(U",", U"", U""), color.h, color.s, rms);
+			});
+		}
+	}
+
 	struct LineResult {
 		size_t count = 0;
 		size_t hit = 0;
@@ -421,6 +441,7 @@ namespace {
 		Array<int32> calibrationTakes = { 1, 2, 3 };
 		bool evaluateCommands = true;
 		bool dumpFrames = false;
+		bool dumpMFCC = false;
 		Array<String> conditionNames;
 		PhonemeOptions options;
 		CalibrationOptions calibration;
@@ -433,6 +454,7 @@ namespace {
 			else if (key == U"mode") {
 				evaluateCommands = (value == U"all");
 				dumpFrames = (value == U"dump");
+				dumpMFCC = (value == U"mfcc");
 			}
 			else if (key == U"conditions") conditionNames = value.split(U',');
 			else if (key == U"k") options.k = Parse<size_t>(value);
@@ -476,6 +498,13 @@ namespace {
 		const Stopwatch stopwatch{ StartImmediately::Yes };
 		const auto takes = LoadCorpus(args[1]);
 		const auto floor = ExtractFloor(takes);
+		if (dumpMFCC) {
+			TextWriter writer{ FileSystem::PathAppend(outDirectory, U"mfcc.csv") };
+			writer << U"line,style,take,{},hue,saturation,rms"_fmt(Iota(options.mfcc.order).map([](size_t i) { return U"c{}"_fmt(i + 1); }).join(U",", U"", U""));
+			DumpMFCC(takes, floor, options.mfcc, writer);
+			TextWriter{ FileSystem::PathAppend(outDirectory, U"done.txt") } << U"elapsed_seconds={:.1f}"_fmt(stopwatch.sF());
+			return;
+		}
 		Noise noise{ .samples = LoadMono(args[2]) };
 		noise.calibrationEnd = noise.samples.size() / 2;
 		noise.level = RootMeanSquare(noise.samples.data(), noise.samples.size());

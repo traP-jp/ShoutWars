@@ -1,6 +1,7 @@
 ﻿# pragma once
 # include "common.hpp"
 # include "GlowBorder.hpp"
+# include "PlayerInput.hpp"
 
 class Matching : public App::Scene
 {
@@ -34,7 +35,6 @@ class Matching : public App::Scene
 	const Texture decide_img{ Resource(U"images/matching/decide.png") };
 	const Texture decided_img{ Resource(U"images/matching/decided.png") };
 	const Texture fixed_img{ Resource(U"images/matching/fixed.png") };
-	const Texture calibration_img{ Resource(U"images/matching/calibration.png") };
 	Texture stand_char_img[4] = { stand_char_img1,stand_char_img2,stand_char_img3,stand_char_img4 };
 	//shape////////////////////////////////////////////////////////////
 	const Quad select_char_shape1{ Vec2{ 280,720 },Vec2{ 577,720 },Vec2{ 527,957 },Vec2{ 230,957 } };
@@ -66,9 +66,14 @@ class Matching : public App::Scene
 	bool isReturnImageHovered = false;
 
 	//キャラ選択関連
-	int character_number = 0;
+	//絵や技が揃ったキャラだけ選べる (0:玲, 1:ユウカ, 2:アイリ, 3:No.0)
+	static constexpr std::array<bool, 4> selectable_characters = { false, true, true, false };
+	int character_number = 1;
 	int opponent_character_number = 0;
 	bool character_changed = false;
+	//前のフレームのコントローラーとキーボードの入力 (押した瞬間だけ選択を動かすため)
+	Directions previous_directions;
+	bool previous_confirm = false;
 	double decide_button_size = 1.0;
 	bool opponent_decided = false;
 	//相手が部屋にいる
@@ -84,7 +89,7 @@ class Matching : public App::Scene
 
 	//エラーダイアログ関連
 	int error_mode = 0;
-	//0:バグ,1:404,2:810,3:400,4:500,5:スネ夫,6:時間切れ,7:音声認識のセットアップやれ
+	//0:バグ,1:404,2:810,3:400,4:500,5:スネ夫,6:時間切れ
 	int error_ID = 0;
 	int error_pos_y = 1400;
 	int error_timer = 0;

@@ -83,13 +83,27 @@ bool Phoneme::isMFCCUnset() const {
 	return registeredSpectra.any([](const auto& spectra) { return spectra.isEmpty(); });
 }
 
+bool Phoneme::isMFCCUnset(size_t id) const {
+	return registeredSpectra.at(id).isEmpty();
+}
+
 void Phoneme::setMFCC(uint64 id, uint64 timeUs, uint64 durationUs) {
 	if (spectrumHistory.empty()) throw Error{ U"MFCC history is empty" };
-	registeredSpectra[id].clear();
+	Array<Array<double>> spectra;
 	for (const auto& [historyUs, spectrum] : spectrumHistory) {
-		if (historyUs + durationUs >= timeUs) registeredSpectra[id] << spectrum;
+		if (historyUs + durationUs >= timeUs) spectra << spectrum;
 	}
+	setSpectra(id, std::move(spectra));
+}
+
+void Phoneme::setSpectra(size_t id, Array<Array<double>> spectra) {
+	registeredSpectra.at(id) = std::move(spectra);
 	updateFeatures();
+}
+
+const Array<double>& Phoneme::latestSpectrum() const {
+	if (spectrumHistory.empty()) throw Error{ U"Spectrum history is empty" };
+	return spectrumHistory.rbegin()->second;
 }
 
 void Phoneme::suppressNewSamples() {
