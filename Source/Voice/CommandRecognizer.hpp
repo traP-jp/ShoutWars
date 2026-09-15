@@ -13,6 +13,9 @@ struct VoiceCommand {
 /// @param character キャラクター番号 (0:玲, 1:ユウカ, 2:アイリ, 3:No.0)
 [[nodiscard]] Array<VoiceCommand> VoiceCommandsOf(int32 character);
 
+/// @brief 音素の ID が表す母音 (0:あ, 1:い, 2:う, 3:え, 4:お)。無音や息なら none
+[[nodiscard]] Optional<size_t> VowelOfPhoneme(size_t phonemeId);
+
 struct CommandRecognizerOptions {
 	/// @brief 発話が終わったとみなして判定する無音の長さ (フレーム)
 	size_t endSilenceFrames = 18;

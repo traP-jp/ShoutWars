@@ -92,6 +92,8 @@ int Game::getkey() {
 }
 
 int Game::voice_command() {
+	const auto phoneme_scores = getData().phoneme.estimate();
+	voiceMonitor.update(getData().phoneme, phoneme_scores);
 # if defined(_DEBUG) || defined(DEBUG)
 	//デバッグ用に、声のコマンドをキーでも発動できるようにする
 	const int character = getData().player[player_number];
@@ -102,7 +104,19 @@ int Game::voice_command() {
 	if (KeyC.down()) return 5;
 	if (KeyE.down() && ((character == 0) || (character == 2))) return 6;
 # endif
-	return commandRecognizer.update(getData().phoneme.estimate(), getData().player[player_number]);
+	return commandRecognizer.update(phoneme_scores, getData().player[player_number]);
+}
+
+void Game::notify_started_moves() {
+	//状態のビットと行動の番号の対応 (16:弱攻撃, 32:強攻撃, 64:必殺技, 8:ガード, 128:ガード破壊, 256:特殊攻撃)
+	constexpr std::array<std::pair<int, int32>, 6> moves = { { { 16, 1 }, { 32, 2 }, { 64, 3 }, { 8, 4 }, { 128, 5 }, { 256, 6 } } };
+	for (int i = 0; i < player_sum; i++) {
+		const int started = player[i].status & ~previous_status[i];
+		previous_status[i] = player[i].status;
+		for (const auto& [bit, action] : moves) {
+			if (started & bit) commandFeedback.started(i, action, getData().player[i], i == player_number);
+		}
+	}
 }
 
 void Game::update_error_screen() {
@@ -198,6 +212,7 @@ void Game::update() {
 #endif
 	//プレイヤー情報を更新
 	if (!is_game_finished)update_player();
+	notify_started_moves();
 	//APバーの描画情報を更新
 	update_AP_bar_animation();
 	//プレイヤーのアニメーションを更新
@@ -388,6 +403,9 @@ void Game::update_player() {
 				player[player_number].status |= 16;
 				player[player_number].timer[4] = now_time;
 			}
+			else {
+				commandFeedback.blocked(1);
+			}
 			//狂攻撃
 		}elif(got_voice == 2) {
 			if ((player[player_number].status & 500) == 0) {
@@ -395,6 +413,9 @@ void Game::update_player() {
 				player[player_number].se[3] = true;
 				player[player_number].status |= 32;
 				player[player_number].timer[5] = now_time;
+			}
+			else {
+				commandFeedback.blocked(2);
 			}
 			//必殺技
 		}elif((got_voice == 3) && (player[player_number].special_attack)) {
@@ -406,6 +427,11 @@ void Game::update_player() {
 				player[player_number].ap = 0;
 				player[player_number].special_attack = false;
 			}
+			else {
+				commandFeedback.blocked(3);
+			}
+		}elif(got_voice == 3) {
+			commandFeedback.blocked(3, true);
 			//ガード
 		}elif(got_voice == 4) {
 			guard_se.playOneShot();
@@ -423,12 +449,18 @@ void Game::update_player() {
 				player[player_number].status |= 128;
 				player[player_number].timer[12] = now_time;
 			}
+			else {
+				commandFeedback.blocked(5);
+			}
 			//特殊攻撃
 		}elif(got_voice == 6) {
 			if ((player[player_number].status & 500) == 0) {
 				player[player_number].se[7] = true;
 				player[player_number].status |= 256;
 				player[player_number].timer[14] = now_time;
+			}
+			else {
+				commandFeedback.blocked(6);
 			}
 		}
 
@@ -1494,7 +1526,8 @@ void Game::draw() const {
 	else {
 #endif
 		background_img.draw(0, 0);
-		command_img.at(getData().player[player_number]).draw(120, 150);
+		commandFeedback.drawCommandList(command_img.at(getData().player[player_number]), Vec2{ 120, 145 });
+		voiceMonitor.draw();
 		draw_HP_bar();
 		draw_AP_bar();
 		draw_ping();
@@ -1507,6 +1540,7 @@ void Game::draw() const {
 		draw_player();
 		draw_after_images();
 		draw_effects();
+		commandFeedback.drawMoveNames(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
 
 
 		draw_settle();
@@ -1635,31 +1669,34 @@ void Game::draw_HP_bar() const {
 
 //APバーの描画
 void Game::draw_AP_bar() const {
+	//ゲージ不足で必殺技を出せなかったら、自分のゲージを揺らす
+	const double shake[player_sum] = { (player_number == 0) ? commandFeedback.gaugeShake() : 0.0, (player_number == 1) ? commandFeedback.gaugeShake() : 0.0 };
+
 	//1PのAP
-	AP_bar_empty_img.mirrored().draw(120, 880);
+	AP_bar_empty_img.mirrored().draw(120 + shake[0], 880);
 	if (player[0].special_attack) {
-		AP_bar_max_img.mirrored().draw(120, 880);
+		AP_bar_max_img.mirrored().draw(120 + shake[0], 880);
 		{
 			const ScopedRenderStates2D blend{ BlendState::Additive };
-			fire_img.at(player[0].fire_animation).draw(90, 800);
+			fire_img.at(player[0].fire_animation).draw(90 + shake[0], 800);
 		}
 	}
 	else {
-		AP_bar_img(0, 0, 360.0 * ((double)player[0].ap / player_max_ap), 42).mirrored().draw(612.0 - 360.0 * ((double)player[0].ap / player_max_ap), 992);
+		AP_bar_img(0, 0, 360.0 * ((double)player[0].ap / player_max_ap), 42).mirrored().draw(612.0 - 360.0 * ((double)player[0].ap / player_max_ap) + shake[0], 992);
 	}
 
 
 	//2PのAP
-	AP_bar_empty_img.draw(1300, 880);
+	AP_bar_empty_img.draw(1300 + shake[1], 880);
 	if (player[1].special_attack) {
-		AP_bar_max_img.draw(1300, 880);
+		AP_bar_max_img.draw(1300 + shake[1], 880);
 		{
 			const ScopedRenderStates2D blend{ BlendState::Additive };
-			fire_img.at(player[1].fire_animation).draw(1610, 800);
+			fire_img.at(player[1].fire_animation).draw(1610 + shake[1], 800);
 		}
 	}
 	else {
-		AP_bar_img(0, 0, 360.0 * ((double)player[1].ap / player_max_ap), 42).mirrored().draw(1305, 992);
+		AP_bar_img(0, 0, 360.0 * ((double)player[1].ap / player_max_ap), 42).mirrored().draw(1305 + shake[1], 992);
 	}
 }
 
