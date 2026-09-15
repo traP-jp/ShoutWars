@@ -253,7 +253,7 @@ int Title::key_num()
 
 void Title::draw() const
 {
-	background_img.draw(0, 0);
+	getData().post_process.draw([&] { background_img.draw(0, 0); });
 	button_vs_cpu_glow.draw(isButtonVsCpuHovered, button_vs_cpu_shape.pos);
 	button1_glow.draw(isButton1Hovered, button1_shape.pos);
 	button2_glow.draw(isButton2Hovered, button2_shape.pos);

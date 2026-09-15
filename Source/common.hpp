@@ -4,6 +4,7 @@
 # include "Multiplay/Room.hpp"
 # include "Multiplay/LocalRoom.hpp"
 # include "ServerConfig.hpp"
+# include "PostProcess.hpp"
 #define elif else if
 #define M_PI 3.14159265358979323846
 
@@ -45,6 +46,10 @@ struct GameData
 	std::unique_ptr<Multiplay::IRoom> room;
 	//ゲームを開始する tick
 	uint64 start_tick = 0;
+
+	GraphicsQuality graphics_quality = LoadGraphicsQuality(U"config.json");
+	//シーンの切り替えの間は 2 つのシーンが順に使う
+	PostProcess post_process{ graphics_quality };
 };
 
 using App = SceneManager<State, GameData>;

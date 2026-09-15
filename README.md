@@ -47,4 +47,5 @@ traP Community が制作したアセットには以下のライセンスが適�
 - 通信先のサーバーは `App/config.json` に `{ "server": { "url": "https://shoutwars.trap.games/develop/api", "password": "..." } }` のように書くと切り替えられます。書かなければ本番サーバー (`https://shoutwars.trap.games/api`) に繋ぎます。`server` に `"syncLogDirectory": "logs"` を足すと、同期ごとの通信時間を `App/logs/` に CSV で書き出します。
 - 展示では `App/config.json` に `"exhibition": true` を足すと、フルスクリーンで起動し、起動のたびに前の人のキャリブレーション (入力感度以外) を消し、画面の左下に ESC で終了できることを表示します。
 - CPU の強さは `App/config.json` の `"cpuSkill"` に 0〜1 の数で書くと変えられます (既定は 0.35)。対戦中に HP の差などで上下する基準の値で、対戦ごとに読むので、書き換えれば次の対戦から変わります。
+- 描画の品質は `App/config.json` の `"graphicsQuality"` に `"high"` (既定) か `"low"` を書くと変えられます。`"low"` にすると、重い演出 (今はブルームだけ) を省きます。
 - ゲームに再配布できない素材が含まれていたため、v0.2.1 以前のコミット履歴から画像・音声素材が全て削除されています。そのため、それ以前のビルドを再現することはできないことに注意してください。

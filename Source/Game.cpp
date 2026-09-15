@@ -1633,7 +1633,17 @@ void Game::draw() const {
 	}
 	else {
 #endif
-		background_img.draw(0, 0);
+		//仕上げは背景とキャラだけにかけ、UI は読みやすいようその上に描く
+		getData().post_process.draw([&] {
+			background_img.draw(0, 0);
+			draw_bullet();
+			draw_knife();
+			draw_torpedo();
+			draw_special_pull();
+			draw_player();
+			draw_after_images();
+			draw_effects();
+		});
 		commandFeedback.drawCommandList(command_img.at(getData().player[player_number]), Vec2{ 120, 145 }, guard_cooldown_ratio);
 		voiceMonitor.draw();
 		controlsGuide.draw(Vec2{ 1790, 150 });
@@ -1643,14 +1653,6 @@ void Game::draw() const {
 		//残り時間
 		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 120, Palette::White);
 		commandFeedback.drawVoiceHint(Vec2{ 960, 50 });
-
-		draw_bullet();
-		draw_knife();
-		draw_torpedo();
-		draw_special_pull();
-		draw_player();
-		draw_after_images();
-		draw_effects();
 		commandFeedback.drawMoveNames(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
 		commandFeedback.drawUnmatchedMarks(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
 

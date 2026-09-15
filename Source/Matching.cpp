@@ -355,18 +355,19 @@ void Matching::update()
 
 void Matching::draw() const
 {
-	background_img.draw(0, 0);
-	//キャラの立ち絵の表示
-	if (is_owner) {
-		you_img.drawAt(360, 60);
-		character_glow[character_number].drawAt(true, { 360, 540 }, Palette::Silver);
-		if (opponent_present) stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
-	}
-	else {
-		you_img.drawAt(1560, 60);
-		character_glow[character_number].drawAt(true, { 1560, 540 }, Palette::Silver, 1.0, true);
-		if (opponent_present) stand_char_img[opponent_character_number].drawAt(360, 540);
-	}
+	//仕上げは背景とキャラの立ち絵だけにかけ、UI は読みやすいようその上に描く
+	getData().post_process.draw([&] {
+		background_img.draw(0, 0);
+		if (is_owner) {
+			character_glow[character_number].drawAt(true, { 360, 540 }, Palette::Silver);
+			if (opponent_present) stand_char_img[opponent_character_number].mirrored().drawAt(1560, 540);
+		}
+		else {
+			character_glow[character_number].drawAt(true, { 1560, 540 }, Palette::Silver, 1.0, true);
+			if (opponent_present) stand_char_img[opponent_character_number].drawAt(360, 540);
+		}
+	});
+	you_img.drawAt(is_owner ? 360 : 1560, 60);
 	//キミに決めた！
 	if (getData().decided_character) {
 		fixed_img.drawAt(960, 540);
