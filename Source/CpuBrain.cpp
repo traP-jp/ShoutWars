@@ -9,7 +9,6 @@ namespace {
 	//この状態の最中は次の技を言い始めない (弱攻撃とジャンプはすぐ終わるので、言い終える頃には動ける)
 	constexpr int BusyStatus = 8 | 32 | 64 | 128 | 256;
 
-	constexpr int Yuuka = 1;
 	constexpr int Airi = 2;
 
 	struct CommandTiming {
@@ -148,14 +147,21 @@ void CpuBrain::think(const CpuView& view, const CpuView& seen, double skill) {
 	const double distance = Abs(seen.opponent.pos.x - view.self.pos.x) + Random(-1.0, 1.0) * Math::Lerp(120.0, 40.0, skill);
 
 	if (special_threat_pending) {
-		special_threat_pending = false;
-		if (seen.opponent.status & StatusSpecial) {
-			if (!view.self.guard_cooling_down && !(view.self.status & BusyStatus) && RandomBool((0.35 + 0.55 * skill) * Math::Lerp(0.5, 1.0, warmup(view.now_ms)))) {
+		if (!(seen.opponent.status & StatusSpecial)) {
+			special_threat_pending = false;
+		} else if (view.self.status & BusyStatus) {
+			//自分の技の最中はガードも回避もできないので、終わるのを待つ
+			next_think_ms = view.now_ms + 100;
+			return;
+		} else {
+			special_threat_pending = false;
+			if (!view.self.guard_cooling_down && RandomBool((0.35 + 0.55 * skill) * Math::Lerp(0.5, 1.0, warmup(view.now_ms)))) {
 				say(view.self.number, 4, view.now_ms);
-			} else if (seen.opponent.number == Yuuka) {
+			} else if ((seen.opponent.number != Airi) && RandomBool(0.3 + 0.4 * skill)) {
+				//引き寄せより歩きの方が速いので、気付くのが早ければ歩いて逃げきれる
 				escape_until_ms = view.now_ms + 1500;
 				stroke.end_ms = view.now_ms;
-			} else if (RandomBool(0.5)) {
+			} else if ((seen.opponent.number == Airi) && RandomBool(0.5)) {
 				jump_ms = seen.now_ms + AiriKnifeLaunchMs;
 			}
 			return;
@@ -174,11 +180,12 @@ void CpuBrain::think(const CpuView& view, const CpuView& seen, double skill) {
 		say(view.self.number, 3, view.now_ms);
 		return;
 	}
-	thinkOffense(view, distance, skill);
-	//近くでときどきガードして見せ、「壊せ」を言う機会を作る
-	if (!speech && (distance < 300.0) && !view.self.guard_cooling_down && RandomBool(0.1)) {
+	//相手の攻撃が届きそうな距離では、先読みしてガードすることがある。相手が「壊せ」を言う機会にもなる
+	if ((distance < 300.0) && !view.self.guard_cooling_down && RandomBool(0.05 + 0.25 * skill)) {
 		say(view.self.number, 4, view.now_ms);
+		return;
 	}
+	thinkOffense(view, distance, skill);
 }
 
 void CpuBrain::thinkOffense(const CpuView& view, double distance, double skill) {
@@ -213,7 +220,8 @@ int CpuBrain::fireSpeech(const CpuView& view, const CpuView& seen, double skill)
 	const Speech fired = *speech;
 	speech.reset();
 	if (fired.recognized) {
-		next_think_ms = view.now_ms + thinkDelayMs(view.now_ms, skill);
+		//相手の必殺技に気付いていれば、技の後の間を置かずに対応を考える
+		if (!special_threat_pending) next_think_ms = view.now_ms + thinkDelayMs(view.now_ms, skill);
 		return fired.action;
 	}
 	//認識されなかったら、まだ意味があれば言い直す
@@ -236,29 +244,27 @@ int CpuBrain::walk(const CpuView& view, const CpuView& seen, double skill) {
 	const bool saying_attack = speech && (speech->action != 4);
 	const bool saying_melee = saying_attack && ((speech->action == 5) || (speech->action == 2) || ((view.self.number != Airi) && (speech->action == 1)));
 
+	//いたい距離の範囲
+	const auto [near, far] = saying_melee ? std::pair{ 60.0, 180.0 } : ((view.self.number == Airi) ? std::pair{ 400.0, 700.0 } : std::pair{ 100.0, 220.0 });
+	const double target = (near + far) / 2.0;
+	const bool escaping = (view.now_ms < escape_until_ms);
 	int direction = 0;
-	double target = distance;
-	if (view.now_ms < escape_until_ms) {
+	if (escaping) {
 		direction = away;
-		target = distance + 300.0;
-	}
-	else {
-		//いたい距離の範囲
-		const auto [near, far] = saying_melee ? std::pair{ 60.0, 180.0 } : ((view.self.number == Airi) ? std::pair{ 400.0, 700.0 } : std::pair{ 100.0, 220.0 });
-		target = (near + far) / 2.0;
-		if (far < distance) {
-			direction = toward;
-		//アイリは近づかれると離れるが、逃げ続けると追いつけないので、たまにしか離れず、端の近くでは離れない
-		} else if ((view.self.number == Airi) && (distance < 250.0) && (300.0 < room_behind) && RandomBool(0.3)) {
-			direction = away;
-		}
+	} else if (far < distance) {
+		direction = toward;
+	//アイリは近づかれると離れるが、逃げ続けると追いつけないので、たまにしか離れず、端の近くでは離れない
+	} else if ((view.self.number == Airi) && (distance < 250.0) && (300.0 < room_behind) && RandomBool(0.3)) {
+		direction = away;
 	}
 	//迷って止まる
-	if ((view.now_ms >= escape_until_ms) && RandomBool(Math::Lerp(0.7, 0.45, warmup(view.now_ms)) - 0.2 * skill)) direction = 0;
+	if (!escaping && RandomBool(Math::Lerp(0.7, 0.45, warmup(view.now_ms)) - 0.2 * skill)) direction = 0;
 	if (saying_attack && (direction == away)) direction = 0;
 	if (((direction == WalkLeft) && (self_x < view.stage_min_x + 30.0)) || ((direction == WalkRight) && (view.stage_max_x - 30.0 < self_x))) direction = 0;
 
-	const int duration_ms = direction
+	const int duration_ms = escaping
+		? (escape_until_ms - view.now_ms)
+		: direction
 		? Clamp(static_cast<int>(Abs(distance - target) / view.walk_speed * 1000.0 * Random(0.6, 1.4)), 150, 900)
 		: RandomMs(500, 1500);
 	stroke = Stroke{ .walk = direction, .end_ms = view.now_ms + duration_ms };
