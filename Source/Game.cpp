@@ -76,6 +76,9 @@ player_flag(player_sum, true)
 
 	internal_timer = (int)Time::GetMillisec();
 	cpu_room = dynamic_cast<Multiplay::LocalRoom*>(getData().room.get());
+	return_glow.init(return_img);
+	//CPU 戦は通信を待たないので、シーンのフェードインと同時に始める
+	if (cpu_room) start_match(0);
 	//対戦ごとに読むので、設定ファイルを書き換えれば次の対戦から変わる
 	if (cpu_room) cpu_brain.emplace(LoadCpuBaseSkill(U"config.json"));
 }
@@ -273,6 +276,17 @@ void Game::finish_game(bool won) {
 	settle_timer = GameTimer();
 }
 
+void Game::start_match(int fade_ms) {
+	is_connected = true;
+	player_number = getData().room->isOwner() ? 0 : 1;
+	another_player_number = 1 - player_number;
+	//ゲーム開始時刻
+	connection_timer = (int)Time::GetMillisec() + fade_ms;
+	fade_back_timer = GameTimer();
+	fade_back_alpha = (0 < fade_ms) ? 1.0 : 0.0;
+	bgm.play();
+}
+
 void Game::updateFadeIn(double) {
 	getData().room->update();
 }
@@ -294,16 +308,7 @@ void Game::update() {
 		if (room.error()) {
 			showError(*room.error());
 		}elif(room.lastTick() && (getData().start_tick <= *room.lastTick())) {
-			is_connected = true;
-			//Player
-			player_number = room.isOwner() ? 0 : 1;
-			another_player_number = 1 - player_number;
-			//ゲーム開始時刻
-			connection_timer = (int)Time::GetMillisec() + 700;
-			fade_back_timer = GameTimer();
-			fade_back_alpha = 1.0;
-			//BGMを流す
-			bgm.play();
+			start_match(700);
 		}
 	}
 	else {
@@ -321,6 +326,18 @@ void Game::update() {
 		player[i].event = 0;
 	}
 #endif
+	//CPU 戦は待たせる相手がいないので、途中でやめてタイトルに戻れる
+	if (cpu_room && !is_game_finished) {
+		is_return_hovered = return_shape.mouseOver();
+		if (is_return_hovered) Cursor::RequestStyle(CursorStyle::Hand);
+		if (return_shape.leftClicked()) {
+			cancel_sound.playOneShot();
+			bgm.stop(0.8s);
+			getData().before_scene = State::Game;
+			changeScene(State::Title, 0.8s);
+			return;
+		}
+	}
 	//プレイヤー情報を更新
 	if (!is_game_finished)update_player();
 	handle_started_moves();
@@ -1603,7 +1620,7 @@ void Game::draw() const {
 		controlsGuide.draw(Vec2{ 1790, 150 });
 		draw_HP_bar();
 		draw_AP_bar();
-		draw_ping();
+		if (!cpu_room) draw_ping();
 		//残り時間
 		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 50, Palette::White);
 
@@ -1616,6 +1633,8 @@ void Game::draw() const {
 		draw_effects();
 		commandFeedback.drawMoveNames(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
 
+
+		if (cpu_room && !is_game_finished) return_glow.draw(is_return_hovered, return_shape.pos);
 
 		draw_settle();
 

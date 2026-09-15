@@ -140,7 +140,8 @@ void Matching::updateRoom()
 		if (event.type != U"start") continue;
 		getData().player[0] = event.data[U"owner"].get<int32>();
 		getData().player[1] = event.data[U"guest"].get<int32>();
-		getData().start_tick = event.tick + static_cast<uint64>(StartDelay / room.joined().tickDuration);
+		//CPU 戦は読み込みを待ち合わせる相手がいないので、すぐ始める
+		getData().start_tick = event.tick + (vs_cpu ? 0 : static_cast<uint64>(StartDelay / room.joined().tickDuration));
 		gotoGame = true;
 		getData().before_scene = State::Matching;
 		changeScene(State::Game, 0.8s);
@@ -399,7 +400,7 @@ void Matching::draw() const
 	//コピー通知
 	if (copy_mode)copied_img.drawAt(960, copy_pos_y);
 	//通信中
-	if (joining.isValid() || start_sent)connecting_img.drawAt(1500, 950);
+	if (joining.isValid() || (start_sent && !vs_cpu))connecting_img.drawAt(1500, 950);
 
 	//エラーダイアログ
 	if (error_mode)drawErrorDialog();
@@ -431,7 +432,7 @@ void Matching::drawFadeIn(double t) const
 	if (!bgm.isPlaying()) bgm.play();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, 1.0 - t });
-	connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t });
+	if (!vs_cpu) connecting_img.drawAt(1500, 950, ColorF{ 1, 1.0 - t });
 }
 
 void Matching::updateFadeOut(double)
@@ -445,5 +446,5 @@ void Matching::drawFadeOut(double t) const
 	if (bgm.isPlaying()) bgm.stop();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, t });
-	if (gotoGame)connecting_img.drawAt(1500, 950, ColorF{ 1, t });
+	if (gotoGame && !vs_cpu)connecting_img.drawAt(1500, 950, ColorF{ 1, t });
 }

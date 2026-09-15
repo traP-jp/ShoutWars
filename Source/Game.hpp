@@ -6,6 +6,7 @@
 # include "PlayerInput.hpp"
 # include "VoiceMonitor.hpp"
 # include "CpuBrain.hpp"
+# include "GlowBorder.hpp"
 #include <vector>
 #include <cmath>
 #include <string>
@@ -279,6 +280,7 @@ private:
 	const Texture knives_img{ Resource(U"images/game/system/knives.png") };
 	const Texture occation_img{ Resource(U"images/game/system/occation.png") };
 	const Texture torpedo_img{ Resource(U"images/game/system/torpedo.png") };
+	const Texture return_img{ Resource(U"images/common/return.png") };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	std::vector<Texture> command_img;
@@ -303,6 +305,9 @@ private:
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
+	const Rect return_shape{ 20,20,80,80 };
+	GlowBorder return_glow;
+	bool is_return_hovered = false;
 	//特殊変数////////////////////////////////////////////////////////
 	CommandRecognizer commandRecognizer;
 	//声の届き方と、技が出た・出せなかったことを画面で知らせる
@@ -390,6 +395,8 @@ private:
 	void update_error_screen();
 	void showError(const Multiplay::APIError& error);
 	void finish_game(bool won);
+	/// @brief 対戦を始める。fade_ms の間、黒から画面をフェードインしてから動き出す
+	void start_match(int fade_ms);
 	int voice_command();
 	void handle_started_moves();
 	[[nodiscard]] bool is_guard_cooling_down(int cnt, int now_time) const;

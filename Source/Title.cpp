@@ -287,5 +287,6 @@ void Title::drawFadeOut(double t) const
 	if (bgm.isPlaying()) bgm.stop();
 	draw();
 	Rect(0, 0, 1920, 1080).draw(ColorF{ 0,t });
-	if (!setting_flag)connecting_img.drawAt(1500, 950, ColorF{ 1,t });
+	//サーバーに繋ぐのは部屋を作る・入るときだけ (CPU 戦は繋がない)
+	if (!setting_flag && (getData().room_mode != 2))connecting_img.drawAt(1500, 950, ColorF{ 1,t });
 }
