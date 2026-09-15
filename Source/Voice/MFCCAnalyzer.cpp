@@ -1,8 +1,6 @@
 ﻿# include "MFCCAnalyzer.hpp"
 
-# include <algorithm>
-# include <complex>
-# include <ranges>
+# include <bit>
 
 using namespace std;
 
@@ -17,76 +15,47 @@ using namespace std;
  * - [uLipSync のアルゴリズム改善を行ってみた - 凹みTips](https://tips.hecomi.com/entry/2023/03/31/022324)
  */
 
-MFCCAnalyzer::MFCCAnalyzer(Microphone mic, uint64 mfccHistoryLife, size_t mfccOrder, float preEmphasisCoefficient)
-	: mic(mic), mfccHistoryLife(mfccHistoryLife), mfccOrder(mfccOrder),
-	preEmphasisCoefficient(preEmphasisCoefficient), mfccHistory(make_shared<map<uint64, MFCC>>()) {}
+MFCCAnalyzer::MFCCAnalyzer(const MFCCOptions& options) : options(options) {}
 
-MFCC MFCCAnalyzer::analyze(FFTSampleLength frames, size_t melChannels) {
-	if (!mic.isRecording()) throw Error{ U"mic must be recording" };
+Array<double> MFCCAnalyzer::melSpectrum(Array<float> f, uint32 sampleRate) const {
+	const auto frames = FFTSampleLength(countr_zero(f.size()) - 8);
+	const size_t melChannels = options.melChannels;
 
-	// get data from mic
-	Array<float> f(256uLL << FromEnum(frames), 0.0f);
-	const auto& buffer = mic.getBuffer();
-	const size_t writePos = mic.posSample();
-	for (size_t pos : step(f.size())) {
-		const size_t idx = (pos + writePos < f.size() ? mic.getBufferLength() : 0) + pos + writePos - f.size();
-		f[pos] = buffer[idx].left; // NOTE: Use only one side!
-	}
+	for (size_t i = f.size() - 1; i >= 1; --i) f[i] -= static_cast<float>(f[i - 1] * options.preEmphasisCoefficient);
 
-	// pre-emphasis
-	for (size_t i : Range(f.size() - 1, 1, -1)) f[i] -= f[i - 1] * preEmphasisCoefficient;
+	for (size_t i : step(f.size())) f[i] *= static_cast<float>(0.54 - 0.46 * cos(2 * Math::Pi * i / (f.size() - 1)));
 
-	// hamming window
-	for (size_t i : Range(f.size() - 2, 1)) f[i] *= 0.54f - 0.46f * cos(2 * Math::Pi * i / (f.size() - 1));
-	f.front() = 0.0f;
-	f.back() = 0.0f;
-
-	// normalize
-	const auto factor = ranges::max(f | views::transform([](auto x) { return abs(x); }));
-	if (factor >= 1e-8f) for (auto&& x : f) x *= 1.0f / factor;
-
-	// FFT
 	FFTResult fftResult;
-	FFT::Analyze(fftResult, f.data(), f.size(), mic.getSampleRate(), frames);
+	FFT::Analyze(fftResult, f.data(), f.size(), sampleRate, frames);
 
-	// apply mel filter bank
-	const double melMax = freqToMel(mic.getSampleRate() / 2);
-	const double melMin = freqToMel(0);
+	const double melMax = freqToMel(Min(options.maxFrequency, sampleRate / 2.0));
+	const double melMin = freqToMel(options.minFrequency);
 	const double deltaMel = (melMax - melMin) / (melChannels + 1);
-	Array<double> melPoints(melChannels + 2);
-	for (size_t i : step(melPoints.size())) melPoints[i] = melToFreq(melMin + i * deltaMel);
 	Array<size_t> bin(melChannels + 2);
-	for (size_t i : step(bin.size())) bin[i] = floor((f.size() + 1) * melPoints[i] / mic.getSampleRate());
-	melSpectrum.resize(melChannels);
+	for (size_t i : step(bin.size())) {
+		bin[i] = static_cast<size_t>(floor((f.size() + 1) * melToFreq(melMin + i * deltaMel) / sampleRate));
+	}
+	Array<double> melSpectrum(melChannels);
 	for (size_t i : step(melChannels)) {
-		melSpectrum[i] = 0.0;
-		for (size_t j : Range(bin[i], bin[i + 1] - 1)) {
+		for (size_t j = bin[i]; j < bin[i + 1]; ++j) {
 			melSpectrum[i] += fftResult.buffer[j] * (j - bin[i]) / (bin[i + 1] - bin[i]);
 		}
-		for (size_t j : Range(bin[i + 1], bin[i + 2] - 1)) {
+		for (size_t j = bin[i + 1]; j < bin[i + 2]; ++j) {
 			melSpectrum[i] += fftResult.buffer[j] * (bin[i + 2] - j) / (bin[i + 2] - bin[i + 1]);
 		}
 	}
-
-	// DCT
-	MFCC mfcc{ Array<double>(mfccOrder, 0.0) };
-	for (size_t i : Range(1, mfccOrder)) {
-		for (size_t j : step(melChannels)) {
-			mfcc.feature[i - 1] += log10(abs(melSpectrum[j])) * cos(Math::Pi * i * (j + 0.5) / melChannels) * 10;
-		}
-	}
-
-	cleanMFCCHistory();
-	return (*mfccHistory)[Time::GetMicrosec()] = mfcc;
-}
-
-Array<double> MFCCAnalyzer::getMelSpectrum() const {
 	return melSpectrum;
 }
 
-shared_ptr<map<uint64, MFCC>> MFCCAnalyzer::getMFCCHistory() {
-	cleanMFCCHistory();
-	return mfccHistory;
+MFCC MFCCAnalyzer::cepstrum(const Array<double>& melSpectrum) const {
+	const size_t melChannels = melSpectrum.size();
+	MFCC mfcc{ Array<double>(options.order, 0.0) };
+	for (size_t j : step(melChannels)) {
+		// 無音で log(0) にならないようにする
+		const double logMel = log10(melSpectrum[j] + 1e-10);
+		for (size_t i : step(options.order)) mfcc.feature[i] += logMel * cos(Math::Pi * (i + 1) * (j + 0.5) / melChannels) * 10;
+	}
+	return mfcc;
 }
 
 double MFCCAnalyzer::freqToMel(double freq) {
@@ -95,9 +64,4 @@ double MFCCAnalyzer::freqToMel(double freq) {
 
 double MFCCAnalyzer::melToFreq(double mel) {
 	return 700.0 * (exp(mel / 1127.01) - 1.0);
-}
-
-size_t MFCCAnalyzer::cleanMFCCHistory() {
-	const auto now = Time::GetMicrosec();
-	return erase_if(*mfccHistory, [this, now](const auto& p) { return now - p.first > mfccHistoryLife; });
 }

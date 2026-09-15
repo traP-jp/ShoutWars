@@ -189,10 +189,13 @@
     <ClCompile Include="Source\Voice\Phoneme.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Voice\WordDetector.cpp">
+    <ClCompile Include="Source\Voice\NoiseSuppressor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Voice\MFCC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Voice\CommandRecognizer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\GlowBorder.cpp">
@@ -539,10 +542,13 @@
     <ClInclude Include="Source\Voice\Phoneme.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Voice\WordDetector.hpp">
+    <ClInclude Include="Source\Voice\NoiseSuppressor.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Voice\MFCC.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Voice\CommandRecognizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\GlowBorder.hpp">

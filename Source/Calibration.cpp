@@ -26,7 +26,7 @@ void Calibration::update() {
 		if (phonemeRects[id].mouseOver()) {
 			Cursor::RequestStyle(CursorStyle::Hand);
 			if (MouseL.down()) isWaitingToSet = true;
-			if (isWaitingToSet && MouseL.pressedDuration() >= 0.8s) {
+			if (isWaitingToSet && MouseL.pressedDuration() >= 1.7s) {
 				isWaitingToSet = false;
 				phoneme.setMFCC(id);
 			}
@@ -69,7 +69,7 @@ void Calibration::draw() const {
 
 	// MFCC のグラフ
 	RectF{ Arg::topLeft(120, 140), 1680.0, 360.0 }.draw(Palette::Black);
-	for (const auto [timeUs, mfcc] : *phoneme.getMFCCHistory()) {
+	for (const auto& [timeUs, mfcc] : phoneme.getMFCCHistory()) {
 		for (size_t i : step(12)) {
 			RectF{
 				Arg::topLeft(1800.0 - 1680.0 * (nowUs - timeUs) / (phoneme.mfccHistoryLife / 1.1), 140.0 + i * 30.0),
@@ -85,29 +85,30 @@ void Calibration::draw() const {
 	for (size_t id : step(12)) {
 		const auto& rect = phonemeRects[id];
 		rect.draw(Palette::Black);
+		const auto average = phoneme.averageMFCC(id);
 		for (size_t i : step(12)) {
 			RectF{
 				rect.x, rect.y + i * (rect.h / 12), rect.w, rect.h / 12
-			}.draw(HSV{ 510.0 - phoneme.mfccList[id].feature[i] * 2.0, 0.6 });
+			}.draw(HSV{ 510.0 - average.feature[i] * 2.0, 0.6 });
 		}
 		if (!rect.mouseOver()) rect.drawFrame(4, Palette::White);
 		else if (!MouseL.pressed()) rect.drawFrame(12, Palette::White);
-		else if (MouseL.pressedDuration() < 1.0s) rect.drawFrame(12, Palette::Orange);
+		else if (MouseL.pressedDuration() < 1.7s) rect.drawFrame(12, Palette::Orange);
 		else rect.drawFrame(10, Palette::Limegreen);
 		font(phonemeNames[id]).draw(
 			30,
 			Arg::topCenter(rect.bottomCenter() + Vec2{ 0, 20 }),
-			phonemeScores[id] >= 0.75 ? Palette::Limegreen : Palette::Orange
+			phonemeScores[id] >= 0.6 ? Palette::Limegreen : Palette::Orange
 		);
 	}
 	font(U"登録したい音素を雑音が入らないように気を付けて発音しながら緑に光るまで長押ししてください。").draw(30, 120, 545);
 
 	// 入力感度
 	double rootThreshold = sqrt(phoneme.volumeThreshold);
-	RectF{ Arg::bottomRight(1700.0, 940.0), 80.0, sqrt(phoneme.mic.rootMeanSquare()) * 360.0 }.draw(Palette::White);
+	RectF{ Arg::bottomRight(1700.0, 940.0), 80.0, sqrt(phoneme.rootMeanSquare()) * 360.0 }.draw(Palette::White);
 	RectF{ Arg::rightCenter(1700.0, 940.0 - rootThreshold * 360.0), 80.0, 4.0 }.draw(Palette::Skyblue);
 	RectF{ Arg::bottomRight(1700.0, 940.0), 80.0, 360.0 }.drawFrame(
-		4, phoneme.mic.rootMeanSquare() < phoneme.volumeThreshold ? Palette::Orange : Palette::Lime
+		4, phoneme.rootMeanSquare() < phoneme.volumeThreshold ? Palette::Orange : Palette::Lime
 	);
 	SimpleGUI::VerticalSlider(rootThreshold, 0.0, 1.0, Vec2{ 1740.0, 565.0 }, 390.0);
 	phoneme.volumeThreshold = pow(rootThreshold, 2.0);

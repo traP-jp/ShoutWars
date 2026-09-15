@@ -1,54 +1,110 @@
 ﻿# pragma once
 
 # include "MFCCAnalyzer.hpp"
+# include "NoiseSuppressor.hpp"
 # include <Siv3D.hpp>
+
+enum class PhonemeDistance {
+	Cosine,
+	Euclidean,
+};
+
+struct PhonemeOptions {
+	MFCCOptions mfcc;
+	/// @brief 0 なら登録した平均との距離で推定する
+	size_t k = 11;
+	PhonemeDistance distance = PhonemeDistance::Cosine;
+	/// @brief ユークリッド距離を測る前に、登録した特徴量の分散で各次元を正規化する
+	bool standardize = true;
+	/// @brief 先頭から何個の音素が、無音や息などの母音でない音か
+	size_t silentPhonemes = 2;
+	/// @brief 入力感度の閾値よりこの dB 以上大きいフレームは、母音でない音素に分類しない
+	double silenceMarginDb = 10.0;
+	/// @brief マイクの音声の雑音を抑制する RNNoise の重み (空なら抑制しない)
+	FilePath noiseSuppressionWeights;
+	/// @brief 雑音を抑制した音声に、抑制前の音声を混ぜる割合
+	double noiseSuppressionDryMix = 0.1;
+};
 
 class Phoneme {
 public:
-	static constexpr size_t mfccOrder = 12;
-
 	FilePathView configPath;
 	Microphone mic;
 	double volumeThreshold;
-	Array<MFCC> mfccList; // 0 はノイズ
 	uint64 mfccHistoryLife;
 
 	/// @param configPath 設定ファイルのパス
 	/// @param defaultVolumeThreshold デフォルトのボリューム閾値
 	/// @param n 音素の数
 	/// @param mfccHistoryLife MFCC の履歴のマイクロ秒の寿命
-	[[nodiscard]] explicit Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t n, uint64 mfccHistoryLife = 2'200'000uLL);
+	/// @param options 特徴量と推定方法
+	[[nodiscard]] explicit Phoneme(FilePathView configPath, double defaultVolumeThreshold, size_t n, uint64 mfccHistoryLife = 2'200'000uLL, const PhonemeOptions& options = {});
 
 	/// @brief 録音を開始する (録音中の場合は再開する)
+	/// @remark 雑音を抑制するときは 48 kHz で録音する。48 kHz で録音できないマイクでは抑制しない
 	/// @return 録音の開始に成功したかどうか
 	bool start();
 
 	/// @brief 録音を終了する
 	void stop();
 
-	/// @brief 音声を解析し音素を推定する (重い処理なので 1 秒に 60 回までしか呼ぶな)
+	/// @brief マイクの音声を解析し音素を推定する (重い処理なので 1 秒に 60 回までしか呼ぶな)
 	/// @param frames 音声解析に使うサンプル数 (大きいほど重くなる)
-	/// @return それぞれの音素とのコサイン類似度 (値域は [-1.0 1.0])
+	/// @return それぞれの音素らしさ (大きいほどその音素らしい)
 	[[nodiscard]] Array<double> estimate(FFTSampleLength frames = FFTSampleLength::SL2K);
 
-	/// @brief MFCC を全て設定できていないかを調べる
-	/// @return mfccList が全て埋まっていないかどうか
+	/// @brief 音声の断片を解析し音素を推定する
+	/// @param samples 直近のサンプル
+	/// @param sampleRate サンプリング周波数
+	/// @param rootMeanSquare 直近 20 ms の音量
+	/// @param timeUs 現在時刻 (マイクロ秒)
+	/// @return それぞれの音素らしさ (大きいほどその音素らしい)
+	[[nodiscard]] Array<double> estimate(Array<float> samples, uint32 sampleRate, double rootMeanSquare, uint64 timeUs);
+
+	/// @brief 推定に使う直近 20 ms の音量 (雑音を抑制しているときは抑制後の音量)
+	[[nodiscard]] double rootMeanSquare() const;
+
+	/// @brief 登録していない音素があるかを調べる
 	bool isMFCCUnset() const;
 
-	/// @brief 0.5 秒前から現在の MFCC の平均で音素を登録する
+	/// @brief 直近の音声で音素を登録する
 	/// @param id 登録する音素の ID (インデックス)
-	/// @throw Error 録音中でないか MFCC の履歴が空
-	void setMFCC(uint64 id);
+	/// @param timeUs 現在時刻 (マイクロ秒)
+	/// @param durationUs 遡る時間 (マイクロ秒)
+	/// @throw Error 履歴が空
+	void setMFCC(uint64 id, uint64 timeUs = Time::GetMicrosec(), uint64 durationUs = 1'500'000);
+
+	/// @brief 登録した MFCC の平均を取得する
+	/// @param id 音素の ID (インデックス)
+	[[nodiscard]] MFCC averageMFCC(size_t id) const;
 
 	/// @brief 設定をファイルに保存する
 	/// @return 保存に成功したかどうか
 	bool save() const;
 
 	/// @brief MFCC の履歴を取得する
-	/// @return マイクロ秒と MFCC の std::map の共有ポインタ
-	/// @throw Error 録音中でない
-	[[nodiscard]] std::shared_ptr<std::map<uint64, MFCC>> getMFCCHistory() const;
+	/// @return マイクロ秒と MFCC の std::map
+	[[nodiscard]] const std::map<uint64, MFCC>& getMFCCHistory() const;
 
 protected:
-	std::unique_ptr<MFCCAnalyzer> mfccAnalyzer;
+	PhonemeOptions options;
+	MFCCAnalyzer mfccAnalyzer;
+	/// @brief 音素ごとの、登録したフレームのメルスペクトル
+	Array<Array<Array<double>>> registeredSpectra;
+	/// @brief registeredSpectra から求めた特徴量
+	Array<Array<MFCC>> registered;
+	std::map<uint64, Array<double>> spectrumHistory;
+	std::map<uint64, MFCC> mfccHistory;
+	Array<double> featureScale;
+	std::unique_ptr<NoiseSuppressor> noiseSuppressor;
+	size_t micReadPos = 0;
+	Array<float> suppressedSamples;
+
+	[[nodiscard]] Array<float> latestSamples(FFTSampleLength frames) const;
+	void suppressNewSamples();
+	[[nodiscard]] Array<double> silenceScores() const;
+	[[nodiscard]] Array<double> averageScores(const MFCC& mfcc) const;
+	[[nodiscard]] Array<double> nearestNeighborScores(const MFCC& mfcc, bool loud) const;
+	[[nodiscard]] double distance(const MFCC& a, const MFCC& b) const;
+	void updateFeatures();
 };

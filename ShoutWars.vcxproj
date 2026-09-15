@@ -49,7 +49,7 @@
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\Debug\Intermediate\</IntDir>
     <TargetName>$(ProjectName)(debug)</TargetName>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)App</LocalDebuggerWorkingDirectory>
-    <IncludePath>$(SIV3D_0_6_16)\include;$(SIV3D_0_6_16)\include\ThirdParty;$(ProjectDir)ThirdParty;$(IncludePath)</IncludePath>
+    <IncludePath>$(SIV3D_0_6_16)\include;$(SIV3D_0_6_16)\include\ThirdParty;$(ProjectDir)ThirdParty;$(ProjectDir)ThirdParty\rnnoise\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SIV3D_0_6_16)\lib\Windows;$(LibraryPath)</LibraryPath>
     <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
   </PropertyGroup>
@@ -58,7 +58,7 @@
     <OutDir>$(SolutionDir)Intermediate\$(ProjectName)\Release\</OutDir>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\Release\Intermediate\</IntDir>
     <LocalDebuggerWorkingDirectory>$(ProjectDir)App</LocalDebuggerWorkingDirectory>
-    <IncludePath>$(SIV3D_0_6_16)\include;$(SIV3D_0_6_16)\include\ThirdParty;$(ProjectDir)ThirdParty;$(IncludePath)</IncludePath>
+    <IncludePath>$(SIV3D_0_6_16)\include;$(SIV3D_0_6_16)\include\ThirdParty;$(ProjectDir)ThirdParty;$(ProjectDir)ThirdParty\rnnoise\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SIV3D_0_6_16)\lib\Windows;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -127,10 +127,11 @@
     <ClCompile Include="Source\Matching.cpp" />
     <ClCompile Include="Source\Result.cpp" />
     <ClCompile Include="Source\Title.cpp" />
+    <ClCompile Include="Source\Voice\CommandRecognizer.cpp" />
     <ClCompile Include="Source\Voice\MFCC.cpp" />
+    <ClCompile Include="Source\Voice\NoiseSuppressor.cpp" />
     <ClCompile Include="Source\Voice\MFCCAnalyzer.cpp" />
     <ClCompile Include="Source\Voice\Phoneme.cpp" />
-    <ClCompile Include="Source\Voice\WordDetector.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -256,10 +257,11 @@
     <ClInclude Include="Source\Matching.hpp" />
     <ClInclude Include="Source\Result.hpp" />
     <ClInclude Include="Source\Title.hpp" />
+    <ClInclude Include="Source\Voice\CommandRecognizer.hpp" />
     <ClInclude Include="Source\Voice\MFCC.hpp" />
+    <ClInclude Include="Source\Voice\NoiseSuppressor.hpp" />
     <ClInclude Include="Source\Voice\MFCCAnalyzer.hpp" />
     <ClInclude Include="Source\Voice\Phoneme.hpp" />
-    <ClInclude Include="Source\Voice\WordDetector.hpp" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Source\Multiplay\APIClient.hpp" />
     <ClInclude Include="Source\Multiplay\CurlTransport.hpp" />
@@ -270,13 +272,145 @@
   </ItemGroup>
   <Target Name="GenerateAppResources" BeforeTargets="ResourceCompile">
     <ItemGroup>
-      <AppResource Include="CREDITS.ini;licenses\**\*;images\**\*;audioes\**\*;shaders\**\*" />
+      <AppResource Include="CREDITS.ini;licenses\**\*;images\**\*;audioes\**\*;shaders\**\*;models\**\*" />
       <AppResourceEntry Include="@(AppResource)">
         <ResourcePath>$([System.String]::Copy('%(Identity)').Replace('\','/'))</ResourcePath>
       </AppResourceEntry>
     </ItemGroup>
     <WriteLinesToFile File="App\AppResources.rc" Lines="@(AppResourceEntry-&gt;'Resource(%(ResourcePath))')" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
+  <ItemGroup>
+    <ClCompile Include="ThirdParty\rnnoise\src\celt_lpc.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\denoise.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\kiss_fft.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\nnet.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\nnet_default.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\parse_lpcnet_weights.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\pitch.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\rnn.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\rnnoise_data.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\rnnoise\src\rnnoise_tables.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <CompileAs>CompileAsC</CompileAs>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>USE_WEIGHTS_FILE;__SSE2__;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)ThirdParty\rnnoise\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

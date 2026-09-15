@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>ShoutWars 音声コーパス録音</title>
+<style>
+  body { margin: 0; padding: 32px; background: #111; color: #eee; font-family: system-ui, sans-serif; }
+  button { font-size: 18px; padding: 8px 16px; }
+  #prompt { margin-top: 32px; }
+  #text { font-size: 96px; font-weight: bold; }
+  #detail { font-size: 32px; color: #aaa; }
+  #state { font-size: 24px; margin-top: 16px; min-height: 1.5em; }
+  #meter { width: 480px; height: 16px; background: #333; margin-top: 16px; }
+  #level { height: 100%; width: 0; background: #4c4; }
+  .recording #text { color: #f55; }
+  .warning { color: #fa0; }
+  #help { margin-top: 32px; color: #888; }
+</style>
+</head>
+<body>
+<button id="open">保存先フォルダを選んで開始</button>
+<div id="prompt" hidden>
+  <select id="microphone"></select>
+  <div id="text"></div>
+  <div id="detail"></div>
+  <div id="meter"><div id="level"></div></div>
+  <div id="state"></div>
+</div>
+<p id="help">Space を押している間だけ録音し、離すと保存して次へ進みます。← → でお題を移動し、録り直すときはそのまま上書きします。</p>
+<script>
+const groups = [
+  {
+    id: "command",
+    styles: [["normal", "ふつう"], ["shout", "叫ぶ"], ["fast", "早口"], ["long", "伸ばす"]],
+    lines: [
+      ["nagure", "殴れ"], ["kick", "キック"], ["gyorai", "魚雷"], ["ryuko", "龍虎水雷撃"],
+      ["sase", "刺せ"], ["ute", "撃て"], ["kire", "斬れ"], ["deadly", "デッドリーアサルト"],
+      ["rensha", "連射"], ["guard", "ガード"], ["mamore", "守れ"], ["kowase", "壊せ"],
+    ],
+  },
+  {
+    id: "vowel",
+    styles: [["high", "高い声で伸ばす"], ["low", "低い声で伸ばす"]],
+    lines: [["a", "あ"], ["i", "い"], ["u", "う"], ["e", "え"], ["o", "お"]],
+  },
+  {
+    id: "other",
+    styles: [["normal", "ふつう"], ["shout", "叫ぶ"]],
+    lines: [["uwa", "うわっ"], ["yossha", "よっしゃ"], ["ee", "えー"], ["yabai", "やばい"], ["laugh", "(笑う)"]],
+  },
+];
+const takes = 3;
+const preRollSeconds = 0.5;
+const postRollSeconds = 0.3;
+
+const prompts = groups.flatMap(group =>
+  group.lines.flatMap(([line, text]) =>
+    group.styles.flatMap(([style, styleLabel]) =>
+      Array.from({ length: takes }, (_, i) => ({
+        file: `${group.id}-${line}-${style}-${i + 1}.wav`,
+        group: group.id, line, text, style, styleLabel, take: i + 1,
+      })))));
+
+const $ = id => document.getElementById(id);
+let directory;
+let stream;
+let context;
+let sampleRate;
+const recorded = new Map();
+let index = 0;
+let preRoll = [];
+let take = null;
+let peak = 0;
+
+$("open").onclick = async () => {
+  directory = await showDirectoryPicker({ id: "shoutwars-voice-corpus", mode: "readwrite" });
+  await loadManifest();
+  await startMicrophone();
+  index = Math.max(0, prompts.findIndex(p => !recorded.has(p.file)));
+  $("open").hidden = true;
+  $("prompt").hidden = false;
+  render();
+};
+
+async function loadManifest() {
+  try {
+    const file = await (await directory.getFileHandle("manifest.csv")).getFile();
+    const [header, ...rows] = (await file.text()).trim().split(/\r?\n/);
+    const columns = header.split(",");
+    for (const row of rows) {
+      const values = Object.fromEntries(row.split(",").map((v, i) => [columns[i], v]));
+      recorded.set(values.file, values);
+    }
+  } catch (e) {
+    if (e.name !== "NotFoundError") throw e;
+  }
+}
+
+async function saveManifest() {
+  const columns = ["file", "group", "line", "text", "style", "take", "sample_rate", "seconds", "peak"];
+  const rows = prompts.filter(p => recorded.has(p.file)).map(p => columns.map(c => recorded.get(p.file)[c]).join(","));
+  const writable = await (await directory.getFileHandle("manifest.csv", { create: true })).createWritable();
+  await writable.write([columns.join(","), ...rows].join("\n") + "\n");
+  await writable.close();
+}
+
+$("microphone").onchange = e => startMicrophone(e.target.value);
+
+async function startMicrophone(deviceId) {
+  stream?.getTracks().forEach(track => track.stop());
+  await context?.close();
+  preRoll = [];
+  stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      deviceId: deviceId && { exact: deviceId },
+      echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1,
+    },
+  });
+  const devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
+  $("microphone").replaceChildren(...devices.map(d => new Option(d.label, d.deviceId)));
+  $("microphone").value = stream.getAudioTracks()[0].getSettings().deviceId;
+  context = new AudioContext();
+  sampleRate = context.sampleRate;
+  const processor = `registerProcessor("tap", class extends AudioWorkletProcessor {
+    process(inputs) {
+      if (inputs[0][0]) this.port.postMessage(inputs[0][0].slice());
+      return true;
+    }
+  });`;
+  await context.audioWorklet.addModule(URL.createObjectURL(new Blob([processor], { type: "text/javascript" })));
+  const tap = new AudioWorkletNode(context, "tap");
+  tap.port.onmessage = e => onSamples(e.data);
+  context.createMediaStreamSource(stream).connect(tap).connect(context.destination);
+}
+
+function onSamples(samples) {
+  let chunkPeak = 0;
+  for (const s of samples) chunkPeak = Math.max(chunkPeak, Math.abs(s));
+  $("level").style.width = `${Math.min(1, chunkPeak) * 100}%`;
+  if (take) {
+    take.chunks.push(samples);
+    peak = Math.max(peak, chunkPeak);
+    return;
+  }
+  preRoll.push(samples);
+  let length = preRoll.reduce((n, c) => n + c.length, 0);
+  while (length - preRoll[0].length >= preRollSeconds * sampleRate) length -= preRoll.shift().length;
+}
+
+addEventListener("keydown", e => {
+  if (!directory || e.repeat) return;
+  if (["Space", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space") {
+    if (take) return;
+    take = { prompt: prompts[index], chunks: preRoll, stopping: false };
+    preRoll = [];
+    peak = 0;
+    render();
+  } else if (e.code === "ArrowLeft" && !take) {
+    index = Math.max(0, index - 1);
+    render();
+  } else if (e.code === "ArrowRight" && !take) {
+    index = Math.min(prompts.length - 1, index + 1);
+    render();
+  }
+});
+
+addEventListener("keyup", e => {
+  if (e.code !== "Space" || !take || take.stopping) return;
+  take.stopping = true;
+  setTimeout(finishTake, postRollSeconds * 1000);
+});
+
+async function finishTake() {
+  const { prompt, chunks } = take;
+  take = null;
+  const samples = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
+  let offset = 0;
+  for (const c of chunks) {
+    samples.set(c, offset);
+    offset += c.length;
+  }
+  if (peak === 0) {
+    render("マイクから音が届いていません。上でマイクを選び直してください");
+    return;
+  }
+  const writable = await (await directory.getFileHandle(prompt.file, { create: true })).createWritable();
+  await writable.write(encodeWav(samples, sampleRate));
+  await writable.close();
+  recorded.set(prompt.file, {
+    ...prompt, sample_rate: sampleRate, seconds: (samples.length / sampleRate).toFixed(3), peak: peak.toFixed(4),
+  });
+  await saveManifest();
+  const clipped = peak >= 0.999;
+  if (!clipped) index = Math.min(prompts.length - 1, index + 1);
+  render(clipped ? "音割れしました。もう一度 Space で録り直してください" : "");
+}
+
+function encodeWav(samples, rate) {
+  const view = new DataView(new ArrayBuffer(44 + samples.length * 2));
+  const writeString = (offset, s) => [...s].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, "data");
+  view.setUint32(40, samples.length * 2, true);
+  samples.forEach((s, i) => view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 0x7fff, true));
+  return view.buffer;
+}
+
+function render(message = "") {
+  const prompt = prompts[index];
+  const done = prompts.filter(p => recorded.has(p.file)).length;
+  $("prompt").className = take ? "recording" : "";
+  $("text").textContent = prompt.text;
+  $("detail").textContent = `${prompt.styleLabel} / ${prompt.take} 回目 (${index + 1} / ${prompts.length}、録音済み ${done})`;
+  $("state").className = message ? "warning" : "";
+  $("state").textContent = message || (take ? "録音中…" : recorded.has(prompt.file) ? "録音済み (録り直すと上書きします)" : "");
+}
+</script>
+</body>
+</html>

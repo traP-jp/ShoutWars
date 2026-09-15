@@ -1,6 +1,6 @@
 ﻿# pragma once
 # include "common.hpp"
-# include "Voice/WordDetector.hpp"
+# include "Voice/CommandRecognizer.hpp"
 #include <vector>
 #include <cmath>
 #include <string>
@@ -220,7 +220,7 @@ private:
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
 	//特殊変数////////////////////////////////////////////////////////
-	mutable WordDetector wordDetector{};
+	CommandRecognizer commandRecognizer;
 
 	//変数////////////////////////////////////////////////////////////
 	//プレイヤーが存在するか
