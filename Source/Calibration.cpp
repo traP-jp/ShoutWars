@@ -4,7 +4,6 @@
 
 namespace {
 	constexpr size_t FramesPerSecond = 60;
-	constexpr double MinDb = -60.0;
 	constexpr StringView GraphsKey = U"calibrationGraphs";
 
 	/// @brief 1 つの段階で録る区間の並び。区間ごとに、前後のフレームを捨てて真ん中を 1 つの音素に登録する
@@ -65,17 +64,8 @@ namespace {
 		return RectF{ StepRect(index).x + CardPadding, GraphTop, CardWidth(index) - CardPadding * 2, GraphHeight };
 	}
 
-	[[nodiscard]] double ToDb(double rootMeanSquare) {
-		return 20.0 * Math::Log10(Max(rootMeanSquare, 1e-6));
-	}
-
 	[[nodiscard]] double FromDb(double db) {
 		return Math::Pow(10.0, db / 20.0);
-	}
-
-	/// @brief グラフやメーターでの高さの割合
-	[[nodiscard]] double LevelOf(double db) {
-		return Clamp((db - MinDb) / -MinDb, 0.0, 1.0);
 	}
 
 	[[nodiscard]] bool IsNumbers(const JSON& values) {
@@ -85,12 +75,8 @@ namespace {
 		return true;
 	}
 
-	[[nodiscard]] ColorF DisplayColor(const HSV& vowelColor) {
-		return HSV{ vowelColor.h, vowelColor.s * 0.7, 0.95 };
-	}
-
 	void DrawThreshold(const RectF& area, double threshold) {
-		const double y = area.bottomY() - area.h * LevelOf(ToDb(threshold));
+		const double y = area.bottomY() - area.h * VolumeLevel(VolumeDb(threshold));
 		Line{ area.x, y, area.rightX(), y }.draw(LineStyle::SquareDot, 3, Palette::Skyblue);
 	}
 }
@@ -147,7 +133,7 @@ void Calibration::recordFrame() {
 	const size_t section = recording.bars.size() / plan.sectionFrames();
 	const size_t position = recording.bars.size() % plan.sectionFrames();
 	if (plan.leadFrames <= position && position < plan.leadFrames + plan.keptFrames) recording.spectra[section] << phoneme.latestSpectrum();
-	recording.bars << Bar{ ToDb(rootMeanSquare), phoneme.getMFCCHistory().rbegin()->second };
+	recording.bars << Bar{ VolumeDb(rootMeanSquare), phoneme.getMFCCHistory().rbegin()->second };
 	if (recording.bars.size() == plan.totalFrames()) finishTake();
 }
 
@@ -253,15 +239,15 @@ void Calibration::drawSensitivity() const {
 
 	const bool voiced = phoneme.rootMeanSquare() >= phoneme.volumeThreshold;
 	const auto& history = phoneme.getMFCCHistory();
-	const ColorF volumeColor = voiced && !history.empty() ? DisplayColor(VowelColor(history.rbegin()->second)) : SilentColor;
+	const ColorF volumeColor = voiced && !history.empty() ? VowelDisplayColor(VowelColor(history.rbegin()->second)) : SilentColor;
 	MeterRect.draw(GraphColor);
-	RectF{ Arg::bottomLeft(MeterRect.bl()), MeterRect.w, MeterRect.h * LevelOf(ToDb(phoneme.rootMeanSquare())) }.draw(volumeColor);
+	RectF{ Arg::bottomLeft(MeterRect.bl()), MeterRect.w, MeterRect.h * VolumeLevel(VolumeDb(phoneme.rootMeanSquare())) }.draw(volumeColor);
 	DrawThreshold(MeterRect, phoneme.volumeThreshold);
 	MeterRect.drawFrame(4, voiced ? Palette::Lime : Palette::Orange);
 
-	double level = LevelOf(ToDb(phoneme.volumeThreshold));
+	double level = VolumeLevel(VolumeDb(phoneme.volumeThreshold));
 	if (SimpleGUI::VerticalSlider(level, Vec2{ MeterRect.rightX() + 30, MeterRect.y }, MeterRect.h)) {
-		phoneme.volumeThreshold = FromDb(MinDb + level * -MinDb);
+		phoneme.volumeThreshold = FromDb(MinVolumeDb + level * -MinVolumeDb);
 	}
 
 	font(recognitionLabel()).drawAt(34, Vec2{ MeterRect.x + 70, MeterRect.bottomY() + 50 }, voiced ? ColorF{ Palette::Lime } : ColorF{ 0.7 });
@@ -286,10 +272,10 @@ void Calibration::drawStep(size_t step) const {
 	}
 	const double barWidth = SectionWidth / plan.sectionFrames();
 	for (auto&& [i, bar] : Indexed(bars)) {
-		RectF{ Arg::bottomLeft(graph.x + i * barWidth, graph.bottomY()), barWidth, graph.h * LevelOf(bar.volumeDb) }.draw(plan.vowels.isEmpty() ? AmbienceColor : DisplayColor(VowelColor(bar.mfcc)));
+		RectF{ Arg::bottomLeft(graph.x + i * barWidth, graph.bottomY()), barWidth, graph.h * VolumeLevel(bar.volumeDb) }.draw(plan.vowels.isEmpty() ? AmbienceColor : VowelDisplayColor(VowelColor(bar.mfcc)));
 	}
 	if (recordingHere) {
-		const double height = graph.h * LevelOf(ToDb(phoneme.rootMeanSquare()));
+		const double height = graph.h * VolumeLevel(VolumeDb(phoneme.rootMeanSquare()));
 		RectF{ Arg::bottomLeft(graph.x + bars.size() * barWidth, graph.bottomY()), Max(barWidth, 4.0), height }.draw(ColorF{ 1.0, 0.4 });
 	}
 	for (size_t section : Range(1, plan.phonemeIds.size() - 1)) {

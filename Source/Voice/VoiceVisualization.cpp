@@ -39,3 +39,15 @@ HSV VowelColor(const MFCC& mfcc) {
 	}
 	return HSV{ Math::Fmod(Math::ToDegrees(Math::Atan2(sum.y, sum.x)) + 360.0, 360.0), Math::Pow(sum.length(), SaturationExponent), 1.0 };
 }
+
+double VolumeDb(double rootMeanSquare) {
+	return 20.0 * Math::Log10(Max(rootMeanSquare, 1e-6));
+}
+
+double VolumeLevel(double volumeDb) {
+	return Clamp((volumeDb - MinVolumeDb) / -MinVolumeDb, 0.0, 1.0);
+}
+
+ColorF VowelDisplayColor(const HSV& vowelColor) {
+	return HSV{ vowelColor.h, vowelColor.s * 0.7, 0.95 };
+}
