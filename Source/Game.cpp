@@ -76,6 +76,24 @@ player_flag(player_sum, true)
 
 	internal_timer = (int)Time::GetMillisec();
 	cpu_room = dynamic_cast<Multiplay::LocalRoom*>(getData().room.get());
+	if (cpu_room) cpu_brain.emplace();
+}
+
+CpuView Game::make_cpu_view(int now_time) const {
+	const auto fighter = [&](int i) {
+		const Player& p = player[i];
+		return CpuFighter{ .pos = p.pos[0], .status = p.status, .number = p.number, .hp = p.hp[0], .special_ready = p.special_attack, .guard_cooling_down = is_guard_cooling_down(i, now_time) };
+	};
+	return CpuView{
+		.now_ms = now_time,
+		.self = fighter(another_player_number),
+		.opponent = fighter(player_number),
+		.max_hp = player_max_hp,
+		.walk_speed = player[another_player_number].speed * 10.0,
+		.stage_min_x = stage_min_x,
+		.stage_max_x = stage_max_x,
+		.opponent_unmatched_utterances = commandRecognizer.unmatchedUtterances(),
+	};
 }
 
 int Game::getkey() {
@@ -418,17 +436,13 @@ void Game::update_player() {
 	if (gotkey & 10) start_walk(player_number, (gotkey & 2) ? 1 : 2, now_time);
 	if (jump_pressed) start_jump(player_number, now_time);
 	//CPU の操作は、押し合いと向きを決めるより前に行う。歩きは 100 ミリ秒ごとに止まって入力で続くので、後にすると止まった瞬間に相手の方を向いてしまう
-# if defined(_DEBUG) || defined(DEBUG)
-	//CPU の頭脳ができるまでの動作確認用に、テンキーで CPU を動かす (4/6:左右, 8:ジャンプ, 1:弱, 2:強, 3:必殺, 5:ガード, 7:ガード破壊, 9:特殊)
-	if (cpu_room) {
+	if (cpu_brain) {
 		const int cpu = another_player_number;
-		if (KeyNum4.pressed() || KeyNum6.pressed()) start_walk(cpu, KeyNum4.pressed() ? 1 : 2, now_time);
-		if (KeyNum8.down()) start_jump(cpu, now_time);
-		for (const auto& [key, action] : { std::pair{ KeyNum1, 1 }, { KeyNum2, 2 }, { KeyNum3, 3 }, { KeyNum5, 4 }, { KeyNum7, 5 }, { KeyNum9, 6 } }) {
-			if (key.down()) start_move(cpu, action, now_time);
-		}
+		const CpuIntent intent = cpu_brain->update(make_cpu_view(now_time));
+		if (intent.walk) start_walk(cpu, intent.walk, now_time);
+		if (intent.jump) start_jump(cpu, now_time);
+		if (intent.move) start_move(cpu, intent.move, now_time);
 	}
-# endif
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
 	//位置を決めるのは本人なので、引き寄せや押し合いでは手元で動かすプレイヤー (自分と CPU) だけを動かす。通信相手は、相手のクライアントが自分で動く
 	for (int i = 0; i < player_sum; i++) {
@@ -577,7 +591,7 @@ void Game::update_player() {
 
 	for (int i = 0; i < player_sum; i++) {
 		//移動範囲制限
-		player_reserved_pos[i].x = Clamp(player_reserved_pos[i].x, 50.0, 1850.0);
+		player_reserved_pos[i].x = Clamp(player_reserved_pos[i].x, static_cast<double>(stage_min_x), static_cast<double>(stage_max_x));
 		//プレイヤーの位置を更新を確定
 		player[i].pos[0] = player_reserved_pos[i];
 	}

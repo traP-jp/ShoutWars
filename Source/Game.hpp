@@ -5,6 +5,7 @@
 # include "ControlsGuide.hpp"
 # include "PlayerInput.hpp"
 # include "VoiceMonitor.hpp"
+# include "CpuBrain.hpp"
 #include <vector>
 #include <cmath>
 #include <string>
@@ -173,6 +174,9 @@ private:
 	//対戦の制限時間 (秒)。慣れた人がスムーズに進めて 2 分、初めて遊ぶ人は 5 分ほどかかる見込みなので余裕を持たせ、サーバーの対戦の期限 (20分) より短く取る
 	const static int match_seconds = 600;
 	const static int player_min_y = 650;
+	//キャラが動ける横の範囲
+	const static int stage_min_x = 50;
+	const static int stage_max_x = 1850;
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
 	const static int player_max_ap = 500;
@@ -310,6 +314,7 @@ private:
 	int another_player_number = 1;
 	//CPU と対戦するときの部屋 (相手は CPU で、手元で動かす)。通信対戦では nullptr
 	Multiplay::LocalRoom* cpu_room = nullptr;
+	Optional<CpuBrain> cpu_brain;
 	//時間
 	int internal_timer = 0;
 	//描画用変数
@@ -385,6 +390,7 @@ private:
 	void send_action(int sender, StringView type, int target);
 	/// @brief 左右移動を始める (押している間、毎フレーム呼ぶ)。direction は 1:左, 2:右
 	void start_walk(int cnt, int direction, int now_time);
+	[[nodiscard]] CpuView make_cpu_view(int now_time) const;
 	/// @brief ジャンプを始める。跳べなければ false
 	bool start_jump(int cnt, int now_time);
 	/// @brief 技を始める (action は CommandRecognizer の番号 1:弱攻撃, 2:強攻撃, 3:必殺技, 4:ガード, 5:ガード破壊, 6:特殊攻撃)。出せなければ false

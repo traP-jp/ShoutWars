@@ -137,6 +137,7 @@
     <ClCompile Include="Source\CommandFeedback.cpp" />
     <ClCompile Include="Source\PlayerInput.cpp" />
     <ClCompile Include="Source\ControlsGuide.cpp" />
+    <ClCompile Include="Source\CpuBrain.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -273,6 +274,7 @@
     <ClInclude Include="Source\CommandFeedback.hpp" />
     <ClInclude Include="Source\PlayerInput.hpp" />
     <ClInclude Include="Source\ControlsGuide.hpp" />
+    <ClInclude Include="Source\CpuBrain.hpp" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Source\Multiplay\APIClient.hpp" />
     <ClInclude Include="Source\Multiplay\CurlTransport.hpp" />
