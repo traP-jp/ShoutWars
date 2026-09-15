@@ -54,6 +54,8 @@ struct Player {
 	double pull_seconds = -1.0;
 	//弾で押し戻される残りの距離 (px。正なら右へ)
 	double knockback = 0.0;
+	//最後にダメージが確定した時刻 (Scene::Time())。少しの間、赤く光らせる
+	double damaged_time = -Math::Inf;
 
 	int img_number = 0;
 	int img_status = 0;
@@ -237,6 +239,9 @@ private:
 	const static int yuuka_special_pull_stop = 120;
 	//押し戻されるときの速さ (px/秒)。一瞬で飛ばすと見失うので、少しの間に滑らせる
 	const static int knockback_speed = 1000;
+	static constexpr double damage_flash_seconds = 0.3;
+	static constexpr double screen_shake_seconds = 0.3;
+	static constexpr double max_screen_shake = 14.0;
 	const static int airi_knife_hover_ms = 1300;
 	//最大同時存在弾丸数は120
 	const static int max_bullet = 120;
@@ -365,6 +370,9 @@ private:
 	int received_status = 0;
 	//声がコマンドに当てはまらなかった回数のうち、「？」を出した分 (0:自分, 1:相手から届いた分)
 	int64 shown_unmatched_utterances[player_sum] = { 0 };
+	//画面の揺れの始まりと、始まったときの揺れ幅 (px)
+	double screen_shake_time = -Math::Inf;
+	double screen_shake_start = 0.0;
 	//確認イベントで確定したガード状態
 	bool void_attack[player_sum] = { false };
 	//対戦の残り時間 (秒)。開始の tick から数えるので全員で一致する
@@ -414,6 +422,10 @@ private:
 	void start_walk(int cnt, int direction, int now_time);
 	/// @brief 相手のユウカの必殺技の溜めで、x にいる cnt が引き寄せられているなら、引き寄せられる向き (-1:左, 1:右)
 	[[nodiscard]] Optional<double> pull_direction(int cnt, double x, int now_time) const;
+	/// @brief 今の画面の揺れ幅 (px)
+	[[nodiscard]] double screen_shake() const;
+	/// @brief ダメージが確定したキャラを赤く光らせ、ダメージに応じて画面を揺らす
+	void show_damage(int target, int damage);
 	[[nodiscard]] CpuView make_cpu_view(int now_time) const;
 	/// @brief ジャンプを始める。跳べなければ false
 	bool start_jump(int cnt, int now_time);

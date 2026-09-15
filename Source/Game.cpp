@@ -1434,6 +1434,7 @@ void Game::synchronizate_data() {
 			else {
 				//実質HPを確定
 				player[target].hp[0] -= damage;
+				show_damage(target, damage);
 				//位置を決めるのは本人なので、押し戻しも当たった側の画面で動かす
 				if (is_local_player(target)) player[target].knockback += ((player[target].pos[0].x < player[attacker].pos[0].x) ? -1.0 : 1.0) * knockback;
 			}
@@ -1621,6 +1622,9 @@ void Game::update_player_animation() {
 }
 
 void Game::draw() const {
+	//揺らしても画面の端の外が見えないよう、揺れ幅の分だけ拡大する
+	const double shake = screen_shake();
+	const Transformer2D shaker{ Mat3x2::Scale(1.0 + 2.0 * shake / 1080.0, Vec2{ 960, 540 }).translated(shake * Vec2{ Math::Sin(71.0 * Scene::Time()), Math::Cos(53.0 * Scene::Time()) }) };
 #ifndef debug_mode
 	if (!is_connected) {
 		//通信中...
@@ -1786,7 +1790,12 @@ void Game::draw_player() const {
 	for (int i = 0; i < player_sum; i++) {
 		if (!player_flag[i]) continue;
 		const auto& player_texture = player_img.at(getData().player[i]).at(player[i].img_number);
-		player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i));
+		const double damage_flash = Max(1.0 - (Scene::Time() - player[i].damaged_time) / damage_flash_seconds, 0.0);
+		player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 1.0 - 0.7 * damage_flash, 1.0 - 0.7 * damage_flash });
+		if (0.0 < damage_flash) {
+			const ScopedRenderStates2D additive{ BlendState::Additive };
+			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 0.0, 0.0, 0.6 * damage_flash });
+		}
 		//必殺技の溜めの点滅
 		if (0.0 < player[i].charge_glow) {
 			const ScopedRenderStates2D additive{ BlendState::Additive };
@@ -1794,6 +1803,21 @@ void Game::draw_player() const {
 		}
 		//シールドの表示
 		if (player[i].status & 8)guard_img.drawAt(player[i].pos[0]);
+	}
+}
+
+double Game::screen_shake() const {
+	const double t = (Scene::Time() - screen_shake_time) / screen_shake_seconds;
+	return (t < 1.0) ? screen_shake_start * Math::Square(1.0 - t) : 0.0;
+}
+
+void Game::show_damage(int target, int damage) {
+	player[target].damaged_time = Scene::Time();
+	//強い技ほど大きく揺らす。連射の弾のような小さな当たりは、かすかに揺らす
+	const double shake = Min(1.2 * Math::Sqrt(damage), max_screen_shake);
+	if (screen_shake() < shake) {
+		screen_shake_time = Scene::Time();
+		screen_shake_start = shake;
 	}
 }
 
