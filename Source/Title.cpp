@@ -40,15 +40,22 @@ void Title::updateServerStatus()
 			//スリーブ明けの応答なので、すぐに問い合わせ直せば繋がる
 			status_text = U"サーバーに接続中…";
 			status_call = getData().server.api.status();
-			return;
 		}
 		else {
 			status_text = U"サーバーに接続できません";
 		}
-		status_timer.restart();
+		if (!status_call.isValid()) status_timer.restart();
 	}elif((!status_call.isValid()) && status_timer.reachedZero()) {
 		status_call = getData().server.api.status();
 	}
+	//繋がったらグレーアウトをゆっくり消し、繋がらなくなったらすぐ押せない見た目に戻す
+	room_buttons_gray = server_available ? Max(0.0, room_buttons_gray - Scene::DeltaTime() / 0.5) : 1.0;
+}
+
+//シーンのフェードイン中は update が呼ばれないので、ここでも問い合わせの結果を受け取り、グレーアウトをフェードインと同時に消し始める
+void Title::updateFadeIn(double)
+{
+	updateServerStatus();
 }
 
 //キャリブレーションしていなければ、ゲームを始める代わりにダイアログを出す
@@ -250,10 +257,8 @@ void Title::draw() const
 	button1_glow.draw(isButton1Hovered, button1_shape.pos);
 	button2_glow.draw(isButton2Hovered, button2_shape.pos);
 	//サーバーに繋がらないときは、部屋を作る・入るボタンをグレーアウトする
-	if (!server_available) {
-		button1_shape.draw(ColorF{ 0.1, 0.85 });
-		button2_shape.draw(ColorF{ 0.1, 0.85 });
-	}
+	button1_shape.draw(ColorF{ 0.1, 0.85 * room_buttons_gray });
+	button2_shape.draw(ColorF{ 0.1, 0.85 * room_buttons_gray });
 	setting_glow.drawAt(isSettingHovered, { 1852, 68 });
 	font(status_text).draw(TextStyle::Outline(0.2, ColorF{ 0.0 }), 36, Arg::bottomRight(1900, 1060), Palette::White);
 	if (calc_mode) {

@@ -74,6 +74,8 @@ private:
 	String status_text = U"サーバーに接続中…";
 	//サーバーに繋がるか (繋がらなければ部屋を作る・入るボタンを押せない)
 	bool server_available = false;
+	//部屋を作る・入るボタンのグレーアウトの濃さ (0 で消える)
+	double room_buttons_gray = 1.0;
 
 	int key_num();
 	void updateServerStatus();
@@ -83,6 +85,7 @@ public:
 	Title(const InitData& init);
 
 	void update() override;
+	void updateFadeIn(double t) override;
 	void draw() const override;
 	void drawFadeIn(double t) const override;
 	void drawFadeOut(double t) const override;
