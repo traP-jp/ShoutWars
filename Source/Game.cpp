@@ -1598,7 +1598,9 @@ void Game::update_player_animation() {
 					player[i].status ^= 256;
 					player[i].img_number = 0;
 				}
-				player[i].wave_pos = 3.0 * sin(0.1 * GameTimer());
+				//撃っている間だけ、反動で震える
+				const int t = now_time - player[i].timer[14];
+				player[i].wave_pos = ((airi_unique_fire_start_ms <= t) && (t < airi_unique_fire_end_ms)) ? 3.0 * sin(0.1 * GameTimer()) : 0.0;
 			}
 			continue;
 			//ジャンプアニメーション
