@@ -14,7 +14,6 @@ namespace {
 	constexpr double VoiceHintSize = 30.0;
 	const StringView VoiceHint = U"技が出にくいときは、ゆっくり丁寧に叫ぶか、キャリブレーションをやり直してみてね";
 	constexpr int32 GuardAction = 4;
-	constexpr int32 CooldownCells = 10;
 
 	constexpr double HighlightSeconds = 0.9;
 	constexpr double ShakeSeconds = 0.6;
@@ -80,16 +79,13 @@ void CommandFeedback::drawCommandList(const Texture& commandList, const Vec2& po
 			region.draw(rowPos, ColorF{ 1.0, strength });
 			region.draw(rowPos, ColorF{ 1.0, 0.5 * strength });
 		}
-		// ガードを壊された後は、ガードの行に、再びガードできるまでのゲージ [###.......] を半透明で重ねる
+		// ガードを壊された後は、ガードの行に、再びガードできるまでのゲージを半透明で重ねる
 		if ((action == GuardAction) && (0.0 < guardCooldown)) {
 			const RectF rowRect{ rowPos, commandList.width(), bottom - top };
 			rowRect.draw(ColorF{ 0.0, 0.45 });
-			const double cellWidth = (rowRect.w - 150.0) / CooldownCells;
-			const int32 filledCells = static_cast<int32>(Math::Ceil((1.0 - guardCooldown) * CooldownCells));
-			for (int32 cell = 0; cell < CooldownCells; ++cell) {
-				const RectF cellRect{ rowRect.x + 140.0 + cell * cellWidth, rowRect.centerY() - 10.0, cellWidth - 4.0, 20.0 };
-				cellRect.rounded(3).draw((cell < filledCells) ? ColorF{ 1.0, 0.85 } : ColorF{ 1.0, 0.2 });
-			}
+			const RectF gauge{ rowRect.x + 140.0, rowRect.centerY() - 10.0, rowRect.w - 154.0, 20.0 };
+			gauge.rounded(3).draw(ColorF{ 1.0, 0.2 });
+			RectF{ gauge.pos, gauge.w * (1.0 - guardCooldown), gauge.h }.rounded(3).draw(ColorF{ 1.0, 0.85 });
 		}
 	}
 }
