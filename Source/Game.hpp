@@ -28,8 +28,14 @@ struct Player {
 	bool se[8] = { false };
 	//Playerの向き(true:右,false:左)
 	bool direction = false;
-	//1回限りのイベント(0:なし,1:弱,2:狂,4:必殺,8:ガード破壊)
+	//1フレーム限りのイベント (弾が同じフレームに何発も当たらないようにする) (0:なし,1:弱,2:狂,4:必殺,8:ガード破壊)
 	int event;
+	//今出している技が、もう相手に当たったか (近接攻撃を 1 回の技で 1 回だけ当てるため。ビットは status と同じ)
+	int hit_done = 0;
+	//ガードを壊された時刻 (この後しばらくガードできない)
+	int guard_broken_time = -1000000;
+	//ジャンプから着地した時刻 (この後しばらくジャンプと攻撃ができない)
+	int landing_time = -1000000;
 	//必殺技が使えるか
 	bool special_attack = false;
 	//キャラ(0:玲（レイ）,1:ユウカ,2:アイリ,3:No.0 (レイ）
@@ -39,6 +45,10 @@ struct Player {
 	int airi_old_timer = 0;
 	double wave_pos = 0.0;
 	bool walking = true;
+	//必殺技の溜めの間の点滅の強さ (0 なら点滅しない)
+	double charge_glow = 0.0;
+	//相手を引き寄せる必殺技の溜めを始めてからの秒数 (溜めていなければ負)
+	double pull_seconds = -1.0;
 
 	int img_number = 0;
 	int img_status = 0;
@@ -115,48 +125,100 @@ private:
 	const static int rei_special_attack = 100;
 	const static int rei_strong_attack_bomb = 10;
 	const static int rei_uniqe_attack = 8;
-	//AP回復量
+	//AP回復量 (必殺技の分は、当てられた側に溜まる)
 	const static int rei_weak_atttack_ap = 5;
 	const static int rei_strong_attack_ap = 12;
 	const static int rei_special_attack_ap = 16;
 	const static int rei_uniqe_attack_ap = 8;
 
+	//ユウカとアイリの値は、言う時間・認識の遅れ・技の時間・SN 比 10 dB での発動率・当たりやすさから見積もった期待ダメージを出発点にしている
+	//弱攻撃と強攻撃の 1 秒あたりの期待ダメージをキャラ間でそろえ、SN 比 10 dB で発動しにくいコマンドほど 1 回の威力を上げる。
+	//攻撃側に溜まる AP はダメージの 1.5 倍で、ガードされたら溜まらない
 	//ユウカ
 	//ダメージ量
-	const static int yuuka_weak_atttack = 5;
-	const static int yuuka_strong_attack = 7;
-	const static int yuuka_special_attack = 15;
-	//AP回復量
-	const static int yuuka_weak_atttack_ap = 1;
-	const static int yuuka_strong_attack_ap = 3;
+	const static int yuuka_weak_atttack = 24;
+	const static int yuuka_strong_attack = 32;
+	const static int yuuka_special_attack = 300;
+	//AP回復量 (必殺技の分は、当てられた側に溜まる)
+	const static int yuuka_weak_atttack_ap = 36;
+	const static int yuuka_strong_attack_ap = 48;
+	const static int yuuka_special_attack_ap = 120;
+	//強攻撃の後、動けるようになるまでに延ばす時間 (ミリ秒)。「キック」はほぼ確実に発動し「いー」でも出るので、連打しにくくする
+	const static int yuuka_strong_attack_recovery_ms = 100;
 	//アイリ
-	//ダメージ量
-	const static int airi_weak_atttack = 5;
-	const static int airi_strong_attack = 7;
-	const static int airi_special_attack = 8;
-	const static int airi_uniqe_attack = 3;
-	//AP回復量
-	const static int airi_weak_atttack_ap = 4;
-	const static int airi_strong_attack_ap = 6;
-	const static int airi_special_attack_ap = 9;
-	const static int airi_uniqe_attack_ap = 5;
+	//ダメージ量 (必殺技はナイフ 1 本、特殊攻撃は弾 1 発あたり)
+	const static int airi_weak_atttack = 20;
+	const static int airi_strong_attack = 30;
+	const static int airi_special_attack = 14;
+	const static int airi_uniqe_attack = 1;
+	//AP回復量 (必殺技の分は、当てられた側に溜まる)
+	const static int airi_weak_atttack_ap = 30;
+	const static int airi_strong_attack_ap = 45;
+	const static int airi_special_attack_ap = 5;
+	const static int airi_uniqe_attack_ap = 1;
+	//強攻撃の後、動けるようになるまでに延ばす時間 (ミリ秒)。「切れ」は言う時間が短く発動しやすいので、連打しにくくする
+	const static int airi_strong_attack_recovery_ms = 150;
 	//No.0 (レイ）
 	//ダメージ量
 	const static int no0_weak_atttack = 5;
 	const static int no0_strong_attack = 7;
 	const static int no0_special_attack = 8;
-	//AP回復量
+	//AP回復量 (必殺技の分は、当てられた側に溜まる)
 	const static int no0_weak_atttack_ap = 3;
 	const static int no0_strong_attack_ap = 5;
 	const static int no0_special_attack_ap = 8;
 	//定数////////////////////////////////////////////////////////////
 	const static int player_sum = 2;
-	//対戦の制限時間 (秒)。サーバーの対戦の期限 (20分) より短く取る
-	const static int match_seconds = 600;
+	//対戦の制限時間 (秒)。1〜2 分での決着を想定し、サーバーの対戦の期限 (20分) より短く取る
+	const static int match_seconds = 300;
 	const static int player_min_y = 650;
 	const static int player_max_hp = 1000;
 	//技が発動するために必要なAP
 	const static int player_max_ap = 500;
+	//キャラの食らい判定の縦の範囲 (キャラの位置からのずれ)。足元を外して、ジャンプで攻撃をある程度よけられるようにする
+	const static int hurtbox_top = -170;
+	const static int hurtbox_bottom = 40;
+	//近接攻撃の当たり判定の縦の範囲 (攻撃するキャラの位置からのずれ)
+	const static int melee_top = -120;
+	const static int melee_bottom = 60;
+	//弾やナイフの当たり判定の縦の半径
+	const static int projectile_radius = 10;
+	//アイリのナイフの狙う高さ (相手の位置からのずれ)。体の中心を狙うと少し跳ぶだけで下を抜けるので、胸の高さを狙う
+	const static int knife_aim_y = -100;
+	//着地してからジャンプと攻撃ができない時間 (ミリ秒)。跳び続けて攻撃をよけ続けることに代償を付ける (ガードはできる)
+	const static int landing_recovery_ms = 300;
+	//ガードが続く時間と、壊された後にガードできない時間 (ミリ秒)
+	const static int guard_ms = 2000;
+	const static int guard_cooldown_ms = 3000;
+	//ガード破壊のダメージと、攻撃側に溜まる AP
+	const static int destroy_guard_damage = 10;
+	const static int destroy_guard_ap = 15;
+	//技の最中に、別の行動を始められないようにする状態のビット
+	//攻撃: ジャンプ・ガード・攻撃の最中 / ガード: ガード・攻撃の最中 / 左右移動: 移動・ガード・弱攻撃以外の攻撃の最中 / ジャンプ: ジャンプ・ガード・攻撃の最中
+	const static int attack_blocking_status = 4 | 8 | 16 | 32 | 64 | 128 | 256;
+	const static int guard_blocking_status = 8 | 16 | 32 | 64 | 128 | 256;
+	const static int move_blocking_status = 1 | 2 | 8 | 32 | 64 | 128 | 256;
+	const static int jump_blocking_status = 4 | 8 | 16 | 32 | 64 | 128 | 256;
+	//アイリの連射の段取り (技の開始からのミリ秒)。構えてから撃ち始めるまでと、撃ち終わってから銃を下ろすまでに間を置く
+	const static int airi_unique_raise_ms = 130;
+	const static int airi_unique_fire_start_ms = airi_unique_raise_ms + 400;
+	const static int airi_unique_fire_end_ms = airi_unique_fire_start_ms + 1400;
+	const static int airi_unique_lower_ms = airi_unique_fire_end_ms + 400;
+	const static int airi_unique_end_ms = airi_unique_lower_ms + 30;
+	//必殺技を見てから「ガード」と言えば間に合い、言い直すと間に合わない程度に、出始めから当たるまでの間を空ける
+	//(気付いて言い始めるまで約 0.5 秒 + 「ガード」と言い終えるまで 0.4〜0.75 秒 + 認識 0.1〜0.3 秒 + 通信)
+	//ユウカは最初の構えの姿勢を延ばし、アイリは出したナイフが浮いている時間を延ばす
+	const static int yuuka_special_windup_ms = 1500;
+	//ユウカの必殺技の当たり判定 (前は正、後ろは負。縦は攻撃するキャラの位置からのずれ)。通常の近接攻撃 (前 5〜230px、上 120px〜下 60px) より広い
+	const static int yuuka_special_front_range = 380;
+	const static int yuuka_special_back_range = -80;
+	const static int yuuka_special_top = -220;
+	const static int yuuka_special_bottom = 60;
+	//ユウカの必殺技の溜めの間に、相手を引き寄せる速さ (px/秒)、届く距離、止める距離
+	const static int yuuka_special_pull_speed = 250;
+	const static int yuuka_special_pull_range = 900;
+	const static int yuuka_special_pull_stop = 120;
+	const static int airi_knife_hover_ms = 1300;
 	//最大同時存在弾丸数は120
 	const static int max_bullet = 120;
 	//最大同時存在ナイフ数は50本
@@ -231,6 +293,13 @@ private:
 	ControlsGuide controlsGuide;
 	//前のフレームの状態 (技が出た瞬間を知るため)
 	int previous_status[player_sum] = { 0 };
+	//前回の処理から、通信で届いた相手の状態で新しく立ち上がったビット
+	//相手の状態は手元のアニメーションでも下ろすため、手元の状態の立ち上がりで見ると、遅れて届いた状態で技が始まり直したように見えてしまう
+	int received_started_status = 0;
+	//前のフレームでジャンプの入力があったか (押しっぱなしでは続けて跳ばないようにするため)
+	bool previous_jump_input = false;
+	//自分がガードを壊されてから、再びガードできるまでの残りの割合 (0 ならガードできる)
+	double guard_cooldown_ratio = 0.0;
 
 	//変数////////////////////////////////////////////////////////////
 	//プレイヤーが存在するか
@@ -285,6 +354,7 @@ private:
 	void draw_knife() const;
 	void draw_torpedo() const;
 	void draw_effects() const;
+	void draw_special_pull() const;
 	void draw_after_images() const;
 	void draw_HP_bar() const;
 	void draw_AP_bar() const;
@@ -300,7 +370,12 @@ private:
 	void showError(const Multiplay::APIError& error);
 	void finish_game(bool won);
 	int voice_command();
-	void notify_started_moves();
+	void handle_started_moves();
+	[[nodiscard]] bool is_guard_cooling_down(int cnt, int now_time) const;
+	[[nodiscard]] bool is_landing_recovery(int cnt, int now_time) const;
+	/// @brief 走ってかがんでいて、弾やナイフが頭の上を抜けるか (走りの姿勢で頭が下がるのは玲とユウカだけで、アイリと No.0 はかがまない)
+	[[nodiscard]] bool is_ducking(int cnt) const;
+	[[nodiscard]] bool can_start_attack(int now_time) const;
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
 	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
@@ -319,6 +394,15 @@ private:
 	//get_character_power_ap(番号,攻撃の種類)
 	//攻撃の種類(0:弱,1:狂,2:必殺,3:特殊)
 	int get_character_power(int character_number, int attack_sort);
+	[[nodiscard]] int strong_attack_recovery_ms(int character_number) const;
+	/// @brief 縦の範囲 [top, bottom] が、target_y にいるキャラの食らい判定に重なるか
+	[[nodiscard]] static bool overlaps_hurtbox(double target_y, double top, double bottom) {
+		return (target_y + hurtbox_top < bottom) && (top < target_y + hurtbox_bottom);
+	}
+	/// @brief attacker_y にいるキャラの近接攻撃が、縦方向で target_y にいるキャラに届くか
+	[[nodiscard]] static bool melee_reaches(double attacker_y, double target_y) {
+		return overlaps_hurtbox(target_y, attacker_y + melee_top, attacker_y + melee_bottom);
+	}
 
 public:
 

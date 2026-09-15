@@ -11,6 +11,8 @@ namespace {
 	constexpr double HintSize = 30.0;
 	constexpr double HintGap = 12.0;
 	const StringView Hint = U"マイクに向かって叫んで発動！";
+	constexpr int32 GuardAction = 4;
+	constexpr int32 CooldownCells = 10;
 
 	constexpr double HighlightSeconds = 0.9;
 	constexpr double ShakeSeconds = 0.6;
@@ -42,7 +44,7 @@ double CommandFeedback::gaugeShake() const {
 	return gaugeShortageTime ? Shake(Scene::Time() - *gaugeShortageTime, 10.0) : 0.0;
 }
 
-void CommandFeedback::drawCommandList(const Texture& commandList, const Vec2& pos) const {
+void CommandFeedback::drawCommandList(const Texture& commandList, const Vec2& pos, double guardCooldown) const {
 	font(Hint).draw(TextStyle::Outline(0.2, ColorF{ 0.0 }), HintSize, pos, Palette::White);
 
 	const Vec2 listPos = pos + Vec2{ 0.0, HintSize + HintGap };
@@ -55,19 +57,28 @@ void CommandFeedback::drawCommandList(const Texture& commandList, const Vec2& po
 		const bool targeted = row && (row->action == action);
 		const double elapsed = targeted ? now - row->time : Math::Inf;
 
-		if (targeted && row->blocked && elapsed < ShakeSeconds) {
-			region.draw(listPos + Vec2{ Shake(elapsed, 9.0), top }, ColorF{ 0.5 });
-			continue;
-		}
+		const bool shaking = targeted && row->blocked && elapsed < ShakeSeconds;
 		const bool highlighted = targeted && !row->blocked && elapsed < HighlightSeconds;
 		const double strength = highlighted ? 1.0 - EaseInQuad(elapsed / HighlightSeconds) : 0.0;
+		const Vec2 rowPos = listPos + Vec2{ shaking ? Shake(elapsed, 9.0) : 0.0, top };
 		// 光らせる行は、後ろに黄色い帯を敷いたうえで、同じ行を加算で重ねて明るくする
-		if (highlighted) RectF{ listPos + Vec2{ -8.0, top }, commandList.width() + 16.0, bottom - top }.rounded(10).draw(ColorF{ 1.0, 0.85, 0.2, 0.45 * strength });
-		region.draw(listPos + Vec2{ 0.0, top });
+		if (highlighted) RectF{ rowPos + Vec2{ -8.0, 0.0 }, commandList.width() + 16.0, bottom - top }.rounded(10).draw(ColorF{ 1.0, 0.85, 0.2, 0.45 * strength });
+		region.draw(rowPos, shaking ? ColorF{ 0.5 } : ColorF{ 1.0 });
 		if (highlighted) {
 			const ScopedRenderStates2D additive{ BlendState::Additive };
-			region.draw(listPos + Vec2{ 0.0, top }, ColorF{ 1.0, strength });
-			region.draw(listPos + Vec2{ 0.0, top }, ColorF{ 1.0, 0.5 * strength });
+			region.draw(rowPos, ColorF{ 1.0, strength });
+			region.draw(rowPos, ColorF{ 1.0, 0.5 * strength });
+		}
+		// ガードを壊された後は、ガードの行に、再びガードできるまでのゲージ [###.......] を半透明で重ねる
+		if ((action == GuardAction) && (0.0 < guardCooldown)) {
+			const RectF rowRect{ rowPos, commandList.width(), bottom - top };
+			rowRect.draw(ColorF{ 0.0, 0.45 });
+			const double cellWidth = (rowRect.w - 150.0) / CooldownCells;
+			const int32 filledCells = static_cast<int32>(Math::Ceil((1.0 - guardCooldown) * CooldownCells));
+			for (int32 cell = 0; cell < CooldownCells; ++cell) {
+				const RectF cellRect{ rowRect.x + 140.0 + cell * cellWidth, rowRect.centerY() - 10.0, cellWidth - 4.0, 20.0 };
+				cellRect.rounded(3).draw((cell < filledCells) ? ColorF{ 1.0, 0.85 } : ColorF{ 1.0, 0.2 });
+			}
 		}
 	}
 }

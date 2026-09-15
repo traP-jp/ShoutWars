@@ -22,7 +22,8 @@ public:
 	/// @brief 案内の文とコマンド一覧を、行ごとの強調を付けて描く
 	/// @param commandList コマンド一覧の画像
 	/// @param pos 案内の文の左上 (コマンド一覧はその下に描く)
-	void drawCommandList(const Texture& commandList, const Vec2& pos) const;
+	/// @param guardCooldown ガードを壊されてから再びガードできるまでの残りの割合 (0 ならガードできる)
+	void drawCommandList(const Texture& commandList, const Vec2& pos, double guardCooldown) const;
 
 	/// @brief 技名を、技を出したプレイヤーの頭の上に描く
 	/// @param positions 各プレイヤーの位置
