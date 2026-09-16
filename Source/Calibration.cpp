@@ -213,16 +213,17 @@ String Calibration::recognitionLabel() const {
 }
 
 void Calibration::draw() const {
-	RectF{ 0, 0, 1920, 1080 }.draw(Palette::Black);
-
-	const size_t hz = 800;
-	for (size_t i : step(Min(fftResult.buffer.size(), hz))) {
-		RectF{
-			Arg::bottomLeft(i * 1920.0 / hz, 1080),
-			1920.0 / hz, (1 + log10(fftResult.buffer[i] * 2) / 6) * 1080
-		}.draw(HSV{ 240 - 0.45 * i, 0.3 });
-	}
-	RectF{ 0, 0, 1920, 1080 }.draw(ColorF{ 0.0, 0.6 });
+	//仕上げは背景のスペクトルだけにかけ、UI は読みやすいようその上に描く
+	getData().post_process.draw([&] {
+		const size_t hz = 800;
+		for (size_t i : step(Min(fftResult.buffer.size(), hz))) {
+			RectF{
+				Arg::bottomLeft(i * 1920.0 / hz, 1080),
+				1920.0 / hz, (1 + log10(fftResult.buffer[i] * 2) / 6) * 1080
+			}.draw(HSV{ 240 - 0.45 * i, 0.3 });
+		}
+		RectF{ 0, 0, 1920, 1080 }.draw(ColorF{ 0.0, 0.6 });
+	});
 
 	returnGlow.draw(isReturnHovered, ReturnRect.pos);
 	font(U"キャリブレーション").draw(60, 120, 25);

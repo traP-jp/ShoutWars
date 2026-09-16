@@ -175,12 +175,13 @@ void Title::update()
 				room_ID_digit++;
 			}
 		}
-		//クリップボードから自動入力
+		//クリップボードから自動入力 (チャットの文ごとコピーしても入るよう、6 桁の数字がちょうど 1 つだけ含まれていれば、それを部屋 ID とみなす)
 		if (!clip_flag)clip_flag = Clipboard::HasChanged();
 		String clip;
-		if (clip_flag && Clipboard::GetText(clip) && (std::all_of(clip.begin(), clip.end(), isdigit))) {
-			if (clip.size() == 6) {
-				room_ID = clip.narrow();
+		if (clip_flag && Clipboard::GetText(clip)) {
+			static const RegExp RoomIDPattern{ U"(?<![0-9])[0-9]{6}(?![0-9])" };
+			if (const auto found = RoomIDPattern.findAll(clip); found.size() == 1) {
+				room_ID = found[0][0]->narrow();
 				room_ID_digit = 6;
 				clip_flag = false;
 			}
@@ -252,7 +253,7 @@ int Title::key_num()
 
 void Title::draw() const
 {
-	background_img.draw(0, 0);
+	getData().post_process.draw([&] { background_img.draw(0, 0); });
 	button_vs_cpu_glow.draw(isButtonVsCpuHovered, button_vs_cpu_shape.pos);
 	button1_glow.draw(isButton1Hovered, button1_shape.pos);
 	button2_glow.draw(isButton2Hovered, button2_shape.pos);

@@ -348,6 +348,11 @@ namespace {
 		size_t wrong = 0;
 		size_t falseBySpeech = 0;
 		size_t falseByNoise = 0;
+		/// @brief 何も発動しなかったコマンドの録音のうち、どのコマンドにも当てはまらなかった発話があったもの (「？」を出せる言い損ね)
+		size_t missWithUnmatched = 0;
+		size_t unmatchedByCommand = 0;
+		size_t unmatchedBySpeech = 0;
+		size_t unmatchedByNoise = 0;
 		double minutes = 0.0;
 		Array<double> latencyMs;
 		std::map<std::pair<String, String>, LineResult> lines;
@@ -381,14 +386,18 @@ namespace {
 
 		CommandRecognizer recognizer{ recognizerOptions };
 		Array<std::pair<size_t, int32>> detections;
+		Array<size_t> unmatched;
 		ForEachFrame(stream, 0, stream.size(), [&](size_t pos, Array<float> window, double rms) {
 			const auto scores = phoneme.estimate(std::move(window), SampleRate, rms, ClockUs(pos));
+			const size_t unmatchedBefore = recognizer.unmatchedUtterances();
 			if (const int32 action = recognizer.update(scores, character, ClockUs(pos))) detections.emplace_back(pos, action);
+			if (recognizer.unmatchedUtterances() != unmatchedBefore) unmatched << pos;
 		});
 
 		CommandResult result;
 		result.minutes = static_cast<double>(stream.size()) / SampleRate / 60.0;
 		Array<bool> used(detections.size(), false);
+		Array<bool> unmatchedUsed(unmatched.size(), false);
 		for (size_t i : step(order.size())) {
 			const Take& take = *order[i];
 			const size_t begin = offsets[i] + take.activeBegin;
@@ -422,9 +431,19 @@ namespace {
 					++line.wrong;
 				}
 			}
+			size_t unmatchedInTake = 0;
+			for (size_t u : step(unmatched.size())) {
+				if (unmatched[u] < begin || end <= unmatched[u]) continue;
+				unmatchedUsed[u] = true;
+				++unmatchedInTake;
+				detected << U"?@{:.0f}"_fmt((static_cast<double>(unmatched[u]) - static_cast<double>(begin)) * 1000.0 / SampleRate);
+			}
+			(expected ? result.unmatchedByCommand : result.unmatchedBySpeech) += unmatchedInTake;
+			if (expected && !judged && unmatchedInTake) ++result.missWithUnmatched;
 			result.takeDetections << U"{},{},{}"_fmt(take.file, expected, detected.join(U" ", U"", U""));
 		}
 		result.falseByNoise = used.count(false);
+		result.unmatchedByNoise = unmatchedUsed.count(false);
 		return result;
 	}
 
@@ -520,7 +539,7 @@ namespace {
 		const Array<std::pair<int32, String>> characters = { { 1, U"yuuka" }, { 2, U"airi" } };
 
 		TextWriter results{ FileSystem::PathAppend(outDirectory, U"results.csv") };
-		results << U"condition,calibration_take,character,vowel_accuracy,noise_as_vowel,expected,hit,wrong,miss,false_by_speech,false_by_noise,false_per_minute,latency_median_ms";
+		results << U"condition,calibration_take,character,vowel_accuracy,noise_as_vowel,expected,hit,wrong,miss,false_by_speech,false_by_noise,false_per_minute,latency_median_ms,miss_with_unmatched,unmatched_by_command,unmatched_by_speech,unmatched_by_noise,unmatched_by_noise_per_minute";
 		TextWriter detectionsWriter{ FileSystem::PathAppend(outDirectory, U"detections.csv") };
 		detectionsWriter << U"condition,calibration_take,character,file,expected,detected";
 		TextWriter lines{ FileSystem::PathAppend(outDirectory, U"lines.csv") };
@@ -549,16 +568,17 @@ namespace {
 					confusion << U"{},{},{},{}"_fmt(condition.name, calibrationTake, VowelLabels[i], Array<size_t>(vowels.confusion[i].begin(), vowels.confusion[i].end()).join(U",", U"", U""));
 				}
 				if (!evaluateCommands) {
-					results << U"{},{},-,{:.4f},{:.4f},0,0,0,0,0,0,0,nan"_fmt(condition.name, calibrationTake, vowels.accuracy(), static_cast<double>(vowels.noiseAsVowel) / vowels.noiseFrames);
+					results << U"{},{},-,{:.4f},{:.4f},0,0,0,0,0,0,0,nan,0,0,0,0,0"_fmt(condition.name, calibrationTake, vowels.accuracy(), static_cast<double>(vowels.noiseAsVowel) / vowels.noiseFrames);
 				}
 				for (const auto& [character, name] : evaluateCommands ? characters : Array<std::pair<int32, String>>{}) {
 					const auto commands = EvaluateCommands(takes, phoneme, character, recognizerOptions, floor, noise, gain, rng);
 					const size_t falseTotal = commands.falseBySpeech + commands.falseByNoise;
-					results << U"{},{},{},{:.4f},{:.4f},{},{},{},{},{},{},{:.2f},{:.0f}"_fmt(
+					results << U"{},{},{},{:.4f},{:.4f},{},{},{},{},{},{},{:.2f},{:.0f},{},{},{},{},{:.2f}"_fmt(
 						condition.name, calibrationTake, name, vowels.accuracy(),
 						static_cast<double>(vowels.noiseAsVowel) / vowels.noiseFrames,
 						commands.expected, commands.hit, commands.wrong, commands.expected - commands.hit - commands.wrong,
-						commands.falseBySpeech, commands.falseByNoise, falseTotal / commands.minutes, Median(commands.latencyMs));
+						commands.falseBySpeech, commands.falseByNoise, falseTotal / commands.minutes, Median(commands.latencyMs),
+						commands.missWithUnmatched, commands.unmatchedByCommand, commands.unmatchedBySpeech, commands.unmatchedByNoise, commands.unmatchedByNoise / commands.minutes);
 					for (const auto& detection : commands.takeDetections) detectionsWriter << U"{},{},{},{}"_fmt(condition.name, calibrationTake, name, detection);
 					for (const auto& [key, line] : commands.lines) {
 						if (line.count) lines << U"{},{},{},{},{},{},{},{}"_fmt(condition.name, calibrationTake, name, key.first, key.second, line.count, line.hit, line.wrong);

@@ -11,12 +11,16 @@ namespace {
 	constexpr double HintSize = 30.0;
 	constexpr double HintGap = 12.0;
 	const StringView Hint = U"マイクに向かって叫んで発動！";
+	constexpr double VoiceHintSize = 30.0;
+	const StringView VoiceHint = U"技が出にくいときは、ゆっくり丁寧に叫ぶか、キャリブレーションをやり直してみてね";
 	constexpr int32 GuardAction = 4;
-	constexpr int32 CooldownCells = 10;
 
 	constexpr double HighlightSeconds = 0.9;
 	constexpr double ShakeSeconds = 0.6;
 	constexpr double MoveNameSeconds = 1.0;
+	constexpr double UnmatchedMarkSeconds = 1.2;
+	constexpr double VoiceHintGlowSeconds = 1.5;
+	constexpr double VoiceHintBlinkSeconds = 0.3;
 
 	[[nodiscard]] double Shake(double elapsed, double amplitude) {
 		if (elapsed >= ShakeSeconds) return 0.0;
@@ -38,6 +42,12 @@ void CommandFeedback::started(size_t player, int32 action, int32 character, bool
 void CommandFeedback::blocked(int32 action, bool gaugeShortage) {
 	row = RowFeedback{ action, true, Scene::Time() };
 	if (gaugeShortage) gaugeShortageTime = Scene::Time();
+}
+
+void CommandFeedback::unmatched(size_t player, bool isSelf) {
+	const double now = Scene::Time();
+	unmatchedTimes[player] = now;
+	if (isSelf) selfUnmatchedTime = now;
 }
 
 double CommandFeedback::gaugeShake() const {
@@ -69,16 +79,13 @@ void CommandFeedback::drawCommandList(const Texture& commandList, const Vec2& po
 			region.draw(rowPos, ColorF{ 1.0, strength });
 			region.draw(rowPos, ColorF{ 1.0, 0.5 * strength });
 		}
-		// ガードを壊された後は、ガードの行に、再びガードできるまでのゲージ [###.......] を半透明で重ねる
+		// ガードを壊された後は、ガードの行に、再びガードできるまでのゲージを半透明で重ねる
 		if ((action == GuardAction) && (0.0 < guardCooldown)) {
 			const RectF rowRect{ rowPos, commandList.width(), bottom - top };
 			rowRect.draw(ColorF{ 0.0, 0.45 });
-			const double cellWidth = (rowRect.w - 150.0) / CooldownCells;
-			const int32 filledCells = static_cast<int32>(Math::Ceil((1.0 - guardCooldown) * CooldownCells));
-			for (int32 cell = 0; cell < CooldownCells; ++cell) {
-				const RectF cellRect{ rowRect.x + 140.0 + cell * cellWidth, rowRect.centerY() - 10.0, cellWidth - 4.0, 20.0 };
-				cellRect.rounded(3).draw((cell < filledCells) ? ColorF{ 1.0, 0.85 } : ColorF{ 1.0, 0.2 });
-			}
+			const RectF gauge{ rowRect.x + 140.0, rowRect.centerY() - 10.0, rowRect.w - 154.0, 20.0 };
+			gauge.rounded(3).draw(ColorF{ 1.0, 0.2 });
+			RectF{ gauge.pos, gauge.w * (1.0 - guardCooldown), gauge.h }.rounded(3).draw(ColorF{ 1.0, 0.85 });
 		}
 	}
 }
@@ -93,4 +100,26 @@ void CommandFeedback::drawMoveNames(const Array<Vec2>& positions) const {
 		const Vec2 center = positions[name.player] + Vec2{ 0.0, -230.0 - 30.0 * EaseOutCubic(elapsed / MoveNameSeconds) };
 		font(name.text).drawAt(TextStyle::Outline(0.25, ColorF{ 1.0, alpha }), 38.0 * pop, center, ColorF{ 0.85, 0.0, 0.0, alpha });
 	}
+}
+
+void CommandFeedback::drawUnmatchedMarks(const Array<Vec2>& positions) const {
+	const double now = Scene::Time();
+	for (const auto& [player, time] : unmatchedTimes) {
+		const double elapsed = now - time;
+		if (elapsed >= UnmatchedMarkSeconds) continue;
+		const double pop = 1.0 + 0.3 * (1.0 - Min(elapsed / 0.15, 1.0));
+		const double alpha = Clamp((UnmatchedMarkSeconds - elapsed) / 0.3, 0.0, 1.0);
+		const Vec2 center = positions[player] + Vec2{ 0.0, -190.0 - 40.0 * EaseOutCubic(elapsed / UnmatchedMarkSeconds) };
+		questionMark.resized(80.0 * pop).drawAt(center, ColorF{ 1.0, alpha });
+	}
+}
+
+void CommandFeedback::drawVoiceHint(const Vec2& center) const {
+	const double elapsed = selfUnmatchedTime ? Scene::Time() - *selfUnmatchedTime : Math::Inf;
+	const double blink = 0.5 + 0.5 * Math::Cos(Math::TwoPi * elapsed / VoiceHintBlinkSeconds);
+	const double strength = (elapsed < VoiceHintGlowSeconds) ? blink * (1.0 - EaseInQuad(elapsed / VoiceHintGlowSeconds)) : 0.0;
+	const auto text = font(VoiceHint);
+	// 後ろに黄色い帯を敷いて点滅させる
+	if (0.0 < strength) text.regionAt(VoiceHintSize, center).stretched(16.0, 4.0).rounded(10).draw(ColorF{ 1.0, 0.85, 0.2, 0.8 * strength });
+	text.drawAt(TextStyle::Outline(0.2, ColorF{ 0.0 }), VoiceHintSize, center, Palette::White);
 }

@@ -92,8 +92,7 @@ CpuIntent CpuBrain::update(const CpuView& view) {
 	notice(seen, view.now_ms, current_skill);
 	if (view.now_ms < *match_start_ms + StartIdleMs) return {};
 
-	CpuIntent intent;
-	intent.move = fireSpeech(view, seen, current_skill);
+	CpuIntent intent = fireSpeech(view, seen, current_skill);
 	if (!speech && (next_think_ms <= view.now_ms)) think(view, seen, current_skill);
 	intent.walk = walk(view, seen, current_skill);
 	if (jump_ms && (*jump_ms <= view.now_ms)) {
@@ -215,21 +214,21 @@ void CpuBrain::say(int character, int action, int start_ms) {
 	stroke.end_ms = start_ms;
 }
 
-int CpuBrain::fireSpeech(const CpuView& view, const CpuView& seen, double skill) {
-	if (!speech || (view.now_ms < speech->fire_ms)) return 0;
+CpuIntent CpuBrain::fireSpeech(const CpuView& view, const CpuView& seen, double skill) {
+	if (!speech || (view.now_ms < speech->fire_ms)) return {};
 	const Speech fired = *speech;
 	speech.reset();
 	if (fired.recognized) {
 		//相手の必殺技に気付いていれば、技の後の間を置かずに対応を考える
 		if (!special_threat_pending) next_think_ms = view.now_ms + thinkDelayMs(view.now_ms, skill);
-		return fired.action;
+		return { .move = fired.action };
 	}
 	//認識されなかったら、まだ意味があれば言い直す
 	const bool still_useful = (fired.action == 4) ? (seen.opponent.status & StatusSpecial) : ((fired.action == 5) ? (seen.opponent.status & StatusGuard) : true);
 	if (still_useful && RandomBool(0.3 + 0.5 * skill)) {
 		say(view.self.number, fired.action, view.now_ms + RandomMs(150, 300));
 	}
-	return 0;
+	return { .unmatched = true };
 }
 
 int CpuBrain::walk(const CpuView& view, const CpuView& seen, double skill) {

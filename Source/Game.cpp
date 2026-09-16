@@ -150,6 +150,12 @@ bool Game::is_ducking(int cnt) const {
 	return (player[cnt].status & 3) && ((player[cnt].number == 0) || (player[cnt].number == 1));
 }
 
+bool Game::is_rapid_firing(int cnt, int now_time) const {
+	if ((player[cnt].number != 2) || !(player[cnt].status & 256)) return false;
+	const int t = now_time - player[cnt].timer[14];
+	return (airi_unique_fire_start_ms < t) && (t < airi_unique_fire_end_ms);
+}
+
 bool Game::is_landing_recovery(int cnt, int now_time) const {
 	return now_time - player[cnt].landing_time < landing_recovery_ms;
 }
@@ -226,6 +232,9 @@ bool Game::start_move(int cnt, int action, int now_time) {
 		p.special_attack = false;
 	}elif(action != 6) {
 		shot_se.playOneShot();
+		//連射は、銃を構え直してから撃ち始める
+	}elif(p.number == 2) {
+		bolt_release_se.playOneShot();
 	}
 	p.se[move.se] = true;
 	p.status |= move.bit;
@@ -344,6 +353,12 @@ void Game::update() {
 	guard_cooldown_ratio = Clamp(1.0 - static_cast<double>(GameTimer() - player[player_number].guard_broken_time) / guard_cooldown_ms, 0.0, 1.0);
 	//APバーの描画情報を更新
 	update_AP_bar_animation();
+	//連射の発射音は、撃っている間だけループさせ、撃ち終わったらすぐ止める
+	const bool rapid_firing = is_rapid_firing(0, GameTimer()) || is_rapid_firing(1, GameTimer());
+	if (rapid_firing != rapid_fire_se.isPlaying()) {
+		if (rapid_firing) rapid_fire_se.play();
+		else rapid_fire_se.stop();
+	}
 	//プレイヤーのアニメーションを更新
 	update_player_animation();
 	//各種エフェクトの更新
@@ -469,6 +484,7 @@ void Game::update_player() {
 		if (intent.walk) start_walk(cpu, intent.walk, now_time);
 		if (intent.jump) start_jump(cpu, now_time);
 		if (intent.move) start_move(cpu, intent.move, now_time);
+		if (intent.unmatched) commandFeedback.unmatched(cpu, false);
 	}
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
 	//位置を決めるのは本人なので、引き寄せや押し合いでは手元で動かすプレイヤー (自分と CPU) だけを動かす。通信相手は、相手のクライアントが自分で動く
@@ -532,7 +548,12 @@ void Game::update_player() {
 		if (player[i].status & 3)player[i].direction = (player[i].status & 1);
 	}
 	//技とかの起爆/////////////////////////////////////////////////////////////////////////////////
-	if (int got_voice = voice_command()) {
+	const int got_voice = voice_command();
+	if (shown_unmatched_utterances[0] < static_cast<int64>(commandRecognizer.unmatchedUtterances())) {
+		shown_unmatched_utterances[0] = static_cast<int64>(commandRecognizer.unmatchedUtterances());
+		commandFeedback.unmatched(player_number, true);
+	}
+	if (got_voice) {
 		if ((got_voice == 3) && !player[player_number].special_attack) {
 			commandFeedback.blocked(3, true);
 		}elif(!start_move(player_number, got_voice, now_time)) {
@@ -1312,6 +1333,8 @@ void Game::synchronizate_data() {
 		room.sendReport(U"PlayerInfoTimer", JSON{ { U"sent", GameTimer() }, { U"timer", Array<int32>(std::begin(me.timer), std::end(me.timer)) } });
 		room.sendReport(U"PlayerInfoAP", me.ap);
 		room.sendReport(U"PlayerInfoSpecialAttack", me.special_attack);
+		//「？」は見た目だけなので確認は要らないが、取りこぼしても次で分かるよう、回数を毎フレーム送る
+		room.sendReport(U"PlayerUnmatched", shown_unmatched_utterances[0]);
 		room.update();
 		if (room.error()) {
 			showError(*room.error());
@@ -1370,6 +1393,11 @@ void Game::synchronizate_data() {
 			if (event.type == U"PlayerInfoSpecialAttack") {
 				player[another_player_number].special_attack = (event.data).get<bool>();
 			}
+			if (event.type == U"PlayerUnmatched") {
+				const int64 count = event.data.get<int64>();
+				if (shown_unmatched_utterances[1] < count) commandFeedback.unmatched(another_player_number, false);
+				shown_unmatched_utterances[1] = count;
+			}
 		}
 		//相互確認が必要な処理
 		//全員が同じ順番で適用するので、HP とガードはここでだけ確定させる
@@ -1380,6 +1408,8 @@ void Game::synchronizate_data() {
 			const int target = event.data.get<int32>();
 			const int attacker = (event.from == room.joined().userId) ? player_number : another_player_number;
 			int damage = 0;
+			//ガードしても食らう分
+			int chip = 0;
 			int knockback = 0;
 			if (event.type == U"WeakAttack") {
 				damage = get_character_power(player[attacker].number, 0);
@@ -1391,6 +1421,7 @@ void Game::synchronizate_data() {
 				damage = rei_strong_attack_bomb;
 			}elif(event.type == U"SpecialAttack") {
 				damage = get_character_power(player[attacker].number, 2);
+				chip = static_cast<int>(damage * special_guard_chip);
 			}elif(event.type == U"UniqueAttack") {
 				damage = get_character_power(player[attacker].number, 3);
 				if (player[attacker].number == 2) knockback = airi_unique_attack_knockback;
@@ -1414,13 +1445,18 @@ void Game::synchronizate_data() {
 			}
 			//ガード中
 			if (void_attack[target]) {
-				//暫定HPを元に戻す
-				player[target].hp[1] += damage;
+				//暫定HPを、ガードしても食らう分だけ残して元に戻す
+				player[target].hp[1] += damage - chip;
+				if (0 < chip) {
+					player[target].hp[0] -= chip;
+					show_damage(target, chip);
+				}
 				//ガードしていない
 			}
 			else {
 				//実質HPを確定
 				player[target].hp[0] -= damage;
+				show_damage(target, damage);
 				//位置を決めるのは本人なので、押し戻しも当たった側の画面で動かす
 				if (is_local_player(target)) player[target].knockback += ((player[target].pos[0].x < player[attacker].pos[0].x) ? -1.0 : 1.0) * knockback;
 			}
@@ -1585,7 +1621,9 @@ void Game::update_player_animation() {
 					player[i].status ^= 256;
 					player[i].img_number = 0;
 				}
-				player[i].wave_pos = 3.0 * sin(0.1 * GameTimer());
+				//撃っている間だけ、反動で震える
+				const int t = now_time - player[i].timer[14];
+				player[i].wave_pos = ((airi_unique_fire_start_ms <= t) && (t < airi_unique_fire_end_ms)) ? 3.0 * sin(0.1 * GameTimer()) : 0.0;
 			}
 			continue;
 			//ジャンプアニメーション
@@ -1606,6 +1644,9 @@ void Game::update_player_animation() {
 }
 
 void Game::draw() const {
+	//揺らしても画面の端の外が見えないよう、揺れ幅の分だけ拡大する
+	const double shake = screen_shake();
+	const Transformer2D shaker{ Mat3x2::Scale(1.0 + 2.0 * shake / 1080.0, Vec2{ 960, 540 }).translated(shake * Vec2{ Math::Sin(71.0 * Scene::Time()), Math::Cos(53.0 * Scene::Time()) }) };
 #ifndef debug_mode
 	if (!is_connected) {
 		//通信中...
@@ -1614,7 +1655,17 @@ void Game::draw() const {
 	}
 	else {
 #endif
-		background_img.draw(0, 0);
+		//仕上げは背景とキャラだけにかけ、UI は読みやすいようその上に描く
+		getData().post_process.draw([&] {
+			background_img.draw(0, 0);
+			draw_bullet();
+			draw_knife();
+			draw_torpedo();
+			draw_special_pull();
+			draw_player();
+			draw_after_images();
+			draw_effects();
+		});
 		commandFeedback.drawCommandList(command_img.at(getData().player[player_number]), Vec2{ 120, 145 }, guard_cooldown_ratio);
 		voiceMonitor.draw();
 		controlsGuide.draw(Vec2{ 1790, 150 });
@@ -1622,16 +1673,10 @@ void Game::draw() const {
 		draw_AP_bar();
 		if (!cpu_room) draw_ping();
 		//残り時間
-		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 50, Palette::White);
-
-		draw_bullet();
-		draw_knife();
-		draw_torpedo();
-		draw_special_pull();
-		draw_player();
-		draw_after_images();
-		draw_effects();
+		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 120, Palette::White);
+		commandFeedback.drawVoiceHint(Vec2{ 960, 50 });
 		commandFeedback.drawMoveNames(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
+		commandFeedback.drawUnmatchedMarks(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
 
 
 		if (cpu_room && !is_game_finished) return_glow.draw(is_return_hovered, return_shape.pos);
@@ -1769,7 +1814,12 @@ void Game::draw_player() const {
 	for (int i = 0; i < player_sum; i++) {
 		if (!player_flag[i]) continue;
 		const auto& player_texture = player_img.at(getData().player[i]).at(player[i].img_number);
-		player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i));
+		const double damage_flash = Max(1.0 - (Scene::Time() - player[i].damaged_time) / damage_flash_seconds, 0.0);
+		player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 1.0 - 0.7 * damage_flash, 1.0 - 0.7 * damage_flash });
+		if (0.0 < damage_flash) {
+			const ScopedRenderStates2D additive{ BlendState::Additive };
+			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 0.0, 0.0, 0.6 * damage_flash });
+		}
 		//必殺技の溜めの点滅
 		if (0.0 < player[i].charge_glow) {
 			const ScopedRenderStates2D additive{ BlendState::Additive };
@@ -1777,6 +1827,21 @@ void Game::draw_player() const {
 		}
 		//シールドの表示
 		if (player[i].status & 8)guard_img.drawAt(player[i].pos[0]);
+	}
+}
+
+double Game::screen_shake() const {
+	const double t = (Scene::Time() - screen_shake_time) / screen_shake_seconds;
+	return (t < 1.0) ? screen_shake_start * Math::Square(1.0 - t) : 0.0;
+}
+
+void Game::show_damage(int target, int damage) {
+	player[target].damaged_time = Scene::Time();
+	//強い技ほど大きく揺らす。連射の弾のような小さな当たりは、かすかに揺らす
+	const double shake = Min(1.2 * Math::Sqrt(damage), max_screen_shake);
+	if (screen_shake() < shake) {
+		screen_shake_time = Scene::Time();
+		screen_shake_start = shake;
 	}
 }
 

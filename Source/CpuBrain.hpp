@@ -32,6 +32,8 @@ struct CpuIntent {
 	bool jump = false;
 	/// @brief 始める技 (0:無し。番号は CommandRecognizer の行動と同じ)
 	int move = 0;
+	/// @brief 言い終えたコマンドが認識されなかった
+	bool unmatched = false;
 };
 
 /// @brief 声で操作する人間と同じ制約で、CPU の行動を決める
@@ -85,7 +87,8 @@ private:
 	void think(const CpuView& view, const CpuView& seen, double skill);
 	void thinkOffense(const CpuView& view, double distance, double skill);
 	void say(int character, int action, int start_ms);
-	[[nodiscard]] int fireSpeech(const CpuView& view, const CpuView& seen, double skill);
+	/// @return 言い終えたコマンドの結果 (move と unmatched だけを決める)
+	[[nodiscard]] CpuIntent fireSpeech(const CpuView& view, const CpuView& seen, double skill);
 	[[nodiscard]] int walk(const CpuView& view, const CpuView& seen, double skill);
 };
 
