@@ -295,13 +295,16 @@ private:
 	const Audio dododos_se{ Resource(U"audioes/dododos.wav") };
 	const Audio jump_se{ Resource(U"audioes/jump.wav") };
 	const Audio shot_se{ Resource(U"audioes/shot.wav") };
-	const Audio kiran_se{ Resource(U"audioes/kiran.wav") };
+	const Audio kiran_se{ Resource(U"audioes/kiran.mp3") };
 	const Audio bom_se{ Resource(U"audioes/bom.wav") };
 	const Audio cancel_sound{ Resource(U"audioes/cancel.wav") };
 	const Audio guard_se{ Resource(U"audioes/guard.mp3") };
-	const Audio void_damage_se{ Resource(U"audioes/void_damage.mp3") };
-	const Audio break_guard_se{ Resource(U"audioes/break_guard.wav") };
+	const Audio void_damage_se{ Resource(U"audioes/void_damage.wav") };
+	const Audio break_guard_se{ Resource(U"audioes/break_guard.mp3") };
 	const Audio gun_se{ Resource(U"audioes/gun.mp3") };
+	//連射は、構えるときに銃を構え直す音を鳴らし、撃っている間だけ発射音をループさせる
+	const Audio bolt_release_se{ Resource(U"audioes/bolt_release.mp3") };
+	const Audio rapid_fire_se{ Resource(U"audioes/rapid_fire.mp3"), Loop::Yes };
 	const Audio bomber_se{ Resource(U"audioes/bomber.mp3") };
 	const Audio gun_reflect1_se{ Resource(U"audioes/gun_reflect1.mp3") };
 	const Audio gun_reflect2_se{ Resource(U"audioes/gun_reflect2.mp3") };
@@ -413,6 +416,8 @@ private:
 	[[nodiscard]] bool is_landing_recovery(int cnt, int now_time) const;
 	/// @brief 走ってかがんでいて、弾やナイフが頭の上を抜けるか (走りの姿勢で頭が下がるのは玲とユウカだけで、アイリと No.0 はかがまない)
 	[[nodiscard]] bool is_ducking(int cnt) const;
+	/// @brief アイリが連射で弾を撃っている最中か
+	[[nodiscard]] bool is_rapid_firing(int cnt, int now_time) const;
 	[[nodiscard]] bool can_start_attack(int cnt, int now_time) const;
 	/// @brief 位置や状態を手元で決めるプレイヤーか (自分と CPU。通信相手は相手のクライアントが決める)
 	[[nodiscard]] bool is_local_player(int cnt) const;

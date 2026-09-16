@@ -52,9 +52,9 @@ class Matching : public App::Scene
 	//音声素材////////////////////////////////////////////////////////
 	const Audio bgm{ Resource(U"audioes/th3_05.mp3") , Loop::Yes };
 	const Audio cancel_sound{ Resource(U"audioes/cancel.wav") };
-	const Audio copied_se{ Resource(U"audioes/copied.mp3") };
+	const Audio copied_se{ Resource(U"audioes/copied.wav") };
 	const Audio click_sound{ Resource(U"audioes/click.wav") };
-	const Audio decision_sound{ Resource(U"audioes/decided_char.mp3") };
+	const Audio decision_sound{ Resource(U"audioes/decided_char.wav") };
 	//キャラ選択ハイライト/////////////////////////////////////////////
 	GlowBorder select_char_glow[4];
 	GlowBorder character_glow[4];

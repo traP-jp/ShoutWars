@@ -150,6 +150,12 @@ bool Game::is_ducking(int cnt) const {
 	return (player[cnt].status & 3) && ((player[cnt].number == 0) || (player[cnt].number == 1));
 }
 
+bool Game::is_rapid_firing(int cnt, int now_time) const {
+	if ((player[cnt].number != 2) || !(player[cnt].status & 256)) return false;
+	const int t = now_time - player[cnt].timer[14];
+	return (airi_unique_fire_start_ms < t) && (t < airi_unique_fire_end_ms);
+}
+
 bool Game::is_landing_recovery(int cnt, int now_time) const {
 	return now_time - player[cnt].landing_time < landing_recovery_ms;
 }
@@ -226,6 +232,9 @@ bool Game::start_move(int cnt, int action, int now_time) {
 		p.special_attack = false;
 	}elif(action != 6) {
 		shot_se.playOneShot();
+		//連射は、銃を構え直してから撃ち始める
+	}elif(p.number == 2) {
+		bolt_release_se.playOneShot();
 	}
 	p.se[move.se] = true;
 	p.status |= move.bit;
@@ -344,6 +353,12 @@ void Game::update() {
 	guard_cooldown_ratio = Clamp(1.0 - static_cast<double>(GameTimer() - player[player_number].guard_broken_time) / guard_cooldown_ms, 0.0, 1.0);
 	//APバーの描画情報を更新
 	update_AP_bar_animation();
+	//連射の発射音は、撃っている間だけループさせ、撃ち終わったらすぐ止める
+	const bool rapid_firing = is_rapid_firing(0, GameTimer()) || is_rapid_firing(1, GameTimer());
+	if (rapid_firing != rapid_fire_se.isPlaying()) {
+		if (rapid_firing) rapid_fire_se.play();
+		else rapid_fire_se.stop();
+	}
 	//プレイヤーのアニメーションを更新
 	update_player_animation();
 	//各種エフェクトの更新
