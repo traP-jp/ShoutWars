@@ -210,6 +210,8 @@ private:
 	const static int guard_cooldown_ms = 3000;
 	//ガード破壊のダメージと、攻撃側に溜まる AP
 	const static int destroy_guard_damage = 10;
+	//必殺技だけは、ガードしても少しだけ食らう
+	static constexpr double special_guard_chip = 0.25;
 	const static int destroy_guard_ap = 15;
 	//技の最中に、別の行動を始められないようにする状態のビット
 	//攻撃: ジャンプ・ガード・攻撃の最中 / ガード: ガード・攻撃の最中 / 左右移動: 移動・ガード・弱攻撃以外の攻撃の最中 / ジャンプ: ジャンプ・ガード・攻撃の最中

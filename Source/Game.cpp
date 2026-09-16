@@ -1408,6 +1408,8 @@ void Game::synchronizate_data() {
 			const int target = event.data.get<int32>();
 			const int attacker = (event.from == room.joined().userId) ? player_number : another_player_number;
 			int damage = 0;
+			//ガードしても食らう分
+			int chip = 0;
 			int knockback = 0;
 			if (event.type == U"WeakAttack") {
 				damage = get_character_power(player[attacker].number, 0);
@@ -1419,6 +1421,7 @@ void Game::synchronizate_data() {
 				damage = rei_strong_attack_bomb;
 			}elif(event.type == U"SpecialAttack") {
 				damage = get_character_power(player[attacker].number, 2);
+				chip = static_cast<int>(damage * special_guard_chip);
 			}elif(event.type == U"UniqueAttack") {
 				damage = get_character_power(player[attacker].number, 3);
 				if (player[attacker].number == 2) knockback = airi_unique_attack_knockback;
@@ -1442,8 +1445,12 @@ void Game::synchronizate_data() {
 			}
 			//ガード中
 			if (void_attack[target]) {
-				//暫定HPを元に戻す
-				player[target].hp[1] += damage;
+				//暫定HPを、ガードしても食らう分だけ残して元に戻す
+				player[target].hp[1] += damage - chip;
+				if (0 < chip) {
+					player[target].hp[0] -= chip;
+					show_damage(target, chip);
+				}
 				//ガードしていない
 			}
 			else {
