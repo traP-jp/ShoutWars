@@ -16,9 +16,7 @@ void GlowBorder::init(const Texture& from_texture)
 
 	{
 		const ScopedRenderTarget2D target{ source.clear(ColorF{ 0.0, 0.0 }) };
-		// Siv3DのデフォルトBlendStateはアルファ書き込みがOFF(Zero, One)のため、
-		// レンダーターゲットにアルファ値を正しく書き込むBlendStateを指定
-		const ScopedRenderStates2D blend{ BlendState{ true, Blend::SrcAlpha, Blend::InvSrcAlpha, BlendOp::Add, Blend::One, Blend::InvSrcAlpha, BlendOp::Add } };
+		const ScopedRenderStates2D blend{ BlendState::MaxAlpha };
 		texture.drawAt(size / 2);
 		Graphics2D::Flush();
 	}
