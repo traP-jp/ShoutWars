@@ -1140,10 +1140,17 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					gun_reflect2_se.playOneShot();
 					knife[i].mode++;
 					knife[i].timer[1] = now_time;
-					if ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920))
-						knife[i].angle[0] = M_PI - knife[i].angle[0];
-					else
-						knife[i].angle[0] = 2.0 * M_PI - knife[i].angle[0];
+					// 3回目は相手へ向かう
+					if (knife[i].mode == 3) {
+						knife[i].goal_pos = player_reserved_pos[target] + Vec2{ 0, knife_aim_y };
+						knife[i].angle[0] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
+					}
+					else {
+						if ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920))
+							knife[i].angle[0] = M_PI - knife[i].angle[0];
+						else
+							knife[i].angle[0] = 2.0 * M_PI - knife[i].angle[0];
+					}
 				}
 			}
 			//当たり判定処理
