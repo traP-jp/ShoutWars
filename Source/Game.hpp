@@ -92,7 +92,6 @@ struct torpedo {
 
 struct knife {
 	Vec2 pos;
-	Vec2 old_pos;
 	Vec2 goal_pos;
 	int mode = 0;
 	int timer[2];

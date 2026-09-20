@@ -9,6 +9,8 @@ using namespace std;
 //マクロ
 #define search(p1) int p1##_number = -1; for (int iter = 0; iter < max_##p1; iter++) { if (!p1[iter].exist) { p1[iter].exist = true; p1##_number = iter;break; } };
 
+#define debug_mode
+
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
 command_img(4),
@@ -87,7 +89,7 @@ CpuView Game::make_cpu_view(int now_time) const {
 	const auto fighter = [&](int i) {
 		const Player& p = player[i];
 		return CpuFighter{ .pos = p.pos[0], .status = p.status, .number = p.number, .hp = p.hp[0], .special_ready = p.special_attack, .guard_cooling_down = is_guard_cooling_down(i, now_time) };
-	};
+		};
 	return CpuView{
 		.now_ms = now_time,
 		.self = fighter(another_player_number),
@@ -125,7 +127,7 @@ int Game::voice_command() {
 
 void Game::handle_started_moves() {
 	//状態のビットと行動の番号の対応 (16:弱攻撃, 32:強攻撃, 64:必殺技, 8:ガード, 128:ガード破壊, 256:特殊攻撃)
-	constexpr std::array<std::pair<int, int32>, 6> moves = { { { 16, 1 }, { 32, 2 }, { 64, 3 }, { 8, 4 }, { 128, 5 }, { 256, 6 } } };
+	constexpr std::array<std::pair<int, int32>, 6> moves = { { { 16, 1 },{ 32, 2 },{ 64, 3 },{ 8, 4 },{ 128, 5 },{ 256, 6 } } };
 	for (int i = 0; i < player_sum; i++) {
 #ifndef debug_mode
 		const int started = is_local_player(i) ? (player[i].status & ~previous_status[i]) : received_started_status;
@@ -220,7 +222,7 @@ bool Game::start_move(int cnt, int action, int now_time) {
 	}
 	//技ごとの状態のビット・開始時刻を入れるタイマー・効果音のフラグ
 	struct Move { int bit; int timer; int se; };
-	static constexpr std::array<Move, 7> moves = { { {}, { 16, 4, 2 }, { 32, 5, 3 }, { 64, 6, 4 }, {}, { 128, 12, 6 }, { 256, 14, 7 } } };
+	static constexpr std::array<Move, 7> moves = { { {},{ 16, 4, 2 },{ 32, 5, 3 },{ 64, 6, 4 },{},{ 128, 12, 6 },{ 256, 14, 7 } } };
 	if ((action < 1) || (6 < action)) throw Error{ U"Unknown move: {}"_fmt(action) };
 	//特殊攻撃があるのは玲とアイリだけ (他のキャラは状態を下ろすアニメーションが無く、動けなくなる)
 	const bool has_move = (action != 6) || (p.number == 0) || (p.number == 2);
@@ -228,7 +230,9 @@ bool Game::start_move(int cnt, int action, int now_time) {
 	const Move& move = moves[action];
 	if (action == 3) {
 		bom_se.playOneShot();
+#ifndef debug_mode
 		p.ap = 0;
+#endif
 		p.special_attack = false;
 	}elif(action != 6) {
 		shot_se.playOneShot();
@@ -579,7 +583,7 @@ void Game::update_player() {
 			if ((100 < t) && (t < 250)) {
 				for (int i = 0; i < player_sum; i++) {
 					if (i == cnt) continue;
-					int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+					double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 					if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 						if ((player[cnt].hit_done & 128) == 0) {
 							if (player[cnt].se[6]) {
@@ -617,6 +621,10 @@ void Game::update_player() {
 
 	//AP管理///////////////////////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
+#ifdef debug_mode
+		player[i].ap = player_max_ap;
+		player[i].special_attack = true;
+#else
 		if (player[i].ap >= player_max_ap) {
 			player[i].ap = player_max_ap;
 			if (!player[i].special_attack) {
@@ -624,6 +632,7 @@ void Game::update_player() {
 				player[i].special_attack = true;
 			}
 		}
+#endif
 	}
 	//HP管理///////////////////////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
@@ -959,7 +968,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((100 < player[cnt].timer[9]) && (player[cnt].timer[9] < 250)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 					if ((player[cnt].hit_done & 16) == 0) {
 						if (player[cnt].se[2]) {
@@ -1103,28 +1112,43 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		}
 		else {
 			double t = now_time - knife[i].timer[1];
-			double distance = sqrt(pow(knife[i].goal_pos.x - knife[i].pos.x, 2) + pow(knife[i].goal_pos.y - knife[i].pos.y, 2));
-			if (distance < 32.0) {
-				knife[i].horming = false;
-			}elif(knife[i].horming) {
-				knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
-				double tmp_angle = knife[i].angle[2] - knife[i].angle[1];
-				// 角度差を-π～πの間に収める
-				if (tmp_angle > M_PI) tmp_angle -= 2.0 * M_PI;
-				if (tmp_angle < -M_PI) tmp_angle += 2.0 * M_PI;
-				knife[i].angle[0] = knife[i].angle[1] + tmp_angle * EaseOutExpo(Min(t / knife[i].time, 1.0));
+			if (knife[i].mode == 1) {
+				double distance = sqrt(pow(knife[i].goal_pos.x - knife[i].pos.x, 2) + pow(knife[i].goal_pos.y - knife[i].pos.y, 2));
+				if (distance < 32.0) {
+					knife[i].horming = false;
+				} elif(knife[i].horming) {
+					knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
+					double tmp_angle = knife[i].angle[2] - knife[i].angle[1];
+					// 角度差を-π～πの間に収める
+					if (tmp_angle > M_PI) tmp_angle -= 2.0 * M_PI;
+					if (tmp_angle < -M_PI) tmp_angle += 2.0 * M_PI;
+					knife[i].angle[0] = knife[i].angle[1] + tmp_angle * EaseOutQuad(Min(t / knife[i].time, 1.0));
+				}
+				//角度を-π～πの間に収める
+				if (knife[i].angle[0] > M_PI) knife[i].angle[0] -= 2.0 * M_PI;
+				if (knife[i].angle[0] < -M_PI) knife[i].angle[0] += 2.0 * M_PI;
 			}
 			//ナイフの移動
 			knife[i].pos += (Scene::DeltaTime()) * 1800.0 * Vec2{ cos(knife[i].angle[0]), sin(knife[i].angle[0]) };
-			//角度を-π～πの間に収める
-			if (knife[i].angle[0] > M_PI) knife[i].angle[0] -= 2.0 * M_PI;
-			if (knife[i].angle[0] < -M_PI) knife[i].angle[0] += 2.0 * M_PI;
-			//画面外に出たら退場
-			if ((t > knife[i].time) && ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920) || (knife[i].pos.y < 0) || (knife[i].pos.y > 1080)))
-				knife[i].exist = false;
+
+			// 3回反射後に画面外に出たら退場
+			if ((t > knife[i].time) && ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920) || (knife[i].pos.y < 0) || (knife[i].pos.y > 1080))) {
+				if (knife[i].mode > 3) {
+					knife[i].exist = false;
+				}
+				else {
+					gun_reflect2_se.playOneShot();
+					knife[i].mode++;
+					knife[i].timer[1] = now_time;
+					if ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920))
+						knife[i].angle[0] = M_PI - knife[i].angle[0];
+					else
+						knife[i].angle[0] = 2.0 * M_PI - knife[i].angle[0];
+				}
+			}
 			//当たり判定処理
-			int distance_x = abs(player_reserved_pos[target].x - knife[i].pos.x);
-			int distance_y = abs(player_reserved_pos[target].y + knife_aim_y - knife[i].pos.y);
+			double distance_x = abs(player_reserved_pos[target].x - knife[i].pos.x);
+			double distance_y = abs(player_reserved_pos[target].y + knife_aim_y - knife[i].pos.y);
 			const bool knife_in_hurtbox = overlaps_hurtbox(player_reserved_pos[target].y, knife[i].pos.y - projectile_radius, knife[i].pos.y + projectile_radius);
 			if ((distance_x < 20.0) && knife_in_hurtbox && (!is_ducking(target) || (distance_y < 90.0))) {
 				if (player[target].status & 8) {
@@ -1152,7 +1176,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((200 < player[cnt].timer[10]) && (player[cnt].timer[10] < 400)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 130.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 					if ((player[cnt].hit_done & 32) == 0) {
 						if (player[cnt].se[3]) {
@@ -1229,7 +1253,6 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[], int 
 		search(knife);
 		if (knife_number == -1) break;
 		knife[knife_number].pos = player_reserved_pos[cnt] + Vec2{ cos(set_angle) * 180.0, sin(set_angle) * 180.0 };
-		knife[knife_number].old_pos = knife[knife_number].pos;
 		knife[knife_number].angle[0] = knife_angle + (M_PI * 2 / 5.0) * i;
 		//角度を-π～πの間に収める
 		if (knife[knife_number].angle[0] > M_PI)knife[knife_number].angle[0] -= M_PI * 2.0;
@@ -1251,7 +1274,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((100 < player[cnt].timer[9]) && (player[cnt].timer[9] < 250)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 					if ((player[cnt].hit_done & 16) == 0) {
 						if (player[cnt].se[2]) {
@@ -1281,7 +1304,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((200 < player[cnt].timer[10]) && (player[cnt].timer[10] < 400)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 130.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 					if ((player[cnt].hit_done & 32) == 0) {
 						if (player[cnt].se[3]) {
@@ -1330,7 +1353,7 @@ void Game::synchronizate_data() {
 		//取りこぼしても次で上書きされるよう、変化の有無にかかわらず毎フレーム送る
 		room.sendReport(U"PlayerStatus", me.status);
 		//届くまでに経った分を相手が補えるよう、送った時点のゲーム内時刻を添える
-		room.sendReport(U"PlayerInfoTimer", JSON{ { U"sent", GameTimer() }, { U"timer", Array<int32>(std::begin(me.timer), std::end(me.timer)) } });
+		room.sendReport(U"PlayerInfoTimer", JSON{ { U"sent", GameTimer() },{ U"timer", Array<int32>(std::begin(me.timer), std::end(me.timer)) } });
 		room.sendReport(U"PlayerInfoAP", me.ap);
 		room.sendReport(U"PlayerInfoSpecialAttack", me.special_attack);
 		//「？」は見た目だけなので確認は要らないが、取りこぼしても次で分かるよう、回数を毎フレーム送る
