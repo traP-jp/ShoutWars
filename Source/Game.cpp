@@ -9,7 +9,7 @@ using namespace std;
 //マクロ
 #define search(p1) int p1##_number = -1; for (int iter = 0; iter < max_##p1; iter++) { if (!p1[iter].exist) { p1[iter].exist = true; p1##_number = iter;break; } };
 
-#define debug_mode
+// #define debug_mode
 
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
@@ -193,7 +193,7 @@ void Game::start_walk(int cnt, int direction, int now_time) {
 	player[cnt].timer[0] = now_time;
 	player[cnt].timer[1] = 0;
 	player[cnt].pos[1].x = player[cnt].pos[0].x;
-	if (player[cnt].number == 2)
+	if (player[cnt].number == 2 || player[cnt].number == 1)
 		player[cnt].walking = !player[cnt].walking;
 }
 
@@ -1656,8 +1656,8 @@ void Game::update_player_animation() {
 			//移動アニメーション
 		}elif(player[i].status & 3) {
 			player[i].img_number = 1;
-			// アイリのみ移動アニメーション
-			if (player[i].number == 2) {
+			// アイリとユウカのみ移動アニメーション
+			if (player[i].number == 2 || player[i].number == 1) {
 				player[i].img_number = player[i].walking;
 			}
 			continue;

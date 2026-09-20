@@ -47,6 +47,7 @@ struct Player {
 	int knife_mode = 0;
 	int airi_old_timer = 0;
 	double wave_pos = 0.0;
+	// 歩くアニメーションの切り替え用
 	bool walking = true;
 	//必殺技の溜めの間の点滅の強さ (0 なら点滅しない)
 	double charge_glow = 0.0;
