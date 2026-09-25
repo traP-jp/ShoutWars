@@ -9,6 +9,8 @@ using namespace std;
 //マクロ
 #define search(p1) int p1##_number = -1; for (int iter = 0; iter < max_##p1; iter++) { if (!p1[iter].exist) { p1[iter].exist = true; p1##_number = iter;break; } };
 
+// #define debug_mode
+
 Game::Game(const InitData& init) : IScene(init),
 player_img(4),
 command_img(4),
@@ -87,7 +89,7 @@ CpuView Game::make_cpu_view(int now_time) const {
 	const auto fighter = [&](int i) {
 		const Player& p = player[i];
 		return CpuFighter{ .pos = p.pos[0], .status = p.status, .number = p.number, .hp = p.hp[0], .special_ready = p.special_attack, .guard_cooling_down = is_guard_cooling_down(i, now_time) };
-	};
+		};
 	return CpuView{
 		.now_ms = now_time,
 		.self = fighter(another_player_number),
@@ -125,7 +127,7 @@ int Game::voice_command() {
 
 void Game::handle_started_moves() {
 	//状態のビットと行動の番号の対応 (16:弱攻撃, 32:強攻撃, 64:必殺技, 8:ガード, 128:ガード破壊, 256:特殊攻撃)
-	constexpr std::array<std::pair<int, int32>, 6> moves = { { { 16, 1 }, { 32, 2 }, { 64, 3 }, { 8, 4 }, { 128, 5 }, { 256, 6 } } };
+	constexpr std::array<std::pair<int, int32>, 6> moves = { { { 16, 1 },{ 32, 2 },{ 64, 3 },{ 8, 4 },{ 128, 5 },{ 256, 6 } } };
 	for (int i = 0; i < player_sum; i++) {
 #ifndef debug_mode
 		const int started = is_local_player(i) ? (player[i].status & ~previous_status[i]) : received_started_status;
@@ -147,7 +149,7 @@ bool Game::is_guard_cooling_down(int cnt, int now_time) const {
 }
 
 bool Game::is_ducking(int cnt) const {
-	return (player[cnt].status & 3) && ((player[cnt].number == 0) || (player[cnt].number == 1));
+	return (player[cnt].status & 3) && (player[cnt].number == 0);
 }
 
 bool Game::is_rapid_firing(int cnt, int now_time) const {
@@ -191,7 +193,7 @@ void Game::start_walk(int cnt, int direction, int now_time) {
 	player[cnt].timer[0] = now_time;
 	player[cnt].timer[1] = 0;
 	player[cnt].pos[1].x = player[cnt].pos[0].x;
-	if (player[cnt].number == 2)
+	if (player[cnt].number == 2 || player[cnt].number == 1)
 		player[cnt].walking = !player[cnt].walking;
 }
 
@@ -220,7 +222,7 @@ bool Game::start_move(int cnt, int action, int now_time) {
 	}
 	//技ごとの状態のビット・開始時刻を入れるタイマー・効果音のフラグ
 	struct Move { int bit; int timer; int se; };
-	static constexpr std::array<Move, 7> moves = { { {}, { 16, 4, 2 }, { 32, 5, 3 }, { 64, 6, 4 }, {}, { 128, 12, 6 }, { 256, 14, 7 } } };
+	static constexpr std::array<Move, 7> moves = { { {},{ 16, 4, 2 },{ 32, 5, 3 },{ 64, 6, 4 },{},{ 128, 12, 6 },{ 256, 14, 7 } } };
 	if ((action < 1) || (6 < action)) throw Error{ U"Unknown move: {}"_fmt(action) };
 	//特殊攻撃があるのは玲とアイリだけ (他のキャラは状態を下ろすアニメーションが無く、動けなくなる)
 	const bool has_move = (action != 6) || (p.number == 0) || (p.number == 2);
@@ -228,7 +230,11 @@ bool Game::start_move(int cnt, int action, int now_time) {
 	const Move& move = moves[action];
 	if (action == 3) {
 		bom_se.playOneShot();
+		// ユウカのみトツレ効果音
+		if (p.number == 1) totsure_se.playOneShot();
+#ifndef debug_mode
 		p.ap = 0;
+#endif
 		p.special_attack = false;
 	}elif(action != 6) {
 		shot_se.playOneShot();
@@ -579,7 +585,7 @@ void Game::update_player() {
 			if ((100 < t) && (t < 250)) {
 				for (int i = 0; i < player_sum; i++) {
 					if (i == cnt) continue;
-					int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+					double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 					if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 						if ((player[cnt].hit_done & 128) == 0) {
 							if (player[cnt].se[6]) {
@@ -617,6 +623,10 @@ void Game::update_player() {
 
 	//AP管理///////////////////////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
+#ifdef debug_mode
+		player[i].ap = player_max_ap;
+		player[i].special_attack = true;
+#else
 		if (player[i].ap >= player_max_ap) {
 			player[i].ap = player_max_ap;
 			if (!player[i].special_attack) {
@@ -624,6 +634,7 @@ void Game::update_player() {
 				player[i].special_attack = true;
 			}
 		}
+#endif
 	}
 	//HP管理///////////////////////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < player_sum; i++) {
@@ -863,11 +874,9 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		//魚雷の移動
 		if (torpedo[i].mode == 0) {
 			int t = now_time - torpedo[i].timer;
-			if (t < 200) {
-				torpedo[i].pos.x = torpedo[i].old_pos.x + 0.8 * sign(torpedo[i].angle == 0.0) * t;
-				torpedo[i].pos.y = torpedo[i].old_pos.y - 0.44 * t + 0.008 * t * t;
-			}
-			else {
+			torpedo[i].pos.x = torpedo[i].old_pos.x + 0.8 * sign(torpedo[i].angle == 0.0) * t;
+			torpedo[i].pos.y = torpedo[i].old_pos.y - 0.44 * t + 0.008 * t * t;
+			if (t > 200) {
 				torpedo[i].mode = 1;
 				torpedo[i].timer = now_time;
 				torpedo[i].pos = Vec2{ torpedo[i].old_pos.x + sign(torpedo[i].angle == 0.0) * 160,torpedo[i].old_pos.y + 232 };
@@ -894,18 +903,17 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 #endif
 					player[j].hp[1] -= rei_uniqe_attack;
 					player[cnt].ap += rei_uniqe_attack_ap;
-
-					//爆発
-					bomber_se.playOneShot();
-					//エフェクトの発生
-					search(occation);
-					if (occation_number != -1) {
-						occation[occation_number].pos = torpedo[i].pos;
-						occation[occation_number].timer = now_time;
-						occation[occation_number].alpha = 1.0;
-						occation[occation_number].scale = 3.0;
-						occation[occation_number].type = 2;
-					}
+				}
+				//爆発
+				bomber_se.playOneShot();
+				//エフェクトの発生
+				search(occation);
+				if (occation_number != -1) {
+					occation[occation_number].pos = torpedo[i].pos;
+					occation[occation_number].timer = now_time;
+					occation[occation_number].alpha = 1.0;
+					occation[occation_number].scale = 3.0;
+					occation[occation_number].type = 2;
 				}
 				torpedo[i].exist = false;
 				break;
@@ -959,7 +967,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((100 < player[cnt].timer[9]) && (player[cnt].timer[9] < 250)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 					if ((player[cnt].hit_done & 16) == 0) {
 						if (player[cnt].se[2]) {
@@ -989,9 +997,23 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		const bool special = (player[cnt].status & 64);
 		const int windup = special ? yuuka_special_windup_ms : 0;
 		if ((200 + windup < tmp) && (tmp < 400 + windup)) {
+			// 艦攻召喚
+			if (!player[cnt].kate_exist && (player[cnt].status & 64)) {
+				kate_se.playOneShot();
+				search(kate);
+				if (kate_number != -1) {
+					kate[kate_number].target_player = (cnt == another_player_number) ? player_number : another_player_number;
+					kate[kate_number].mirrored = (player[kate[kate_number].target_player].pos[0].x < 960.0);
+					kate[kate_number].pos = Vec2{ kate[kate_number].mirrored ? 2220.0 : -300.0, 430.0 };
+					kate[kate_number].old_pos = kate[kate_number].pos;
+					kate[kate_number].timer = now_time;
+					kate[kate_number].mode = 0;
+					player[cnt].kate_exist = true;
+				}
+			}
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				int tmp_pos_x = (int)sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				const bool reaches = special
 					? ((yuuka_special_back_range < tmp_pos_x) && (tmp_pos_x < yuuka_special_front_range) && overlaps_hurtbox(player_reserved_pos[i].y, player_reserved_pos[cnt].y + yuuka_special_top, player_reserved_pos[cnt].y + yuuka_special_bottom))
 					: ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y));
@@ -1038,6 +1060,92 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 			}
 		}
 	}
+	// 艦攻の移動
+	if (player[cnt].kate_exist) {
+		for (int i = 0; i < max_kate; i++) {
+			if (!kate[i].exist)continue;
+			double kate_speed = (kate[i].mode == 0) ? 1.0 : 1.3;
+			kate[i].pos.x = kate[i].old_pos.x - sign(kate[i].mirrored) * kate_speed * (now_time - kate[i].timer);
+			if (kate[i].mode == 0) {
+				kate[i].pos.y = kate[i].old_pos.y + 0.1 * (now_time - kate[i].timer);
+			}
+			else {
+				kate[i].pos.y = kate[i].old_pos.y - 0.08 * (now_time - kate[i].timer);
+			}
+			// 投下！
+			if ((kate[i].mode == 0) && (abs(kate[i].pos.x - player[kate[i].target_player].pos[0].x) < 800.0)) {
+				kate[i].mode = 1;
+				kate[i].timer = now_time;
+				kate[i].old_pos = kate[i].pos;
+				// 九一式航空魚雷投下
+				search(aerial_torpedo);
+				if (aerial_torpedo_number != -1) {
+					aerial_torpedo[aerial_torpedo_number].pos = kate[i].pos + Vec2{ sign(!kate[i].mirrored) * 60, 50 };
+					aerial_torpedo[aerial_torpedo_number].old_pos = aerial_torpedo[aerial_torpedo_number].pos;
+					aerial_torpedo[aerial_torpedo_number].timer = now_time;
+					aerial_torpedo[aerial_torpedo_number].angle = kate[i].mirrored ? M_PI : 0.0;
+					aerial_torpedo[aerial_torpedo_number].mode = 0;
+				}
+			}
+
+			// 場外退場
+			if ((kate[i].pos.x < -300) || (kate[i].pos.x > 2220)) {
+				kate[i].exist = false;
+				player[cnt].kate_exist = false;
+			}
+
+		}
+	}
+	// 九一式航空魚雷の移動
+	for (int i = 0; i < max_aerial_torpedo; i++) {
+		if (!aerial_torpedo[i].exist)continue;
+		if (aerial_torpedo[i].mode == 0) {
+			int t = now_time - aerial_torpedo[i].timer;
+			aerial_torpedo[i].pos.x = aerial_torpedo[i].old_pos.x + 0.8 * sign(aerial_torpedo[i].angle == 0.0) * t;
+			aerial_torpedo[i].pos.y = aerial_torpedo[i].old_pos.y - 0.45 * t + 0.007 * t * t;
+			if (aerial_torpedo[i].pos.y > 800.0) {
+				aerial_torpedo[i].mode = 1;
+				aerial_torpedo[i].timer = now_time;
+				aerial_torpedo[i].pos = Vec2{ aerial_torpedo[i].old_pos.x + sign(aerial_torpedo[i].angle == 0.0) * 160,aerial_torpedo[i].old_pos.y + 232 };
+				aerial_torpedo[i].pos.y = 800.0;
+				aerial_torpedo[i].old_pos = aerial_torpedo[i].pos;
+			}
+		}
+		else {
+			aerial_torpedo[i].pos.x = aerial_torpedo[i].old_pos.x + sign(aerial_torpedo[i].angle == 0.0) * 2.0 * (now_time - aerial_torpedo[i].timer);
+			aerial_torpedo[i].pos.y = aerial_torpedo[i].old_pos.y - 0.07 * (now_time - aerial_torpedo[i].timer);
+			//場外退場
+			if ((aerial_torpedo[i].pos.x < -80) || (aerial_torpedo[i].pos.x > 2000))aerial_torpedo[i].exist = false;
+		}
+		// 当たり判定
+		for (int j = 0; j < player_sum; j++) {
+			if (j == cnt)continue;
+			if ((abs(player_reserved_pos[j].x - aerial_torpedo[i].pos.x) < 100.0) && ((player[j].status & 4) == 0)) {
+				if (player[j].status & 8) {
+					void_damage_se.playOneShot();
+				}
+				else {
+#ifndef debug_mode
+					send_action(cnt, U"SpecialAttack", i);
+#endif
+					player[j].hp[1] -= yuuka_special_attack / 2;
+				}
+				//爆発
+				bomber_se.playOneShot();
+				//エフェクトの発生
+				search(occation);
+				if (occation_number != -1) {
+					occation[occation_number].pos = aerial_torpedo[i].pos;
+					occation[occation_number].timer = now_time;
+					occation[occation_number].alpha = 1.0;
+					occation[occation_number].scale = 3.0;
+					occation[occation_number].type = 2;
+				}
+				aerial_torpedo[i].exist = false;
+				break;
+			}
+		}
+	}
 	//TODO:特殊攻撃
 }
 
@@ -1073,7 +1181,6 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 							player[j].hp[1] -= airi_uniqe_attack;
 							player[cnt].ap += airi_uniqe_attack_ap;
 						}
-
 					}
 					bullet[i].exist = false;
 					break;
@@ -1096,35 +1203,57 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				//(遠くにいるほど届くまでに間があるので、位置によっては操作でよけられる。必殺技は基本はガードで防ぎ、うまく操作すればよけられることもある、という立ち位置)
 				knife[i].goal_pos = player_reserved_pos[target] + Vec2{ 0, knife_aim_y };
 				knife[i].distance = knife[i].goal_pos.distanceFrom(knife[i].pos);
-				knife[i].time = knife[i].distance / 1.8;
+				knife[i].time = (int)(knife[i].distance / 1.8);
 				knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
 			}
 			//発射
 		}
 		else {
 			double t = now_time - knife[i].timer[1];
-			double distance = sqrt(pow(knife[i].goal_pos.x - knife[i].pos.x, 2) + pow(knife[i].goal_pos.y - knife[i].pos.y, 2));
-			if (distance < 32.0) {
-				knife[i].horming = false;
-			}elif(knife[i].horming) {
-				knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
-				double tmp_angle = knife[i].angle[2] - knife[i].angle[1];
-				// 角度差を-π～πの間に収める
-				if (tmp_angle > M_PI) tmp_angle -= 2.0 * M_PI;
-				if (tmp_angle < -M_PI) tmp_angle += 2.0 * M_PI;
-				knife[i].angle[0] = knife[i].angle[1] + tmp_angle * EaseOutExpo(Min(t / knife[i].time, 1.0));
+			if (knife[i].mode == 1) {
+				double distance = sqrt(pow(knife[i].goal_pos.x - knife[i].pos.x, 2) + pow(knife[i].goal_pos.y - knife[i].pos.y, 2));
+				if (distance < 32.0) {
+					knife[i].horming = false;
+				} elif(knife[i].horming) {
+					knife[i].angle[2] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
+					double tmp_angle = knife[i].angle[2] - knife[i].angle[1];
+					// 角度差を-π～πの間に収める
+					if (tmp_angle > M_PI) tmp_angle -= 2.0 * M_PI;
+					if (tmp_angle < -M_PI) tmp_angle += 2.0 * M_PI;
+					knife[i].angle[0] = knife[i].angle[1] + tmp_angle * EaseOutQuad(Min(t / knife[i].time, 1.0));
+				}
+				//角度を-π～πの間に収める
+				if (knife[i].angle[0] > M_PI) knife[i].angle[0] -= 2.0 * M_PI;
+				if (knife[i].angle[0] < -M_PI) knife[i].angle[0] += 2.0 * M_PI;
 			}
 			//ナイフの移動
 			knife[i].pos += (Scene::DeltaTime()) * 1800.0 * Vec2{ cos(knife[i].angle[0]), sin(knife[i].angle[0]) };
-			//角度を-π～πの間に収める
-			if (knife[i].angle[0] > M_PI) knife[i].angle[0] -= 2.0 * M_PI;
-			if (knife[i].angle[0] < -M_PI) knife[i].angle[0] += 2.0 * M_PI;
-			//画面外に出たら退場
-			if ((t > knife[i].time) && ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920) || (knife[i].pos.y < 0) || (knife[i].pos.y > 1080)))
-				knife[i].exist = false;
+
+			// 3回反射後に画面外に出たら退場
+			if ((t > knife[i].time) && ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920) || (knife[i].pos.y < 0) || (knife[i].pos.y > 1080))) {
+				if (knife[i].mode > 3) {
+					knife[i].exist = false;
+				}
+				else {
+					gun_reflect2_se.playOneShot();
+					knife[i].mode++;
+					knife[i].timer[1] = now_time;
+					// 3回目は相手へ向かう
+					if (knife[i].mode == 4) {
+						knife[i].goal_pos = player_reserved_pos[target] + Vec2{ 0, knife_aim_y };
+						knife[i].angle[0] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
+					}
+					else {
+						if ((knife[i].pos.x < 0) || (knife[i].pos.x > 1920))
+							knife[i].angle[0] = M_PI - knife[i].angle[0];
+						else
+							knife[i].angle[0] = 2.0 * M_PI - knife[i].angle[0];
+					}
+				}
+			}
 			//当たり判定処理
-			int distance_x = abs(player_reserved_pos[target].x - knife[i].pos.x);
-			int distance_y = abs(player_reserved_pos[target].y + knife_aim_y - knife[i].pos.y);
+			double distance_x = abs(player_reserved_pos[target].x - knife[i].pos.x);
+			double distance_y = abs(player_reserved_pos[target].y + knife_aim_y - knife[i].pos.y);
 			const bool knife_in_hurtbox = overlaps_hurtbox(player_reserved_pos[target].y, knife[i].pos.y - projectile_radius, knife[i].pos.y + projectile_radius);
 			if ((distance_x < 20.0) && knife_in_hurtbox && (!is_ducking(target) || (distance_y < 90.0))) {
 				if (player[target].status & 8) {
@@ -1152,7 +1281,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((200 < player[cnt].timer[10]) && (player[cnt].timer[10] < 400)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 130.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 					if ((player[cnt].hit_done & 32) == 0) {
 						if (player[cnt].se[3]) {
@@ -1229,7 +1358,6 @@ void Game::setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[], int 
 		search(knife);
 		if (knife_number == -1) break;
 		knife[knife_number].pos = player_reserved_pos[cnt] + Vec2{ cos(set_angle) * 180.0, sin(set_angle) * 180.0 };
-		knife[knife_number].old_pos = knife[knife_number].pos;
 		knife[knife_number].angle[0] = knife_angle + (M_PI * 2 / 5.0) * i;
 		//角度を-π～πの間に収める
 		if (knife[knife_number].angle[0] > M_PI)knife[knife_number].angle[0] -= M_PI * 2.0;
@@ -1251,7 +1379,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((100 < player[cnt].timer[9]) && (player[cnt].timer[9] < 250)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 230.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 					if ((player[cnt].hit_done & 16) == 0) {
 						if (player[cnt].se[2]) {
@@ -1281,7 +1409,7 @@ void Game::no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		if ((200 < player[cnt].timer[10]) && (player[cnt].timer[10] < 400)) {
 			for (int i = 0; i < player_sum; i++) {
 				if (i == cnt) continue;
-				int tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
+				double tmp_pos_x = sign(player[cnt].direction) * (player_reserved_pos[cnt].x - player_reserved_pos[i].x);
 				if ((5.0 < tmp_pos_x) && (tmp_pos_x < 130.0) && melee_reaches(player_reserved_pos[cnt].y, player_reserved_pos[i].y)) {
 					if ((player[cnt].hit_done & 32) == 0) {
 						if (player[cnt].se[3]) {
@@ -1330,7 +1458,7 @@ void Game::synchronizate_data() {
 		//取りこぼしても次で上書きされるよう、変化の有無にかかわらず毎フレーム送る
 		room.sendReport(U"PlayerStatus", me.status);
 		//届くまでに経った分を相手が補えるよう、送った時点のゲーム内時刻を添える
-		room.sendReport(U"PlayerInfoTimer", JSON{ { U"sent", GameTimer() }, { U"timer", Array<int32>(std::begin(me.timer), std::end(me.timer)) } });
+		room.sendReport(U"PlayerInfoTimer", JSON{ { U"sent", GameTimer() },{ U"timer", Array<int32>(std::begin(me.timer), std::end(me.timer)) } });
 		room.sendReport(U"PlayerInfoAP", me.ap);
 		room.sendReport(U"PlayerInfoSpecialAttack", me.special_attack);
 		//「？」は見た目だけなので確認は要らないが、取りこぼしても次で分かるよう、回数を毎フレーム送る
@@ -1633,8 +1761,8 @@ void Game::update_player_animation() {
 			//移動アニメーション
 		}elif(player[i].status & 3) {
 			player[i].img_number = 1;
-			// アイリのみ移動アニメーション
-			if (player[i].number == 2) {
+			// アイリとユウカのみ移動アニメーション
+			if (player[i].number == 2 || player[i].number == 1) {
 				player[i].img_number = player[i].walking;
 			}
 			continue;
@@ -1661,6 +1789,8 @@ void Game::draw() const {
 			draw_bullet();
 			draw_knife();
 			draw_torpedo();
+			draw_aerial_torpedo();
+			draw_kate();
 			draw_special_pull();
 			draw_player();
 			draw_after_images();
@@ -1752,6 +1882,27 @@ void Game::draw_torpedo() const {
 	for (int i = 0; i < max_torpedo; i++) {
 		if (!torpedo[i].exist)continue;
 		torpedo_img.rotated(torpedo[i].angle).drawAt(torpedo[i].pos);
+	}
+}
+
+//九一式航空魚雷の描画
+void Game::draw_aerial_torpedo() const {
+	for (int i = 0; i < max_aerial_torpedo; i++) {
+		if (!aerial_torpedo[i].exist)continue;
+		aerial_torpedo_img.mirrored(aerial_torpedo[i].angle == 0.0).drawAt(aerial_torpedo[i].pos);
+	}
+}
+
+//九七式艦攻の描画
+void Game::draw_kate() const {
+	for (int i = 0; i < max_kate; i++) {
+		if (!kate[i].exist)continue;
+		if (kate[i].mode == 0) {
+			kate_img.mirrored(!kate[i].mirrored).drawAt(kate[i].pos);
+		}
+		else {
+			kate2_img.mirrored(!kate[i].mirrored).drawAt(kate[i].pos);
+		}
 	}
 }
 
