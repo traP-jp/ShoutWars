@@ -47,6 +47,8 @@ struct Player {
 	int knife_mode = 0;
 	int airi_old_timer = 0;
 	double wave_pos = 0.0;
+	// ユウカ専用
+	bool kate_exist = false;
 	// 歩くアニメーションの切り替え用
 	bool walking = true;
 	//必殺技の溜めの間の点滅の強さ (0 なら点滅しない)
@@ -89,6 +91,17 @@ struct torpedo {
 	bool exist = false;
 	int timer;
 	int mode = 0;
+};
+
+struct kate {
+	Vec2 pos;
+	Vec2 old_pos;
+	bool mirrored = false;
+	bool exist = false;
+	int timer;
+	// 0:トツレトツレトツレ,1:離脱
+	int mode = 0;
+	int target_player = 0;
 };
 
 struct knife {
@@ -255,6 +268,9 @@ private:
 	const static int max_after_images = 20;
 	//最大同時存在魚雷数は2
 	const static int max_torpedo = 2;
+	//最大同時存在艦攻数は2
+	const static int max_kate = 2;
+	const static int max_aerial_torpedo = max_kate;
 	//構造体////////////////////////////////////////////////////////////
 	struct Player player[player_sum];
 	struct bullet bullet[max_bullet];
@@ -262,10 +278,12 @@ private:
 	struct occation_effect occation[max_occation];
 	struct after_image after_images[max_after_images];
 	struct torpedo torpedo[max_torpedo];
+	struct kate kate[max_kate];
+	struct torpedo aerial_torpedo[max_aerial_torpedo];
 	//font////////////////////////////////////////////////////////////
 	Font font{ 40 };
 	//画像////////////////////////////////////////////////////////////
-	const Texture background_img{ Resource(U"images/game/system/background.png")};
+	const Texture background_img{ Resource(U"images/game/system/background.png") };
 	const Texture HP_bar_flame_img{ Resource(U"images/game/system/HP_bar_flame.png") };
 	const Texture HP_bar_gray_img{ Resource(U"images/game/system/HP_bar_gray.png") };
 	const Texture HP_bar_red_img{ Resource(U"images/game/system/HP_bar_red.png") };
@@ -287,12 +305,15 @@ private:
 	const Texture knives_img{ Resource(U"images/game/system/knives.png") };
 	const Texture occation_img{ Resource(U"images/game/system/occation.png") };
 	const Texture torpedo_img{ Resource(U"images/game/system/torpedo.png") };
+	const Texture kate_img{ Resource(U"images/game/system/kate.png") };
+	const Texture kate2_img{ Resource(U"images/game/system/kate2.png") };
+	const Texture aerial_torpedo_img{ Resource(U"images/game/system/aerial_torpedo.png") };
 	const Texture return_img{ Resource(U"images/common/return.png") };
 	std::vector<std::vector<Texture>> player_img;
 	std::vector<Texture> fire_img;
 	std::vector<Texture> command_img;
 	//音楽////////////////////////////////////////////////////////////
-	const Audio bgm{ Resource(U"audioes/Es-Boss3_loop.ogg") , Arg::loopBegin = 28.848843537415s};
+	const Audio bgm{ Resource(U"audioes/Es-Boss3_loop.ogg") , Arg::loopBegin = 28.848843537415s };
 	const Audio dos_se{ Resource(U"audioes/dos.wav") };
 	const Audio dododos_se{ Resource(U"audioes/dododos.wav") };
 	const Audio jump_se{ Resource(U"audioes/jump.wav") };
@@ -312,6 +333,8 @@ private:
 	const Audio gun_reflect2_se{ Resource(U"audioes/gun_reflect2.mp3") };
 	const Audio gun_reflect3_se{ Resource(U"audioes/gun_reflect3.mp3") };
 	const Audio torpedo_se{ Resource(U"audioes/torpedo.mp3") };
+	const Audio kate_se{ Resource(U"audioes/torpedo_attacker.mp3") };
+	const Audio totsure_se{ Resource(U"audioes/totsure.wav") };
 	//shape////////////////////////////////////////////////////////////
 	const Rect OK_shape{ 680,464,240,105 };
 	const Rect Yes_shape{ 1010,464,240,105 };
@@ -394,6 +417,8 @@ private:
 	void draw_bullet() const;
 	void draw_knife() const;
 	void draw_torpedo() const;
+	void draw_aerial_torpedo() const;
+	void draw_kate() const;
 	void draw_effects() const;
 	void draw_special_pull() const;
 	void draw_after_images() const;
@@ -438,20 +463,20 @@ private:
 	bool start_jump(int cnt, int now_time);
 	/// @brief 技を始める (action は CommandRecognizer の番号 1:弱攻撃, 2:強攻撃, 3:必殺技, 4:ガード, 5:ガード破壊, 6:特殊攻撃)。出せなければ false
 	bool start_move(int cnt, int action, int now_time);
-	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
-	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
+	inline int sign(bool plus_or_minus) { return plus_or_minus ? 1 : -1; }
+	void Json2ArrayPos(const JSON& json, Vec2(&pos)[2]);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
 	inline int GameTimer();
-	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
+	Vec2 draw_player_pos(Vec2 player_pos, int i) const;
 	//各キャラ専用関数
-	void rei_attack(int cnt,int now_time,Vec2 player_reserved_pos[]);
+	void rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
 	void yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
 	void airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
-	void setting_knife(int cnt,int now_time,Vec2 player_reserved_pos[], int now_number);
+	void setting_knife(int cnt, int now_time, Vec2 player_reserved_pos[], int now_number);
 	void no0_attack(int cnt, int now_time, Vec2 player_reserved_pos[]);
 
 	//type=0:弱,1:狂,2:必殺
-	void call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[],int type);
+	void call_bullet(int cnt, int now_time, Vec2 player_reserved_pos[], int type);
 
 	//get_character_power_ap(番号,攻撃の種類)
 	//攻撃の種類(0:弱,1:狂,2:必殺,3:特殊)
