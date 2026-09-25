@@ -104,8 +104,7 @@ void Title::update()
 		isButtonVsCpuHovered = button_vs_cpu_shape.mouseOver();
 		isButton1Hovered = server_available && button1_shape.mouseOver();
 		isButton2Hovered = server_available && button2_shape.mouseOver();
-		isButtonVsCpuHovered = button_vs_cpu_shape.mouseOver();
-		if (isButtonVsCpuHovered || isButton1Hovered || isButton2Hovered || isButtonVsCpuHovered)
+		if (isButtonVsCpuHovered || isButton1Hovered || isButton2Hovered)
 			Cursor::RequestStyle(CursorStyle::Hand);
 		if (isSettingHovered = setting_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
 		if (button_vs_cpu_shape.leftClicked() && !requireCalibration()) {

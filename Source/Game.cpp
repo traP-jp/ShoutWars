@@ -915,9 +915,9 @@ void Game::rei_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					occation[occation_number].scale = 3.0;
 					occation[occation_number].type = 2;
 				}
+				torpedo[i].exist = false;
+				break;
 			}
-			torpedo[i].exist = false;
-			break;
 		}
 	}
 
@@ -998,7 +998,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		const int windup = special ? yuuka_special_windup_ms : 0;
 		if ((200 + windup < tmp) && (tmp < 400 + windup)) {
 			// 艦攻召喚
-			if (!player[cnt].kate_exist) {
+			if (!player[cnt].kate_exist && (player[cnt].status & 64)) {
 				kate_se.playOneShot();
 				search(kate);
 				if (kate_number != -1) {
@@ -1239,7 +1239,7 @@ void Game::airi_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 					knife[i].mode++;
 					knife[i].timer[1] = now_time;
 					// 3回目は相手へ向かう
-					if (knife[i].mode == 3) {
+					if (knife[i].mode == 4) {
 						knife[i].goal_pos = player_reserved_pos[target] + Vec2{ 0, knife_aim_y };
 						knife[i].angle[0] = atan2(knife[i].goal_pos.y - knife[i].pos.y, knife[i].goal_pos.x - knife[i].pos.x);
 					}
