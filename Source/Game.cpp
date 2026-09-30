@@ -147,7 +147,7 @@ bool Game::is_guard_cooling_down(int cnt, int now_time) const {
 }
 
 bool Game::is_ducking(int cnt) const {
-	return (player[cnt].status & 3) && ((player[cnt].number == 0) || (player[cnt].number == 1));
+	return (player[cnt].status & 3) && (player[cnt].number == 0);
 }
 
 bool Game::is_rapid_firing(int cnt, int now_time) const {
@@ -191,7 +191,7 @@ void Game::start_walk(int cnt, int direction, int now_time) {
 	player[cnt].timer[0] = now_time;
 	player[cnt].timer[1] = 0;
 	player[cnt].pos[1].x = player[cnt].pos[0].x;
-	if (player[cnt].number == 2)
+	if (player[cnt].number == 2 || player[cnt].number == 1)
 		player[cnt].walking = !player[cnt].walking;
 }
 
@@ -1633,8 +1633,8 @@ void Game::update_player_animation() {
 			//移動アニメーション
 		}elif(player[i].status & 3) {
 			player[i].img_number = 1;
-			// アイリのみ移動アニメーション
-			if (player[i].number == 2) {
+			// アイリとユウカのみ移動アニメーション
+			if (player[i].number == 2 || player[i].number == 1) {
 				player[i].img_number = player[i].walking;
 			}
 			continue;

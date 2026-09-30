@@ -47,6 +47,7 @@ struct Player {
 	int knife_mode = 0;
 	int airi_old_timer = 0;
 	double wave_pos = 0.0;
+	// 歩くアニメーションの切り替え用
 	bool walking = true;
 	//必殺技の溜めの間の点滅の強さ (0 なら点滅しない)
 	double charge_glow = 0.0;
@@ -416,7 +417,7 @@ private:
 	void handle_started_moves();
 	[[nodiscard]] bool is_guard_cooling_down(int cnt, int now_time) const;
 	[[nodiscard]] bool is_landing_recovery(int cnt, int now_time) const;
-	/// @brief 走ってかがんでいて、弾やナイフが頭の上を抜けるか (走りの姿勢で頭が下がるのは玲とユウカだけで、アイリと No.0 はかがまない)
+	/// @brief 走ってかがんでいて、弾やナイフが頭の上を抜けるか (走りの姿勢で頭が下がるのは玲だけで、ユウカ・アイリ・No.0 はかがまない)
 	[[nodiscard]] bool is_ducking(int cnt) const;
 	/// @brief アイリが連射で弾を撃っている最中か
 	[[nodiscard]] bool is_rapid_firing(int cnt, int now_time) const;
