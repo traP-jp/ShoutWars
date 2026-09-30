@@ -55,6 +55,8 @@ struct Player {
 	double pull_seconds = -1.0;
 	//弾で押し戻される残りの距離 (px。正なら右へ)
 	double knockback = 0.0;
+	//押し戻しが本来始まっているはずの時刻から遅れている分 (次のフレームでまとめて進める)
+	int knockback_behind_ms = 0;
 	//通信相手のジャンプを見せ始めた時刻と、そのときの地面と本当の高さの差
 	Optional<int> jump_shown_time;
 	double jump_shown_gap = 0.0;
@@ -381,6 +383,8 @@ private:
 
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;
+	//開始の tick を受け取ったゲーム内時刻。tick の時刻をゲーム内時刻に直す基準にする
+	int start_tick_time = 0;
 #ifndef debug_mode
 	bool is_connected = false;
 #else
@@ -427,6 +431,9 @@ private:
 	void finish_game(bool won);
 	/// @brief 対戦を始める。fade_ms の間、黒から画面をフェードインしてから動き出す
 	void start_match(int fade_ms);
+	[[nodiscard]] double tick_ms() const;
+	/// @brief tick の窓が締め切られたゲーム内時刻。開始の tick を受け取った時刻が基準なので、画面ごとの届き方の差だけ揃わない
+	[[nodiscard]] int tick_closed_time(uint64 tick) const;
 	int voice_command();
 	void handle_started_moves();
 	[[nodiscard]] bool is_guard_cooling_down(int cnt, int now_time) const;

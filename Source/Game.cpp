@@ -293,6 +293,7 @@ void Game::start_match(int fade_ms) {
 	another_player_number = 1 - player_number;
 	//ゲーム開始時刻
 	connection_timer = (int)Time::GetMillisec() + fade_ms;
+	start_tick_time = GameTimer();
 	fade_back_timer = GameTimer();
 	fade_back_alpha = (0 < fade_ms) ? 1.0 : 0.0;
 	bgm.play();
@@ -300,6 +301,14 @@ void Game::start_match(int fade_ms) {
 
 void Game::updateFadeIn(double) {
 	getData().room->update();
+}
+
+double Game::tick_ms() const {
+	return getData().room->joined().tickDuration.count() * 1000.0;
+}
+
+int Game::tick_closed_time(uint64 tick) const {
+	return start_tick_time + static_cast<int>((static_cast<int64>(tick) - static_cast<int64>(getData().start_tick)) * tick_ms());
 }
 
 inline int Game::GameTimer() {
@@ -509,11 +518,12 @@ void Game::update_player() {
 		Vec2& self = player_reserved_pos[i];
 		const double self_x = self.x;
 		if (player[i].knockback != 0.0) {
-			const double max_step = knockback_speed * Scene::DeltaTime();
+			const double max_step = knockback_speed * (Scene::DeltaTime() + player[i].knockback_behind_ms / 1000.0);
 			const double step = Clamp(player[i].knockback, -max_step, max_step);
 			self.x += step;
 			player[i].knockback -= step;
 		}
+		player[i].knockback_behind_ms = 0;
 		//相手のユウカの必殺技の溜めの間は、相手に引き寄せられる
 		if (const auto toward = pull_direction(i, self.x, now_time)) {
 			self.x += *toward * Min(abs(player[other_number].pos[0].x - self.x) - yuuka_special_pull_stop, yuuka_special_pull_speed * Scene::DeltaTime());
@@ -1478,6 +1488,8 @@ void Game::synchronizate_data() {
 				player[target].hp[0] -= damage;
 				show_damage(target, damage);
 				player[target].knockback += event.data[U"direction"].get<int32>() * knockback;
+				//確定が届く時刻は画面ごとに少しずつ違い、そのまま始めると相手の画面の先読みとずれて止まるときにぶるぶるする。確定した tick が締め切られた時刻から始まったことにして揃える
+				if (!cpu_room) player[target].knockback_behind_ms = Clamp(GameTimer() - tick_closed_time(event.tick), 0, static_cast<int>(tick_ms()));
 			}
 			if (player[target].hp[0] <= 0) {
 				finish_game(target != player_number);
