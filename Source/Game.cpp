@@ -169,10 +169,12 @@ bool Game::is_local_player(int cnt) const {
 }
 
 void Game::send_action(int sender, StringView type, int target) {
+	//押し戻す向きは画面ごとに食い違わないよう、攻撃した側で決める
+	const JSON data{ { U"target", target }, { U"direction", (player[target].pos[0].x < player[sender].pos[0].x) ? -1 : 1 } };
 	if (sender == player_number) {
-		getData().room->sendAction(type, target);
+		getData().room->sendAction(type, data);
 	}elif(cpu_room && (sender == another_player_number)) {
-		cpu_room->sendCpuAction(type, target);
+		cpu_room->sendCpuAction(type, data);
 	}
 }
 
@@ -291,6 +293,7 @@ void Game::start_match(int fade_ms) {
 	another_player_number = 1 - player_number;
 	//ゲーム開始時刻
 	connection_timer = (int)Time::GetMillisec() + fade_ms;
+	start_tick_time = GameTimer();
 	fade_back_timer = GameTimer();
 	fade_back_alpha = (0 < fade_ms) ? 1.0 : 0.0;
 	bgm.play();
@@ -298,6 +301,14 @@ void Game::start_match(int fade_ms) {
 
 void Game::updateFadeIn(double) {
 	getData().room->update();
+}
+
+double Game::tick_ms() const {
+	return getData().room->joined().tickDuration.count() * 1000.0;
+}
+
+int Game::tick_closed_time(uint64 tick) const {
+	return start_tick_time + static_cast<int>((static_cast<int64>(tick) - static_cast<int64>(getData().start_tick)) * tick_ms());
 }
 
 inline int Game::GameTimer() {
@@ -460,14 +471,27 @@ void Game::update_player() {
 		//ジャンプ処理
 		if (player[i].status & 4) {
 			player[i].timer[7] = now_time - player[i].timer[2];
-			if (player[i].timer[7] < 500) {
-				player_reserved_pos[i].y = player_min_y - 2.0 * player[i].timer[7] + 0.004 * player[i].timer[7] * player[i].timer[7];
+			if (player[i].timer[7] < jump_ms) {
+				player_reserved_pos[i].y = jump_y(player[i].timer[7]);
 			}
 			else {
 				player[i].status ^= 4;
 				player[i].landing_time = now_time;
 				player_reserved_pos[i].y = player_min_y;
 			}
+		}
+		//通信相手のジャンプは途中から届くので、見えなかった上がりだけ速めて本当の弧に追いつかせる
+		player[i].jump_draw_offset = 0.0;
+		if ((player[i].status & 4) && !is_local_player(i)) {
+			if (!player[i].jump_shown_time) {
+				player[i].jump_shown_time = now_time;
+				player[i].jump_shown_gap = player_min_y - player_reserved_pos[i].y;
+			}
+			const double catching_up = 1.0 - Min(1.0, static_cast<double>(now_time - *player[i].jump_shown_time) / jump_catch_up_ms);
+			player[i].jump_draw_offset = player[i].jump_shown_gap * catching_up * catching_up;
+		}
+		else {
+			player[i].jump_shown_time.reset();
 		}
 	}
 	//プレイヤー(ユーザー操作)のキー入力処理////////////////////////////////////////////////////////////
@@ -487,24 +511,27 @@ void Game::update_player() {
 		if (intent.unmatched) commandFeedback.unmatched(cpu, false);
 	}
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
-	//位置を決めるのは本人なので、引き寄せや押し合いでは手元で動かすプレイヤー (自分と CPU) だけを動かす。通信相手は、相手のクライアントが自分で動く
+	//押し戻しと引き寄せは予想できるので、通信相手も手元で先に動かす
 	for (int i = 0; i < player_sum; i++) {
-		if (!is_local_player(i)) continue;
 		const int other_number = 1 - i;
 		Vec2& self = player_reserved_pos[i];
 		const double self_x = self.x;
 		if (player[i].knockback != 0.0) {
-			const double max_step = knockback_speed * Scene::DeltaTime();
+			const double max_step = knockback_speed * (Scene::DeltaTime() + player[i].knockback_behind_ms / 1000.0);
 			const double step = Clamp(player[i].knockback, -max_step, max_step);
 			self.x += step;
 			player[i].knockback -= step;
 		}
+		player[i].knockback_behind_ms = 0;
 		//相手のユウカの必殺技の溜めの間は、相手に引き寄せられる
 		if (const auto toward = pull_direction(i, self.x, now_time)) {
 			self.x += *toward * Min(abs(player[other_number].pos[0].x - self.x) - yuuka_special_pull_stop, yuuka_special_pull_speed * Scene::DeltaTime());
 		}
-		//押し合い
-		{
+		//押し合いは予想できないので、手元のプレイヤーだけ
+		if (!is_local_player(i)) {
+			if (self.x != self_x) predicted_moves << PredictedMove{ now_time, self.x - self_x };
+		}
+		else {
 			const double contact = 70.0;
 			//押す側がこの深さまでめり込むのを許す。接した位置で止めると、相手の画面で重ならず押せなくなる
 			const double push_depth = 20.0;
@@ -531,7 +558,7 @@ void Game::update_player() {
 				}
 			}
 		}
-		//相手は歩き始めの位置と進み具合から位置を計算するので、動かした分を歩き始めの位置にも反映する
+		//歩きの位置は歩き始めの位置から計算するので、そちらにも足す
 		player[i].pos[1].x += (self.x - self_x);
 	}
 
@@ -1326,7 +1353,8 @@ void Game::synchronizate_data() {
 	auto& room = *getData().room;
 	try {
 		const auto& me = player[player_number];
-		room.sendReport(U"PlayerInfoPos", Array<double>{ me.pos[0].x, me.pos[0].y, me.pos[1].x, me.pos[1].y });
+		//相手が先読みした分と突き合わせられるよう、送った時刻を添える
+		room.sendReport(U"PlayerInfoPos", JSON{ { U"sent", GameTimer() }, { U"pos", Array<double>{ me.pos[0].x, me.pos[0].y, me.pos[1].x, me.pos[1].y } } });
 		//取りこぼしても次で上書きされるよう、変化の有無にかかわらず毎フレーム送る
 		room.sendReport(U"PlayerStatus", me.status);
 		//届くまでに経った分を相手が補えるよう、送った時点のゲーム内時刻を添える
@@ -1349,7 +1377,7 @@ void Game::synchronizate_data() {
 		//一方的な報告の処理
 		for (const auto& event : room.receiveReports()) {
 			if (event.type == U"PlayerInfoPos") {
-				Json2ArrayPos(event.data, player[another_player_number].pos);
+				receive_remote_pos(event.data);
 			}
 			if (event.type == U"PlayerStatus") {
 				const int status = event.data.get<int32>();
@@ -1405,7 +1433,7 @@ void Game::synchronizate_data() {
 		for (const auto& event : room.receiveActions()) {
 			//時間切れより後の確認イベントは適用しない
 			if (end_tick <= event.tick) break;
-			const int target = event.data.get<int32>();
+			const int target = event.data[U"target"].get<int32>();
 			const int attacker = (event.from == room.joined().userId) ? player_number : another_player_number;
 			int damage = 0;
 			//ガードしても食らう分
@@ -1457,8 +1485,9 @@ void Game::synchronizate_data() {
 				//実質HPを確定
 				player[target].hp[0] -= damage;
 				show_damage(target, damage);
-				//位置を決めるのは本人なので、押し戻しも当たった側の画面で動かす
-				if (is_local_player(target)) player[target].knockback += ((player[target].pos[0].x < player[attacker].pos[0].x) ? -1.0 : 1.0) * knockback;
+				player[target].knockback += event.data[U"direction"].get<int32>() * knockback;
+				//確定が届く時刻は画面ごとにずれるので、tick の締め切りから始まったことにして揃える
+				if (!cpu_room) player[target].knockback_behind_ms = Clamp(GameTimer() - tick_closed_time(event.tick), 0, static_cast<int>(tick_ms()));
 			}
 			if (player[target].hp[0] <= 0) {
 				finish_game(target != player_number);
@@ -1515,9 +1544,15 @@ void Game::Json2ArrayTimer(const JSON& json, int(&timer)[16]) {
 	timer[14] = sent - timer[15];
 }
 
-void Game::Json2ArrayPos(const JSON& json, Vec2(&pos)[2]) {
-	pos[0] = { json[0].get<double>(), json[1].get<double>() };
-	pos[1] = { json[2].get<double>(), json[3].get<double>() };
+void Game::receive_remote_pos(const JSON& json) {
+	const int sent = Min(json[U"sent"].get<int32>(), GameTimer());
+	predicted_moves.remove_if([&](const PredictedMove& move) { return move.time < sent; });
+	double predicted = 0.0;
+	for (const auto& move : predicted_moves) predicted += move.dx;
+	const JSON values = json[U"pos"];
+	Vec2(&pos)[2] = player[another_player_number].pos;
+	pos[0] = { values[0].get<double>() + predicted, values[1].get<double>() };
+	pos[1] = { values[2].get<double>() + predicted, values[3].get<double>() };
 }
 
 void Game::update_player_animation() {
@@ -1675,8 +1710,8 @@ void Game::draw() const {
 		//残り時間
 		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 120, Palette::White);
 		commandFeedback.drawVoiceHint(Vec2{ 960, 50 });
-		commandFeedback.drawMoveNames(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
-		commandFeedback.drawUnmatchedMarks(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
+		commandFeedback.drawMoveNames(Array<Vec2>{ shown_pos(0), shown_pos(1) });
+		commandFeedback.drawUnmatchedMarks(Array<Vec2>{ shown_pos(0), shown_pos(1) });
 
 
 		if (cpu_room && !is_game_finished) return_glow.draw(is_return_hovered, return_shape.pos);
@@ -1781,8 +1816,8 @@ void Game::draw_special_pull() const {
 		const double t = player[i].pull_seconds;
 		if (t < 0.0) continue;
 		const double fade_in = Min(1.0, t / 0.3);
-		const Vec2 center = player[i].pos[0] + Vec2{ 0.0, -60.0 };
-		const Vec2 other = player[1 - i].pos[0] + Vec2{ 0.0, -60.0 };
+		const Vec2 center = shown_pos(i) + Vec2{ 0.0, -60.0 };
+		const Vec2 other = shown_pos(1 - i) + Vec2{ 0.0, -60.0 };
 		const double side = (other.x < center.x) ? -1.0 : 1.0;
 
 		//縮みながら集まる輪
@@ -1815,18 +1850,18 @@ void Game::draw_player() const {
 		if (!player_flag[i]) continue;
 		const auto& player_texture = player_img.at(getData().player[i]).at(player[i].img_number);
 		const double damage_flash = Max(1.0 - (Scene::Time() - player[i].damaged_time) / damage_flash_seconds, 0.0);
-		player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 1.0 - 0.7 * damage_flash, 1.0 - 0.7 * damage_flash });
+		player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(shown_pos(i), i), ColorF{ 1.0, 1.0 - 0.7 * damage_flash, 1.0 - 0.7 * damage_flash });
 		if (0.0 < damage_flash) {
 			const ScopedRenderStates2D additive{ BlendState::Additive };
-			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 0.0, 0.0, 0.6 * damage_flash });
+			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(shown_pos(i), i), ColorF{ 1.0, 0.0, 0.0, 0.6 * damage_flash });
 		}
 		//必殺技の溜めの点滅
 		if (0.0 < player[i].charge_glow) {
 			const ScopedRenderStates2D additive{ BlendState::Additive };
-			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 0.6 * player[i].charge_glow });
+			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(shown_pos(i), i), ColorF{ 1.0, 0.6 * player[i].charge_glow });
 		}
 		//シールドの表示
-		if (player[i].status & 8)guard_img.drawAt(player[i].pos[0]);
+		if (player[i].status & 8)guard_img.drawAt(shown_pos(i));
 	}
 }
 
@@ -1843,6 +1878,14 @@ void Game::show_damage(int target, int damage) {
 		screen_shake_time = Scene::Time();
 		screen_shake_start = shake;
 	}
+}
+
+double Game::jump_y(int t) {
+	return player_min_y - 2.0 * t + 0.004 * t * t;
+}
+
+Vec2 Game::shown_pos(int i) const {
+	return player[i].pos[0] + Vec2{ 0.0, player[i].jump_draw_offset };
 }
 
 Vec2 Game::draw_player_pos(Vec2 player_pos, int i) const {

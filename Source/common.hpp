@@ -8,7 +8,7 @@
 #define elif else if
 #define M_PI 3.14159265358979323846
 
-inline constexpr StringView GameVersion = U"0.3";
+inline constexpr StringView GameVersion = U"0.4";
 
 // シーンの名前
 enum class State

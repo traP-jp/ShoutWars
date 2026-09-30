@@ -55,6 +55,13 @@ struct Player {
 	double pull_seconds = -1.0;
 	//弾で押し戻される残りの距離 (px。正なら右へ)
 	double knockback = 0.0;
+	//押し戻しが遅れて始まった分 (次のフレームでまとめて進める)
+	int knockback_behind_ms = 0;
+	//通信相手のジャンプを見せ始めた時刻と、そのときの地面と本当の高さの差
+	Optional<int> jump_shown_time;
+	double jump_shown_gap = 0.0;
+	//描くときだけずらす高さ
+	double jump_draw_offset = 0.0;
 	//最後にダメージが確定した時刻 (Scene::Time())。少しの間、赤く光らせる
 	double damaged_time = -Math::Inf;
 
@@ -186,6 +193,9 @@ private:
 	//対戦の制限時間 (秒)。慣れた人がスムーズに進めて 2 分、初めて遊ぶ人は 5 分ほどかかる見込みなので余裕を持たせ、サーバーの対戦の期限 (20分) より短く取る
 	const static int match_seconds = 600;
 	const static int player_min_y = 650;
+	const static int jump_ms = 500;
+	//途中から届いた通信相手のジャンプが、本当の弧に追いつくまでの時間
+	const static int jump_catch_up_ms = 100;
 	//キャラが動ける横の範囲
 	const static int stage_min_x = 50;
 	const static int stage_max_x = 1850;
@@ -330,6 +340,12 @@ private:
 	//前回の処理から、通信で届いた相手の状態で新しく立ち上がったビット
 	//相手の状態は手元のアニメーションでも下ろすため、手元の状態の立ち上がりで見ると、遅れて届いた状態で技が始まり直したように見えてしまう
 	int received_started_status = 0;
+	struct PredictedMove {
+		int time;
+		double dx;
+	};
+	//通信相手を先に動かした分。届いた位置に、送られた時刻より後の分を足し直す
+	Array<PredictedMove> predicted_moves;
 	//前のフレームでジャンプの入力があったか (押しっぱなしでは続けて跳ばないようにするため)
 	bool previous_jump_input = false;
 	//自分がガードを壊されてから、再びガードできるまでの残りの割合 (0 ならガードできる)
@@ -367,6 +383,8 @@ private:
 
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;
+	//開始の tick を受け取ったゲーム内時刻
+	int start_tick_time = 0;
 #ifndef debug_mode
 	bool is_connected = false;
 #else
@@ -413,6 +431,9 @@ private:
 	void finish_game(bool won);
 	/// @brief 対戦を始める。fade_ms の間、黒から画面をフェードインしてから動き出す
 	void start_match(int fade_ms);
+	[[nodiscard]] double tick_ms() const;
+	/// @brief tick の窓が締め切られたゲーム内時刻 (届き方の差の分だけ画面ごとにずれる)
+	[[nodiscard]] int tick_closed_time(uint64 tick) const;
 	int voice_command();
 	void handle_started_moves();
 	[[nodiscard]] bool is_guard_cooling_down(int cnt, int now_time) const;
@@ -440,9 +461,13 @@ private:
 	/// @brief 技を始める (action は CommandRecognizer の番号 1:弱攻撃, 2:強攻撃, 3:必殺技, 4:ガード, 5:ガード破壊, 6:特殊攻撃)。出せなければ false
 	bool start_move(int cnt, int action, int now_time);
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
-	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
+	/// @brief 届いた通信相手の位置に、先に動かした分を足して反映する
+	void receive_remote_pos(const JSON& json);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
 	inline int GameTimer();
+	[[nodiscard]] static double jump_y(int t);
+	/// @brief 描くときの位置 (通信相手のジャンプの見え方を直したもの)
+	[[nodiscard]] Vec2 shown_pos(int i) const;
 	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
 	//各キャラ専用関数
 	void rei_attack(int cnt,int now_time,Vec2 player_reserved_pos[]);
