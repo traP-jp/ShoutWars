@@ -330,6 +330,12 @@ private:
 	//前回の処理から、通信で届いた相手の状態で新しく立ち上がったビット
 	//相手の状態は手元のアニメーションでも下ろすため、手元の状態の立ち上がりで見ると、遅れて届いた状態で技が始まり直したように見えてしまう
 	int received_started_status = 0;
+	struct PredictedMove {
+		int time;
+		double dx;
+	};
+	//通信相手を手元で先に動かした分 (押し戻しと引き寄せ)。届いた位置は送られた時点のものなので、それより後の分を足し直す
+	Array<PredictedMove> predicted_moves;
 	//前のフレームでジャンプの入力があったか (押しっぱなしでは続けて跳ばないようにするため)
 	bool previous_jump_input = false;
 	//自分がガードを壊されてから、再びガードできるまでの残りの割合 (0 ならガードできる)
@@ -440,7 +446,8 @@ private:
 	/// @brief 技を始める (action は CommandRecognizer の番号 1:弱攻撃, 2:強攻撃, 3:必殺技, 4:ガード, 5:ガード破壊, 6:特殊攻撃)。出せなければ false
 	bool start_move(int cnt, int action, int now_time);
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
-	void Json2ArrayPos(const JSON& json, Vec2 (& pos)[2]);
+	/// @brief 届いた通信相手の位置に、送られた時点より後に手元で先に動かした分を足して反映する
+	void receive_remote_pos(const JSON& json);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
 	inline int GameTimer();
 	Vec2 draw_player_pos(Vec2 player_pos,int i) const;

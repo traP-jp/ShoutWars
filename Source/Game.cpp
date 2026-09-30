@@ -169,10 +169,12 @@ bool Game::is_local_player(int cnt) const {
 }
 
 void Game::send_action(int sender, StringView type, int target) {
+	//押し戻す向きは、位置の見え方が画面ごとに食い違っても揃うよう、攻撃した側の画面で決めて送る
+	const JSON data{ { U"target", target }, { U"direction", (player[target].pos[0].x < player[sender].pos[0].x) ? -1 : 1 } };
 	if (sender == player_number) {
-		getData().room->sendAction(type, target);
+		getData().room->sendAction(type, data);
 	}elif(cpu_room && (sender == another_player_number)) {
-		cpu_room->sendCpuAction(type, target);
+		cpu_room->sendCpuAction(type, data);
 	}
 }
 
@@ -487,9 +489,8 @@ void Game::update_player() {
 		if (intent.unmatched) commandFeedback.unmatched(cpu, false);
 	}
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
-	//位置を決めるのは本人なので、引き寄せや押し合いでは手元で動かすプレイヤー (自分と CPU) だけを動かす。通信相手は、相手のクライアントが自分で動く
+	//位置を決めるのは本人。ただし押し戻しと引き寄せは予想できるので、届く位置の遅れでカクつかないよう、通信相手も手元で先に動かす
 	for (int i = 0; i < player_sum; i++) {
-		if (!is_local_player(i)) continue;
 		const int other_number = 1 - i;
 		Vec2& self = player_reserved_pos[i];
 		const double self_x = self.x;
@@ -503,8 +504,12 @@ void Game::update_player() {
 		if (const auto toward = pull_direction(i, self.x, now_time)) {
 			self.x += *toward * Min(abs(player[other_number].pos[0].x - self.x) - yuuka_special_pull_stop, yuuka_special_pull_speed * Scene::DeltaTime());
 		}
-		//押し合い
-		{
+		//押し合いは相手の入力しだいで予想できないので、手元で動かすプレイヤー (自分と CPU) だけを動かす
+		if (!is_local_player(i)) {
+			//位置が届いたら、送られた時点より後に先に動かした分を足し直す
+			if (self.x != self_x) predicted_moves << PredictedMove{ now_time, self.x - self_x };
+		}
+		else {
 			const double contact = 70.0;
 			//押す側がこの深さまでめり込むのを許す。接した位置で止めると、相手の画面で重ならず押せなくなる
 			const double push_depth = 20.0;
@@ -531,7 +536,7 @@ void Game::update_player() {
 				}
 			}
 		}
-		//相手は歩き始めの位置と進み具合から位置を計算するので、動かした分を歩き始めの位置にも反映する
+		//歩いている間の位置は歩き始めの位置と進み具合から計算するので、動かした分を歩き始めの位置にも反映する
 		player[i].pos[1].x += (self.x - self_x);
 	}
 
@@ -1326,7 +1331,8 @@ void Game::synchronizate_data() {
 	auto& room = *getData().room;
 	try {
 		const auto& me = player[player_number];
-		room.sendReport(U"PlayerInfoPos", Array<double>{ me.pos[0].x, me.pos[0].y, me.pos[1].x, me.pos[1].y });
+		//届くまでに先に動かされた分を相手が差し引けるよう、送った時点のゲーム内時刻を添える
+		room.sendReport(U"PlayerInfoPos", JSON{ { U"sent", GameTimer() }, { U"pos", Array<double>{ me.pos[0].x, me.pos[0].y, me.pos[1].x, me.pos[1].y } } });
 		//取りこぼしても次で上書きされるよう、変化の有無にかかわらず毎フレーム送る
 		room.sendReport(U"PlayerStatus", me.status);
 		//届くまでに経った分を相手が補えるよう、送った時点のゲーム内時刻を添える
@@ -1349,7 +1355,7 @@ void Game::synchronizate_data() {
 		//一方的な報告の処理
 		for (const auto& event : room.receiveReports()) {
 			if (event.type == U"PlayerInfoPos") {
-				Json2ArrayPos(event.data, player[another_player_number].pos);
+				receive_remote_pos(event.data);
 			}
 			if (event.type == U"PlayerStatus") {
 				const int status = event.data.get<int32>();
@@ -1405,7 +1411,7 @@ void Game::synchronizate_data() {
 		for (const auto& event : room.receiveActions()) {
 			//時間切れより後の確認イベントは適用しない
 			if (end_tick <= event.tick) break;
-			const int target = event.data.get<int32>();
+			const int target = event.data[U"target"].get<int32>();
 			const int attacker = (event.from == room.joined().userId) ? player_number : another_player_number;
 			int damage = 0;
 			//ガードしても食らう分
@@ -1457,8 +1463,7 @@ void Game::synchronizate_data() {
 				//実質HPを確定
 				player[target].hp[0] -= damage;
 				show_damage(target, damage);
-				//位置を決めるのは本人なので、押し戻しも当たった側の画面で動かす
-				if (is_local_player(target)) player[target].knockback += ((player[target].pos[0].x < player[attacker].pos[0].x) ? -1.0 : 1.0) * knockback;
+				player[target].knockback += event.data[U"direction"].get<int32>() * knockback;
 			}
 			if (player[target].hp[0] <= 0) {
 				finish_game(target != player_number);
@@ -1515,9 +1520,15 @@ void Game::Json2ArrayTimer(const JSON& json, int(&timer)[16]) {
 	timer[14] = sent - timer[15];
 }
 
-void Game::Json2ArrayPos(const JSON& json, Vec2(&pos)[2]) {
-	pos[0] = { json[0].get<double>(), json[1].get<double>() };
-	pos[1] = { json[2].get<double>(), json[3].get<double>() };
+void Game::receive_remote_pos(const JSON& json) {
+	const int sent = Min(json[U"sent"].get<int32>(), GameTimer());
+	predicted_moves.remove_if([&](const PredictedMove& move) { return move.time < sent; });
+	double predicted = 0.0;
+	for (const auto& move : predicted_moves) predicted += move.dx;
+	const JSON values = json[U"pos"];
+	Vec2(&pos)[2] = player[another_player_number].pos;
+	pos[0] = { values[0].get<double>() + predicted, values[1].get<double>() };
+	pos[1] = { values[2].get<double>() + predicted, values[3].get<double>() };
 }
 
 void Game::update_player_animation() {
