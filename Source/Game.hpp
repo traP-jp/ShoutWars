@@ -55,7 +55,7 @@ struct Player {
 	double pull_seconds = -1.0;
 	//弾で押し戻される残りの距離 (px。正なら右へ)
 	double knockback = 0.0;
-	//押し戻しが本来始まっているはずの時刻から遅れている分 (次のフレームでまとめて進める)
+	//押し戻しが遅れて始まった分 (次のフレームでまとめて進める)
 	int knockback_behind_ms = 0;
 	//通信相手のジャンプを見せ始めた時刻と、そのときの地面と本当の高さの差
 	Optional<int> jump_shown_time;
@@ -194,7 +194,7 @@ private:
 	const static int match_seconds = 600;
 	const static int player_min_y = 650;
 	const static int jump_ms = 500;
-	//通信相手のジャンプが途中から届いたとき、本当の弧に追いつくまでの時間
+	//途中から届いた通信相手のジャンプが、本当の弧に追いつくまでの時間
 	const static int jump_catch_up_ms = 100;
 	//キャラが動ける横の範囲
 	const static int stage_min_x = 50;
@@ -344,7 +344,7 @@ private:
 		int time;
 		double dx;
 	};
-	//通信相手を手元で先に動かした分 (押し戻しと引き寄せ)。届いた位置は送られた時点のものなので、それより後の分を足し直す
+	//通信相手を先に動かした分。届いた位置に、送られた時刻より後の分を足し直す
 	Array<PredictedMove> predicted_moves;
 	//前のフレームでジャンプの入力があったか (押しっぱなしでは続けて跳ばないようにするため)
 	bool previous_jump_input = false;
@@ -383,7 +383,7 @@ private:
 
 	//通信用の変数////////////////////////////////////////////////////
 	int connection_timer = 0;
-	//開始の tick を受け取ったゲーム内時刻。tick の時刻をゲーム内時刻に直す基準にする
+	//開始の tick を受け取ったゲーム内時刻
 	int start_tick_time = 0;
 #ifndef debug_mode
 	bool is_connected = false;
@@ -432,7 +432,7 @@ private:
 	/// @brief 対戦を始める。fade_ms の間、黒から画面をフェードインしてから動き出す
 	void start_match(int fade_ms);
 	[[nodiscard]] double tick_ms() const;
-	/// @brief tick の窓が締め切られたゲーム内時刻。開始の tick を受け取った時刻が基準なので、画面ごとの届き方の差だけ揃わない
+	/// @brief tick の窓が締め切られたゲーム内時刻 (届き方の差の分だけ画面ごとにずれる)
 	[[nodiscard]] int tick_closed_time(uint64 tick) const;
 	int voice_command();
 	void handle_started_moves();
@@ -461,12 +461,12 @@ private:
 	/// @brief 技を始める (action は CommandRecognizer の番号 1:弱攻撃, 2:強攻撃, 3:必殺技, 4:ガード, 5:ガード破壊, 6:特殊攻撃)。出せなければ false
 	bool start_move(int cnt, int action, int now_time);
 	inline int sign(bool plus_or_minus) {return plus_or_minus ? 1 : -1;}
-	/// @brief 届いた通信相手の位置に、送られた時点より後に手元で先に動かした分を足して反映する
+	/// @brief 届いた通信相手の位置に、先に動かした分を足して反映する
 	void receive_remote_pos(const JSON& json);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
 	inline int GameTimer();
 	[[nodiscard]] static double jump_y(int t);
-	/// @brief 描くときのキャラの位置 (通信相手のジャンプの見え方を直した位置)
+	/// @brief 描くときの位置 (通信相手のジャンプの見え方を直したもの)
 	[[nodiscard]] Vec2 shown_pos(int i) const;
 	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
 	//各キャラ専用関数

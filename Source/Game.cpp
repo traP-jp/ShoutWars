@@ -169,7 +169,7 @@ bool Game::is_local_player(int cnt) const {
 }
 
 void Game::send_action(int sender, StringView type, int target) {
-	//押し戻す向きは、位置の見え方が画面ごとに食い違っても揃うよう、攻撃した側の画面で決めて送る
+	//押し戻す向きは画面ごとに食い違わないよう、攻撃した側で決める
 	const JSON data{ { U"target", target }, { U"direction", (player[target].pos[0].x < player[sender].pos[0].x) ? -1 : 1 } };
 	if (sender == player_number) {
 		getData().room->sendAction(type, data);
@@ -480,8 +480,7 @@ void Game::update_player() {
 				player_reserved_pos[i].y = player_min_y;
 			}
 		}
-		//通信相手のジャンプは届いたときにはもう途中まで跳んでいて、てっぺんに瞬間移動して見える。見えた高さから素早く跳び上がって本当の弧に追いつくように描く
-		//弧を丸ごと縮めると落ちるところまで速くなってふんわり感が消えるので、縮めるのは見えなかった上がりの部分だけにする (当たり判定と着地の時刻は本当の高さのまま)
+		//通信相手のジャンプは途中から届くので、見えなかった上がりだけ速めて本当の弧に追いつかせる
 		player[i].jump_draw_offset = 0.0;
 		if ((player[i].status & 4) && !is_local_player(i)) {
 			if (!player[i].jump_shown_time) {
@@ -512,7 +511,7 @@ void Game::update_player() {
 		if (intent.unmatched) commandFeedback.unmatched(cpu, false);
 	}
 	//プレイヤー同士の相互作用/////////////////////////////////////////////////////////////////////
-	//位置を決めるのは本人。ただし押し戻しと引き寄せは予想できるので、届く位置の遅れでカクつかないよう、通信相手も手元で先に動かす
+	//押し戻しと引き寄せは予想できるので、通信相手も手元で先に動かす
 	for (int i = 0; i < player_sum; i++) {
 		const int other_number = 1 - i;
 		Vec2& self = player_reserved_pos[i];
@@ -528,9 +527,8 @@ void Game::update_player() {
 		if (const auto toward = pull_direction(i, self.x, now_time)) {
 			self.x += *toward * Min(abs(player[other_number].pos[0].x - self.x) - yuuka_special_pull_stop, yuuka_special_pull_speed * Scene::DeltaTime());
 		}
-		//押し合いは相手の入力しだいで予想できないので、手元で動かすプレイヤー (自分と CPU) だけを動かす
+		//押し合いは予想できないので、手元のプレイヤーだけ
 		if (!is_local_player(i)) {
-			//位置が届いたら、送られた時点より後に先に動かした分を足し直す
 			if (self.x != self_x) predicted_moves << PredictedMove{ now_time, self.x - self_x };
 		}
 		else {
@@ -560,7 +558,7 @@ void Game::update_player() {
 				}
 			}
 		}
-		//歩いている間の位置は歩き始めの位置と進み具合から計算するので、動かした分を歩き始めの位置にも反映する
+		//歩きの位置は歩き始めの位置から計算するので、そちらにも足す
 		player[i].pos[1].x += (self.x - self_x);
 	}
 
@@ -1355,7 +1353,7 @@ void Game::synchronizate_data() {
 	auto& room = *getData().room;
 	try {
 		const auto& me = player[player_number];
-		//届くまでに先に動かされた分を相手が差し引けるよう、送った時点のゲーム内時刻を添える
+		//相手が先読みした分と突き合わせられるよう、送った時刻を添える
 		room.sendReport(U"PlayerInfoPos", JSON{ { U"sent", GameTimer() }, { U"pos", Array<double>{ me.pos[0].x, me.pos[0].y, me.pos[1].x, me.pos[1].y } } });
 		//取りこぼしても次で上書きされるよう、変化の有無にかかわらず毎フレーム送る
 		room.sendReport(U"PlayerStatus", me.status);
@@ -1488,7 +1486,7 @@ void Game::synchronizate_data() {
 				player[target].hp[0] -= damage;
 				show_damage(target, damage);
 				player[target].knockback += event.data[U"direction"].get<int32>() * knockback;
-				//確定が届く時刻は画面ごとに少しずつ違い、そのまま始めると相手の画面の先読みとずれて止まるときにぶるぶるする。確定した tick が締め切られた時刻から始まったことにして揃える
+				//確定が届く時刻は画面ごとにずれるので、tick の締め切りから始まったことにして揃える
 				if (!cpu_room) player[target].knockback_behind_ms = Clamp(GameTimer() - tick_closed_time(event.tick), 0, static_cast<int>(tick_ms()));
 			}
 			if (player[target].hp[0] <= 0) {
