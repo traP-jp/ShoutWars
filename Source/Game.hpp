@@ -417,7 +417,7 @@ private:
 	void handle_started_moves();
 	[[nodiscard]] bool is_guard_cooling_down(int cnt, int now_time) const;
 	[[nodiscard]] bool is_landing_recovery(int cnt, int now_time) const;
-	/// @brief 走ってかがんでいて、弾やナイフが頭の上を抜けるか (走りの姿勢で頭が下がるのは玲とユウカだけで、アイリと No.0 はかがまない)
+	/// @brief 走ってかがんでいて、弾やナイフが頭の上を抜けるか (走りの姿勢で頭が下がるのは玲だけで、ユウカ・アイリ・No.0 はかがまない)
 	[[nodiscard]] bool is_ducking(int cnt) const;
 	/// @brief アイリが連射で弾を撃っている最中か
 	[[nodiscard]] bool is_rapid_firing(int cnt, int now_time) const;

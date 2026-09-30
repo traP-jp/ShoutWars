@@ -147,7 +147,7 @@ bool Game::is_guard_cooling_down(int cnt, int now_time) const {
 }
 
 bool Game::is_ducking(int cnt) const {
-	return (player[cnt].status & 3) && ((player[cnt].number == 0) || (player[cnt].number == 1));
+	return (player[cnt].status & 3) && (player[cnt].number == 0);
 }
 
 bool Game::is_rapid_firing(int cnt, int now_time) const {
