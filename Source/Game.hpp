@@ -55,9 +55,9 @@ struct Player {
 	double pull_seconds = -1.0;
 	//弾で押し戻される残りの距離 (px。正なら右へ)
 	double knockback = 0.0;
-	//通信相手のジャンプを見せ始めた時刻と、着地までの残りの時間 (見せていなければ 0)
-	int jump_shown_time = 0;
-	int jump_shown_duration = 0;
+	//通信相手のジャンプを見せ始めた時刻と、そのときの地面と本当の高さの差
+	Optional<int> jump_shown_time;
+	double jump_shown_gap = 0.0;
 	//描くときだけずらす高さ
 	double jump_draw_offset = 0.0;
 	//最後にダメージが確定した時刻 (Scene::Time())。少しの間、赤く光らせる
@@ -192,6 +192,8 @@ private:
 	const static int match_seconds = 600;
 	const static int player_min_y = 650;
 	const static int jump_ms = 500;
+	//通信相手のジャンプが途中から届いたとき、本当の弧に追いつくまでの時間
+	const static int jump_catch_up_ms = 100;
 	//キャラが動ける横の範囲
 	const static int stage_min_x = 50;
 	const static int stage_max_x = 1850;

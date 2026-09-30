@@ -471,18 +471,19 @@ void Game::update_player() {
 				player_reserved_pos[i].y = player_min_y;
 			}
 		}
-		//通信相手のジャンプは届いたときにはもう途中まで跳んでいて、てっぺんに瞬間移動して見える。見えてから着地までの間に、地面から跳ぶ弧を縮めて描く (当たり判定は本当の高さのまま)
+		//通信相手のジャンプは届いたときにはもう途中まで跳んでいて、てっぺんに瞬間移動して見える。見えた高さから素早く跳び上がって本当の弧に追いつくように描く
+		//弧を丸ごと縮めると落ちるところまで速くなってふんわり感が消えるので、縮めるのは見えなかった上がりの部分だけにする (当たり判定と着地の時刻は本当の高さのまま)
 		player[i].jump_draw_offset = 0.0;
 		if ((player[i].status & 4) && !is_local_player(i)) {
-			if (player[i].jump_shown_duration == 0) {
+			if (!player[i].jump_shown_time) {
 				player[i].jump_shown_time = now_time;
-				player[i].jump_shown_duration = Max(jump_ms - player[i].timer[7], 1);
+				player[i].jump_shown_gap = player_min_y - player_reserved_pos[i].y;
 			}
-			const int shown = Min(jump_ms, (now_time - player[i].jump_shown_time) * jump_ms / player[i].jump_shown_duration);
-			player[i].jump_draw_offset = jump_y(shown) - player_reserved_pos[i].y;
+			const double catching_up = 1.0 - Min(1.0, static_cast<double>(now_time - *player[i].jump_shown_time) / jump_catch_up_ms);
+			player[i].jump_draw_offset = player[i].jump_shown_gap * catching_up * catching_up;
 		}
 		else {
-			player[i].jump_shown_duration = 0;
+			player[i].jump_shown_time.reset();
 		}
 	}
 	//プレイヤー(ユーザー操作)のキー入力処理////////////////////////////////////////////////////////////
