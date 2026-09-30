@@ -55,6 +55,11 @@ struct Player {
 	double pull_seconds = -1.0;
 	//弾で押し戻される残りの距離 (px。正なら右へ)
 	double knockback = 0.0;
+	//通信相手のジャンプを見せ始めた時刻と、着地までの残りの時間 (見せていなければ 0)
+	int jump_shown_time = 0;
+	int jump_shown_duration = 0;
+	//描くときだけずらす高さ
+	double jump_draw_offset = 0.0;
 	//最後にダメージが確定した時刻 (Scene::Time())。少しの間、赤く光らせる
 	double damaged_time = -Math::Inf;
 
@@ -186,6 +191,7 @@ private:
 	//対戦の制限時間 (秒)。慣れた人がスムーズに進めて 2 分、初めて遊ぶ人は 5 分ほどかかる見込みなので余裕を持たせ、サーバーの対戦の期限 (20分) より短く取る
 	const static int match_seconds = 600;
 	const static int player_min_y = 650;
+	const static int jump_ms = 500;
 	//キャラが動ける横の範囲
 	const static int stage_min_x = 50;
 	const static int stage_max_x = 1850;
@@ -450,6 +456,9 @@ private:
 	void receive_remote_pos(const JSON& json);
 	void Json2ArrayTimer(const JSON& json, int(&timer)[16]);
 	inline int GameTimer();
+	[[nodiscard]] static double jump_y(int t);
+	/// @brief 描くときのキャラの位置 (通信相手のジャンプの見え方を直した位置)
+	[[nodiscard]] Vec2 shown_pos(int i) const;
 	Vec2 draw_player_pos(Vec2 player_pos,int i) const;
 	//各キャラ専用関数
 	void rei_attack(int cnt,int now_time,Vec2 player_reserved_pos[]);

@@ -462,14 +462,27 @@ void Game::update_player() {
 		//ジャンプ処理
 		if (player[i].status & 4) {
 			player[i].timer[7] = now_time - player[i].timer[2];
-			if (player[i].timer[7] < 500) {
-				player_reserved_pos[i].y = player_min_y - 2.0 * player[i].timer[7] + 0.004 * player[i].timer[7] * player[i].timer[7];
+			if (player[i].timer[7] < jump_ms) {
+				player_reserved_pos[i].y = jump_y(player[i].timer[7]);
 			}
 			else {
 				player[i].status ^= 4;
 				player[i].landing_time = now_time;
 				player_reserved_pos[i].y = player_min_y;
 			}
+		}
+		//通信相手のジャンプは届いたときにはもう途中まで跳んでいて、てっぺんに瞬間移動して見える。見えてから着地までの間に、地面から跳ぶ弧を縮めて描く (当たり判定は本当の高さのまま)
+		player[i].jump_draw_offset = 0.0;
+		if ((player[i].status & 4) && !is_local_player(i)) {
+			if (player[i].jump_shown_duration == 0) {
+				player[i].jump_shown_time = now_time;
+				player[i].jump_shown_duration = Max(jump_ms - player[i].timer[7], 1);
+			}
+			const int shown = Min(jump_ms, (now_time - player[i].jump_shown_time) * jump_ms / player[i].jump_shown_duration);
+			player[i].jump_draw_offset = jump_y(shown) - player_reserved_pos[i].y;
+		}
+		else {
+			player[i].jump_shown_duration = 0;
 		}
 	}
 	//プレイヤー(ユーザー操作)のキー入力処理////////////////////////////////////////////////////////////
@@ -1686,8 +1699,8 @@ void Game::draw() const {
 		//残り時間
 		font(U"{:02}:{:02}"_fmt(remaining_seconds / 60, remaining_seconds % 60)).drawAt(960, 120, Palette::White);
 		commandFeedback.drawVoiceHint(Vec2{ 960, 50 });
-		commandFeedback.drawMoveNames(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
-		commandFeedback.drawUnmatchedMarks(Array<Vec2>{ player[0].pos[0], player[1].pos[0] });
+		commandFeedback.drawMoveNames(Array<Vec2>{ shown_pos(0), shown_pos(1) });
+		commandFeedback.drawUnmatchedMarks(Array<Vec2>{ shown_pos(0), shown_pos(1) });
 
 
 		if (cpu_room && !is_game_finished) return_glow.draw(is_return_hovered, return_shape.pos);
@@ -1792,8 +1805,8 @@ void Game::draw_special_pull() const {
 		const double t = player[i].pull_seconds;
 		if (t < 0.0) continue;
 		const double fade_in = Min(1.0, t / 0.3);
-		const Vec2 center = player[i].pos[0] + Vec2{ 0.0, -60.0 };
-		const Vec2 other = player[1 - i].pos[0] + Vec2{ 0.0, -60.0 };
+		const Vec2 center = shown_pos(i) + Vec2{ 0.0, -60.0 };
+		const Vec2 other = shown_pos(1 - i) + Vec2{ 0.0, -60.0 };
 		const double side = (other.x < center.x) ? -1.0 : 1.0;
 
 		//縮みながら集まる輪
@@ -1826,18 +1839,18 @@ void Game::draw_player() const {
 		if (!player_flag[i]) continue;
 		const auto& player_texture = player_img.at(getData().player[i]).at(player[i].img_number);
 		const double damage_flash = Max(1.0 - (Scene::Time() - player[i].damaged_time) / damage_flash_seconds, 0.0);
-		player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 1.0 - 0.7 * damage_flash, 1.0 - 0.7 * damage_flash });
+		player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(shown_pos(i), i), ColorF{ 1.0, 1.0 - 0.7 * damage_flash, 1.0 - 0.7 * damage_flash });
 		if (0.0 < damage_flash) {
 			const ScopedRenderStates2D additive{ BlendState::Additive };
-			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 0.0, 0.0, 0.6 * damage_flash });
+			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(shown_pos(i), i), ColorF{ 1.0, 0.0, 0.0, 0.6 * damage_flash });
 		}
 		//必殺技の溜めの点滅
 		if (0.0 < player[i].charge_glow) {
 			const ScopedRenderStates2D additive{ BlendState::Additive };
-			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(player[i].pos[0], i), ColorF{ 1.0, 0.6 * player[i].charge_glow });
+			player_texture.mirrored(player[i].direction).drawAt(draw_player_pos(shown_pos(i), i), ColorF{ 1.0, 0.6 * player[i].charge_glow });
 		}
 		//シールドの表示
-		if (player[i].status & 8)guard_img.drawAt(player[i].pos[0]);
+		if (player[i].status & 8)guard_img.drawAt(shown_pos(i));
 	}
 }
 
@@ -1854,6 +1867,14 @@ void Game::show_damage(int target, int damage) {
 		screen_shake_time = Scene::Time();
 		screen_shake_start = shake;
 	}
+}
+
+double Game::jump_y(int t) {
+	return player_min_y - 2.0 * t + 0.004 * t * t;
+}
+
+Vec2 Game::shown_pos(int i) const {
+	return player[i].pos[0] + Vec2{ 0.0, player[i].jump_draw_offset };
 }
 
 Vec2 Game::draw_player_pos(Vec2 player_pos, int i) const {
