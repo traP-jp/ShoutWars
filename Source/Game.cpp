@@ -998,7 +998,7 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 		const int windup = special ? yuuka_special_windup_ms : 0;
 		if ((200 + windup < tmp) && (tmp < 400 + windup)) {
 			// 艦攻召喚
-			if (!player[cnt].kate_exist && (player[cnt].status & 64)) {
+			if (!player[cnt].kate_exist && special) {
 				kate_se.playOneShot();
 				search(kate);
 				if (kate_number != -1) {
@@ -1126,9 +1126,10 @@ void Game::yuuka_attack(int cnt, int now_time, Vec2 player_reserved_pos[]) {
 				}
 				else {
 #ifndef debug_mode
-					send_action(cnt, U"SpecialAttack", i);
+					send_action(cnt, U"SpecialAttackTorpedo", j);
 #endif
-					player[j].hp[1] -= yuuka_special_attack / 2;
+					player[j].hp[1] -= yuuka_special_attack_torpedo;
+					player[j].ap += yuuka_special_attack_torpedo_ap;
 				}
 				//爆発
 				bomber_se.playOneShot();
@@ -1550,6 +1551,9 @@ void Game::synchronizate_data() {
 			}elif(event.type == U"SpecialAttack") {
 				damage = get_character_power(player[attacker].number, 2);
 				chip = static_cast<int>(damage * special_guard_chip);
+				// ユウカ限定技
+			}elif(event.type == U"SpecialAttackTorpedo") {
+				damage = yuuka_special_attack_torpedo;
 			}elif(event.type == U"UniqueAttack") {
 				damage = get_character_power(player[attacker].number, 3);
 				if (player[attacker].number == 2) knockback = airi_unique_attack_knockback;

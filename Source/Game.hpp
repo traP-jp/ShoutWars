@@ -161,10 +161,12 @@ private:
 	const static int yuuka_weak_atttack = 24;
 	const static int yuuka_strong_attack = 32;
 	const static int yuuka_special_attack = 300;
+	const static int yuuka_special_attack_torpedo = 150;
 	//AP回復量 (必殺技の分は、当てられた側に溜まる)
 	const static int yuuka_weak_atttack_ap = 36;
 	const static int yuuka_strong_attack_ap = 48;
 	const static int yuuka_special_attack_ap = 120;
+	const static int yuuka_special_attack_torpedo_ap = 60;
 	//強攻撃の後、動けるようになるまでに延ばす時間 (ミリ秒)。「キック」はほぼ確実に発動し「いー」でも出るので、連打しにくくする
 	const static int yuuka_strong_attack_recovery_ms = 100;
 	//アイリ
