@@ -2,16 +2,16 @@
 
 # include "common.hpp"
 
-/// @brief 直近の声を覚えて、音量と母音の色の流れるグラフと、聞き取った母音の並びを描く
+/// @brief 直近の声を覚えて、音量と母音の色の流れるグラフを描く
+/// @remark 母音の文字は出さない。単語判定はフレームごとの最大値の並びを答えではなく基準線として使うので、文字にすると判定とずれて誤解を招く (#47)
 class VoiceMonitor {
 public:
-	/// @param area 母音の並びとグラフを描く範囲
+	/// @param area グラフを描く範囲
 	explicit VoiceMonitor(const RectF& area);
 
 	/// @brief 1 フレーム分の解析結果を覚える
 	/// @param phoneme 直前に estimate した Phoneme
-	/// @param phonemeScores estimate の戻り値
-	void update(const Phoneme& phoneme, const Array<double>& phonemeScores);
+	void update(const Phoneme& phoneme);
 
 	void draw() const;
 
@@ -22,19 +22,7 @@ private:
 		Optional<HSV> color;
 	};
 
-	/// @brief 聞き取った母音 1 つ。vowel が none なら、発話の区切り
-	struct LoggedVowel {
-		Optional<size_t> vowel;
-		HSV color;
-		double time;
-	};
-
 	RectF area;
-	Font font{ FontMethod::MSDF, 48, Typeface::Heavy };
 	Array<Bar> bars;
-	Array<LoggedVowel> vowels;
 	double threshold = 0.0;
-	Optional<size_t> runVowel;
-	size_t runFrames = 0;
-	size_t silentFrames = 0;
 };

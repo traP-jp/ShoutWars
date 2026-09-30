@@ -322,7 +322,7 @@ private:
 	//特殊変数////////////////////////////////////////////////////////
 	CommandRecognizer commandRecognizer;
 	//声の届き方と、技が出た・出せなかったことを画面で知らせる
-	VoiceMonitor voiceMonitor{ RectF{ 640, 885, 640, 150 } };
+	VoiceMonitor voiceMonitor{ RectF{ 640, 929, 640, 106 } };
 	CommandFeedback commandFeedback;
 	ControlsGuide controlsGuide;
 	//前のフレームの状態 (技が出た瞬間を知るため)
