@@ -109,7 +109,7 @@ int Game::getkey() {
 
 int Game::voice_command() {
 	const auto phoneme_scores = getData().phoneme.estimate();
-	voiceMonitor.update(getData().phoneme, phoneme_scores);
+	voiceMonitor.update(getData().phoneme);
 # if defined(_DEBUG) || defined(DEBUG)
 	//デバッグ用に、声のコマンドをキーでも発動できるようにする
 	const int character = getData().player[player_number];
