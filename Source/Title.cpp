@@ -100,7 +100,22 @@ void Title::update()
 		updateCalibrationDialog();
 		return;
 	}
+	if (realm_dialog_open) {
+		updateRealmDialog();
+		return;
+	}
 	if (calc_mode == 0) {
+		//展示では遊ぶ人が入れ替わるので、合言葉は触らせない
+		if (!getData().exhibition) {
+			isRealmHovered = realm_shape.mouseOver();
+			if (isRealmHovered) Cursor::RequestStyle(CursorStyle::Hand);
+			if (realm_shape.leftClicked()) {
+				click_sound.playOneShot();
+				realm_draft = getData().realm;
+				realm_dialog_open = true;
+				return;
+			}
+		}
 		isButtonVsCpuHovered = button_vs_cpu_shape.mouseOver();
 		isButton1Hovered = server_available && button1_shape.mouseOver();
 		isButton2Hovered = server_available && button2_shape.mouseOver();
@@ -142,11 +157,10 @@ void Title::update()
 			animation_y = 540;
 			back_alpha = 0.8;
 			calc_mode = 2;
-			clip_flag = true;
 		}
 	}elif(calc_mode == 2) {
 		//範囲外をクリックしたら戻る
-		if (MouseL.down()) {
+		if (MouseL.down() && !paste_shape.mouseOver()) {
 			if ((Cursor::Pos().x < 660) || (Cursor::Pos().x > 1260) || (Cursor::Pos().y < 140) || (Cursor::Pos().y > 940)) {
 				calc_mode = 3;
 				animation_timer = (int)Time::GetMillisec();
@@ -175,17 +189,8 @@ void Title::update()
 				room_ID_digit++;
 			}
 		}
-		//クリップボードから自動入力 (チャットの文ごとコピーしても入るよう、6 桁の数字がちょうど 1 つだけ含まれていれば、それを部屋 ID とみなす)
-		if (!clip_flag)clip_flag = Clipboard::HasChanged();
-		String clip;
-		if (clip_flag && Clipboard::GetText(clip)) {
-			static const RegExp RoomIDPattern{ U"(?<![0-9])[0-9]{6}(?![0-9])" };
-			if (const auto found = RoomIDPattern.findAll(clip); found.size() == 1) {
-				room_ID = found[0][0]->narrow();
-				room_ID_digit = 6;
-				clip_flag = false;
-			}
-		}
+		if (paste_shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+		if (paste_shape.leftClicked() || (KeyControl.pressed() && KeyV.down())) pasteRoomID();
 
 		//カーソルの形状変更
 		if ((cancel_shape.mouseOver()) && (room_ID_digit > 0)) {
@@ -226,6 +231,52 @@ void Title::update()
 	}
 }
 
+//チャットの文ごとコピーしても入るよう、6 桁の数字がちょうど 1 つだけ含まれていれば、それを部屋 ID とみなす
+void Title::pasteRoomID()
+{
+	String clip;
+	if (!Clipboard::GetText(clip)) return;
+	static const RegExp RoomIDPattern{ U"(?<![0-9])[0-9]{6}(?![0-9])" };
+	if (const auto found = RoomIDPattern.findAll(clip); found.size() == 1) {
+		click_number_sound.playOneShot();
+		room_ID = found[0][0]->narrow();
+		room_ID_digit = 6;
+	}
+}
+
+void Title::updateRealmDialog()
+{
+	TextInput::UpdateText(realm_draft, TextInputMode::AllowBackSpace);
+	if (KeyControl.pressed() && KeyV.down()) {
+		String clip;
+		if (Clipboard::GetText(clip)) realm_draft += clip;
+	}
+	realm_draft.remove_if(IsControl);
+	if (realm_draft.size() > MaxRealmLength) realm_draft.resize(MaxRealmLength);
+
+	for (const auto& shape : { realm_generate_shape, realm_clear_shape, realm_save_shape, realm_cancel_shape }) {
+		if (shape.mouseOver()) Cursor::RequestStyle(CursorStyle::Hand);
+	}
+	if (realm_generate_shape.leftClicked()) {
+		click_sound.playOneShot();
+		realm_draft = GenerateRealm();
+	}
+	if (realm_clear_shape.leftClicked()) {
+		choice_sound.playOneShot();
+		realm_draft.clear();
+	}
+	if (realm_save_shape.leftClicked() || KeyEnter.down()) {
+		decision_sound.playOneShot();
+		getData().realm = realm_draft.trimmed();
+		SaveRealm(U"config.json", getData().realm);
+		realm_dialog_open = false;
+	}
+	if (realm_cancel_shape.leftClicked() || (MouseL.down() && !realm_panel_shape.mouseOver())) {
+		choice_sound.playOneShot();
+		realm_dialog_open = false;
+	}
+}
+
 int Title::key_num()
 {
 	if (Key1.down()) return 1;
@@ -261,6 +312,7 @@ void Title::draw() const
 	button1_shape.draw(ColorF{ 0.1, 0.85 * room_buttons_gray });
 	button2_shape.draw(ColorF{ 0.1, 0.85 * room_buttons_gray });
 	setting_glow.drawAt(isSettingHovered, { 1852, 68 });
+	if (!getData().exhibition) drawRealmButton();
 	font(status_text).draw(TextStyle::Outline(0.2, ColorF{ 0.0 }), 36, Arg::bottomRight(1900, 1060), Palette::White);
 	if (calc_mode) {
 		Rect(0, 0, 1920, 1080).draw(ColorF{ 0,back_alpha });
@@ -268,12 +320,47 @@ void Title::draw() const
 		if (calc_mode == 2) {
 			//数字の表示
 			font(Unicode::FromUTF8(room_ID)).drawAt(660 + 300, 140 + 250, Palette::Black);
+			paste_shape.rounded(16).draw(paste_shape.mouseOver() ? ColorF{ 0.95 } : ColorF{ 0.85 });
+			font(U"貼り付け").drawAt(36, paste_shape.center(), Palette::Black);
 		}
 	}
 	if (calibration_dialog_mode) {
 		Rect(0, 0, 1920, 1080).draw(ColorF{ 0,calibration_back_alpha });
 		calibration_img.drawAt(960, calibration_dialog_y);
 	}
+	if (realm_dialog_open) drawRealmDialog();
+}
+
+//DEBT: 合言葉のボタンとダイアログは、ほかの UI のような画像がまだ無いので、仮に図形と文字で描く。設定画面 (#38) ができたらそちらに移す
+void Title::drawRealmButton() const
+{
+	const bool set = !getData().realm.isEmpty();
+	realm_shape.draw(set ? ColorF{ 0.95, 0.6, 0.1 } : ColorF{ 0.1, isRealmHovered ? 0.9 : 0.7 });
+	realm_icon.drawAt(realm_shape.center, Palette::White);
+	if (set) font(U"合言葉あり").drawAt(TextStyle::Outline(0.2, ColorF{ 0.0 }), 24, realm_shape.center + Vec2{ 0, 68 }, Palette::White);
+}
+
+void Title::drawRealmDialog() const
+{
+	Rect(0, 0, 1920, 1080).draw(ColorF{ 0, 0.8 });
+	realm_panel_shape.rounded(40).draw(ColorF{ 0.95 });
+	font(U"合言葉").drawAt(64, Vec2{ 960, realm_panel_shape.y + 70 }, Palette::Black);
+	font(U"合言葉を設定した部屋には、同じ合言葉の人しか入れません。\n配信の前に、一緒に遊ぶ人とそろえておいてください。\n配信中なら、いったん画面を隠してから入力してください。")
+		.drawAt(26, Vec2{ 960, realm_panel_shape.y + 180 }, Palette::Black);
+
+	realm_box_shape.draw(Palette::White).drawFrame(3, ColorF{ 0.3 });
+	const String shown = realm_draft + TextInput::GetEditingText();
+	if (shown.isEmpty()) font(U"(なし)").draw(36, Arg::leftCenter(realm_box_shape.leftCenter() + Vec2{ 20, 0 }), ColorF{ 0.6 });
+	else font(shown).draw(36, Arg::leftCenter(realm_box_shape.leftCenter() + Vec2{ 20, 0 }), Palette::Black);
+
+	const auto button = [&](const RectF& shape, StringView label) {
+		shape.rounded(16).draw(shape.mouseOver() ? ColorF{ 0.0, 0.75, 0.95 } : ColorF{ 0.0, 0.66, 0.85 });
+		font(label).drawAt(34, shape.center(), Palette::White);
+	};
+	button(realm_generate_shape, U"ランダムに作る");
+	button(realm_clear_shape, U"消す");
+	button(realm_save_shape, U"保存");
+	button(realm_cancel_shape, U"キャンセル");
 }
 
 void Title::drawFadeIn(double t) const

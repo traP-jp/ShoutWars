@@ -47,10 +47,10 @@ void Matching::requestRoom()
 	if (is_owner) {
 		getData().room_ID.clear();
 		room_ID.clear();
-		joining = getData().server.api.create(U"Owner", 2);
+		joining = getData().server.api.create(U"Owner", 2, getData().realm);
 	}
 	else {
-		joining = getData().server.api.join(Unicode::Widen(getData().room_ID), U"Guest");
+		joining = getData().server.api.join(Unicode::Widen(getData().room_ID), U"Guest", getData().realm);
 	}
 }
 
@@ -59,6 +59,8 @@ void Matching::showError(const Multiplay::APIError& error)
 	const String& code = error.code;
 	if (code == U"room_not_found") {
 		error_ID = (getData().room_ID == "114514") ? 2 : 1;
+	}elif(code == U"realm_mismatch") {
+		error_ID = getData().realm.isEmpty() ? 7 : 8;
 	}elif(code == U"version_mismatch") {
 		error_ID = 3;
 	}elif((code == U"room_full") || (code == U"game_started") || (code == U"room_limit_reached")) {
@@ -439,9 +441,28 @@ void Matching::drawErrorDialog() const
 		suneo_img.drawAt(960, error_pos_y);
 	}elif(error_ID == 6) {
 		timeout_img.drawAt(960, error_pos_y);
+	}elif((error_ID == 7) || (error_ID == 8)) {
+		drawRealmErrorDialog();
 	}
 }
 
+
+//DEBT: 合言葉のエラーには、ほかのエラーのような画像がまだ無いので、仮に図形と文字で描く。画像ができたら差し替える
+void Matching::drawRealmErrorDialog() const
+{
+	const RectF panel{ Arg::center(960, error_pos_y), 800, 512 };
+	panel.rounded(40).draw(ColorF{ 0.62, 0.48, 0.12 }).drawFrame(6, ColorF{ 0.2 });
+	font(U"合言葉").drawAt(TextStyle::Outline(0.2, ColorF{ 0.0 }), 80, Vec2{ 960, panel.y + 90 }, Palette::White);
+	const String message = (error_ID == 7)
+		? U"この部屋に入るには合言葉が要ります。\n部屋を作った人と合言葉をそろえてください。"
+		: U"合言葉が違います。\n部屋を作った人と同じ合言葉か確かめてください。";
+	font2(message).drawAt(34, Vec2{ 960, panel.y + 230 }, Palette::White);
+	for (const auto& [shape, label] : { std::pair{ OK_shape, U"OK!" }, std::pair{ Yes_shape, U"りょーかい" } }) {
+		const RectF button{ Arg::center(shape.center().x, error_pos_y + (shape.center().y - 360)), shape.size };
+		button.rounded(50).draw(ColorF{ 0.0, 0.66, 0.85 });
+		font2(label).drawAt(40, button.center(), Palette::White);
+	}
+}
 
 void Matching::drawFadeIn(double t) const
 {

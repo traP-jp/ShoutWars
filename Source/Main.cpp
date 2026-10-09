@@ -68,6 +68,7 @@ void Main() {
 	manager.add<Title>(State::Title);
 	manager.add<Matching>(State::Matching);
 	manager.add<Game>(State::Game);
+	manager.get()->exhibition = exhibition;
 	//展示では遊ぶ人が入れ替わるので、前の人の声の登録を残さない (入力感度は会場に合わせたものなので残す)
 	if (exhibition) manager.get()->phoneme.clearMFCC();
 	

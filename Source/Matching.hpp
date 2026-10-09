@@ -93,7 +93,7 @@ class Matching : public App::Scene
 
 	//エラーダイアログ関連
 	int error_mode = 0;
-	//0:バグ,1:404,2:810,3:400,4:500,5:スネ夫,6:時間切れ
+	//0:バグ,1:404,2:810,3:400,4:500,5:スネ夫,6:時間切れ,7:合言葉が要る,8:合言葉が違う
 	int error_ID = 0;
 	int error_pos_y = 1400;
 	int error_timer = 0;
@@ -111,6 +111,7 @@ class Matching : public App::Scene
 	bool isSelectable(int character) const;
 	void stepCharacter(int step);
 	void showError(const Multiplay::APIError& error);
+	void drawRealmErrorDialog() const;
 	String CalcRemainingTime();
 public:
 	Matching(const InitData& init);

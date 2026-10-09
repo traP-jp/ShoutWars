@@ -48,6 +48,8 @@ private:
 	const Rect cancel_shape{ 660 + 55,140 + 641,150,80 };
 	//const RectF shape_of_0{ 225,841,150,80 };
 	const Rect decide_shape{ 660 + 395,140 + 641,150,80 };
+	//DEBT: 電卓の画像に貼り付けのボタンが無いので、仮に電卓の右に図形で描く
+	const RectF paste_shape{ 1290,860,220,80 };
 	const Circle setting_shape{ 1852,68,48 };
 	const Rect calibration_OK_shape{ 680,464,240,105 };
 	const Rect calibration_Yes_shape{ 1010,464,240,105 };
@@ -63,7 +65,6 @@ private:
 	int calibration_dialog_timer = 0;
 	int calibration_dialog_y = 1400;
 	double calibration_back_alpha = 0.0;
-	bool clip_flag = true;
 
 	std::string room_ID;
 	int room_ID_digit = 0;
@@ -77,8 +78,26 @@ private:
 	//部屋を作る・入るボタンのグレーアウトの濃さ (0 で消える)
 	double room_buttons_gray = 1.0;
 
+	//合言葉 (設定した部屋には、同じ合言葉の人しか入れない)////////////////
+	const Circle realm_shape{ 1736,68,48 };
+	const Texture realm_icon{ 0xf084_icon, 52 };
+	bool isRealmHovered = false;
+	bool realm_dialog_open = false;
+	//ダイアログで書きかけの合言葉。保存するまで設定には反映しない
+	String realm_draft;
+	const RectF realm_panel_shape{ Arg::center(960, 540), 1000, 620 };
+	const RectF realm_box_shape{ 560,500,800,80 };
+	const RectF realm_generate_shape{ 560,610,380,80 };
+	const RectF realm_clear_shape{ 980,610,380,80 };
+	const RectF realm_save_shape{ 560,720,380,90 };
+	const RectF realm_cancel_shape{ 980,720,380,90 };
+
 	int key_num();
+	void pasteRoomID();
 	void updateServerStatus();
+	void updateRealmDialog();
+	void drawRealmButton() const;
+	void drawRealmDialog() const;
 	bool requireCalibration();
 	void updateCalibrationDialog();
 public:

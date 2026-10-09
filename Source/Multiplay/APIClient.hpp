@@ -185,11 +185,13 @@ namespace Multiplay
 		/// @param baseURL バージョンのパス (/v3) を含まない URL (例: U"https://shoutwars.trap.games/develop/api")
 		APIClient(std::shared_ptr<IHTTPTransport> transport, URL baseURL, String version, String password = U"");
 
+		/// @param realm 合言葉。空なら誰でも入れる部屋になる
 		[[nodiscard]]
-		APICall<Joined> create(StringView userName, int32 size) const;
+		APICall<Joined> create(StringView userName, int32 size, StringView realm) const;
 
+		/// @param realm 合言葉。部屋に合言葉があれば一致が要る
 		[[nodiscard]]
-		APICall<Joined> join(StringView code, StringView userName) const;
+		APICall<Joined> join(StringView code, StringView userName, StringView realm) const;
 
 		[[nodiscard]]
 		APICall<SyncResponse> sync(const SyncRequest& request, Duration timeout) const;
