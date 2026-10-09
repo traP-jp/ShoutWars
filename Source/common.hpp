@@ -5,6 +5,7 @@
 # include "Multiplay/LocalRoom.hpp"
 # include "ServerConfig.hpp"
 # include "PostProcess.hpp"
+# include "Realm.hpp"
 #define elif else if
 #define M_PI 3.14159265358979323846
 
@@ -27,6 +28,8 @@ struct GameData
 {
 	//キャラが確定したかどうか
 	bool decided_character = false;
+	//展示用モード (設定ファイルの exhibition)
+	bool exhibition = false;
 	//Config画面に遷移する前のシーン
 	State before_scene = State::Title;
 	//0:ルーム作成,1:ルーム参加,2:CPU と対戦
@@ -43,6 +46,8 @@ struct GameData
 	
 	//通信用
 	ServerConfig server = LoadServerConfig(U"config.json", GameVersion);
+	//合言葉 (空なら設定していない)
+	String realm = LoadRealm(U"config.json");
 	std::unique_ptr<Multiplay::IRoom> room;
 	//ゲームを開始する tick
 	uint64 start_tick = 0;

@@ -225,6 +225,9 @@
     <ClCompile Include="Source\GraphicsQuality.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Realm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Source\PostProcess.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -606,6 +609,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\GraphicsQuality.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Realm.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\PostProcess.hpp">

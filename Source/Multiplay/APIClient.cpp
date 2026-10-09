@@ -147,17 +147,19 @@ namespace Multiplay
 		, m_version{ std::move(version) }
 		, m_password{ std::move(password) } {}
 
-	APICall<Joined> APIClient::create(const StringView userName, const int32 size) const
+	APICall<Joined> APIClient::create(const StringView userName, const int32 size, const StringView realm) const
 	{
-		const JSON body{ { U"version", m_version }, { U"user", JSON{ { U"name", userName } } }, { U"size", size } };
+		JSON body{ { U"version", m_version }, { U"user", JSON{ { U"name", userName } } }, { U"size", size } };
+		if (!realm.isEmpty()) body[U"realm"] = realm;
 
 		return send<Joined>(HTTPMethod::Post, U"/v3/room/create", body, RequestTimeout,
 			[](const JSON& json) { return ReadJoined(json, json[U"code"].getString()); });
 	}
 
-	APICall<Joined> APIClient::join(const StringView code, const StringView userName) const
+	APICall<Joined> APIClient::join(const StringView code, const StringView userName, const StringView realm) const
 	{
-		const JSON body{ { U"version", m_version }, { U"code", code }, { U"user", JSON{ { U"name", userName } } } };
+		JSON body{ { U"version", m_version }, { U"code", code }, { U"user", JSON{ { U"name", userName } } } };
+		if (!realm.isEmpty()) body[U"realm"] = realm;
 
 		return send<Joined>(HTTPMethod::Post, U"/v3/room/join", body, RequestTimeout,
 			[code = String{ code }](const JSON& json) { return ReadJoined(json, code); });
